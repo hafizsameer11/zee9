@@ -1,0 +1,94 @@
+.card {
+  position: relative;
+  background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+  border-radius: var(--radius-lg);
+  padding: 20px 20px 16px;
+  overflow: hidden;
+  border: 1px solid rgba(245, 200, 66, 0.25);
+  box-shadow:
+    0 8px 32px rgba(208, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.decor,
+.decor2 {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.decor {
+  width: 120px;
+  height: 120px;
+  top: -40px;
+  right: -30px;
+}
+
+.decor2 {
+  width: 80px;
+  height: 80px;
+  bottom: -20px;
+  left: -20px;
+  background: rgba(245, 200, 66, 0.08);
+}
+
+.label {
+  position: relative;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 4px;
+}
+
+.amount {
+  position: relative;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--white);
+  letter-spacing: -0.5px;
+  margin-bottom: 18px;
+}
+
+.currency {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gold-light);
+}
+
+.actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--white);
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--red);
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.actionBtn:active {
+  transform: scale(0.97);
+}
+
+.iconCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--white);
+  flex-shrink: 0;
+}

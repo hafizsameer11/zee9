@@ -1,0 +1,20 @@
+.unread {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: linear-gradient(180deg, #252015, #1a1510);
+  box-shadow: inset 0 0 12px rgba(232, 197, 71, 0.06);
+}
+
+.date {
+  font-size: 7px;
+  color: var(--zee-muted, #9a7b4f);
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--zee-red-glow, #e53935);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(229, 57, 53, 0.7);
+}

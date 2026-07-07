@@ -1,0 +1,230 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(4, 2, 2, 0.92);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #e53935, #b71c1c);
+  border: 1px solid #ff8a80;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  z-index: 10;
+}
+
+.content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 96%;
+  max-height: 96%;
+}
+
+.winList {
+  width: 120px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(123, 31, 162, 0.8), rgba(74, 20, 140, 0.9));
+  border: 2px solid #e040fb;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 0 16px rgba(224, 64, 251, 0.4);
+}
+
+.winList h3 {
+  font-size: 9px;
+  font-weight: 800;
+  color: #f5c842;
+  text-align: center;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.winList ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.winList li {
+  display: flex;
+  justify-content: space-between;
+  font-size: 7px;
+  color: #f5c842;
+  padding: 3px 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+}
+
+.myPrize {
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid #e040fb;
+  color: #f5c842;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.wheelArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.title {
+  padding: 4px 20px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e040fb, #7b1fa2);
+  border: 2px solid #f8bbd9;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  font-style: italic;
+  text-shadow: 0 0 8px rgba(224, 64, 251, 0.8);
+  margin-bottom: 6px;
+  box-shadow: 0 0 20px rgba(224, 64, 251, 0.5);
+}
+
+.wheelWrap {
+  position: relative;
+  width: min(220px, 45vw);
+  height: min(220px, 45vw);
+}
+
+.pointer {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f5c842;
+  font-size: 20px;
+  z-index: 5;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.wheel {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 6px solid #f5c842;
+  box-shadow: 0 0 0 3px #6d4c41, 0 0 24px rgba(245, 200, 66, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99);
+}
+
+.segment {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  left: 50%;
+  top: 0;
+  transform-origin: 0% 100%;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.segInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.segEmoji {
+  font-size: 10px;
+}
+
+.segLabel {
+  font-size: 5px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  max-width: 36px;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.spinBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #cfd8dc, #78909c, #455a64);
+  border: 3px solid #eceff1;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.spinBtn span {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.spinBtn small {
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.progress {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 280px;
+  text-align: center;
+}
+
+.progress p {
+  font-size: 8px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  border: 1px solid #7b1fa2;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7b1fa2, #e040fb);
+}
+
+.barLabels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: #f5c842;
+  margin-top: 2px;
+}

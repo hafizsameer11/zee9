@@ -1,0 +1,179 @@
+.page {
+  padding: 16px 16px 20px;
+  animation: fade-in 0.3s ease-out;
+}
+
+.header {
+  padding-top: env(safe-area-inset-top, 0px);
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.spinCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(245, 200, 66, 0.15) 0%, var(--black-card) 100%);
+  border: 1px solid rgba(245, 200, 66, 0.35);
+  border-radius: var(--radius-lg);
+  margin-bottom: 20px;
+}
+
+.wheel {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--red) 0deg 60deg,
+    var(--gold) 60deg 120deg,
+    var(--red-dark) 120deg 180deg,
+    var(--gold-light) 180deg 240deg,
+    var(--red) 240deg 300deg,
+    var(--gold-dark) 300deg 360deg
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: float-up 3s ease-in-out infinite;
+  box-shadow: 0 0 24px rgba(245, 200, 66, 0.3);
+}
+
+.wheelInner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.spinInfo h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.spinInfo p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 4px 0 10px;
+}
+
+.spinBtn {
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+  color: var(--black);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.card {
+  position: relative;
+  padding: 16px;
+  background: var(--black-card);
+  border: 1px solid var(--border-red);
+  border-radius: var(--radius-md);
+}
+
+.tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--red);
+  color: var(--white);
+  letter-spacing: 0.5px;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--white);
+  padding-right: 60px;
+}
+
+.cardDesc {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 6px 0 12px;
+  line-height: 1.4;
+}
+
+.claimBtn {
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.referral {
+  padding: 20px;
+  background: var(--black-elevated);
+  border: 1px dashed rgba(245, 200, 66, 0.3);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.refTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+
+.refCode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--black-card);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--gold);
+}
+
+.copyBtn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--red);
+  color: var(--white);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.refHint {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}

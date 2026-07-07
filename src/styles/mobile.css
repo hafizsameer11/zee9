@@ -1,0 +1,6 @@
+/* Touch / phone / WebView — lobby scroll */
+@media (hover: none) and (pointer: coarse), (max-width: 920px) {
+  html.is-touch-device .screen {
+    touch-action: pan-y;
+  }
+}

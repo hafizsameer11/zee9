@@ -1,0 +1,118 @@
+.screen {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  min-height: 0;
+  animation: catFade 0.25s ease-out;
+}
+
+@keyframes catFade {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.promo {
+  width: 68px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #1a0808 0%, #0a0303 100%);
+  border: 2px solid var(--zee-gold-dark);
+  box-shadow: var(--zee-gold-glow);
+  text-align: center;
+}
+
+.promoDate {
+  font-size: 6px;
+  font-weight: 800;
+  color: var(--zee-gold);
+  line-height: 1.2;
+}
+
+.promoTitle {
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(232, 197, 71, 0.4);
+  line-height: 1.1;
+}
+
+.promoHint {
+  font-size: 5.5px;
+  color: var(--zee-muted);
+  line-height: 1.3;
+}
+
+.promoBtn {
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--zee-red-glow), var(--zee-red));
+  color: #fff;
+  font-size: 6px;
+  font-weight: 800;
+  border: 1px solid var(--zee-gold);
+  box-shadow: var(--zee-red-glow-shadow);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2px 6px 4px;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 10px;
+  font-weight: 900;
+  color: var(--zee-gold-light);
+  text-shadow: 0 0 8px rgba(232, 197, 71, 0.25);
+}
+
+.sub {
+  font-size: 7px;
+  color: var(--zee-muted);
+  font-weight: 600;
+}
+
+@media (hover: none) and (pointer: coarse), (max-width: 920px) {
+  .promo {
+    width: 76px;
+  }
+
+  .promoTitle {
+    font-size: 10px;
+  }
+
+  .promoHint {
+    font-size: 6.5px;
+  }
+
+  .promoBtn {
+    font-size: 7px;
+  }
+
+  .title {
+    font-size: 12px;
+  }
+
+  .sub {
+    font-size: 8px;
+  }
+}

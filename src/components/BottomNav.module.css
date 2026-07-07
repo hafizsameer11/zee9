@@ -1,0 +1,37 @@
+.nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  padding: 8px 4px calc(8px + var(--safe-bottom));
+  background: var(--black-card);
+  border-top: 1px solid rgba(245, 200, 66, 0.15);
+  position: sticky;
+  bottom: 0;
+  z-index: 100;
+}
+
+.link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.15s;
+  min-width: 56px;
+}
+
+.link svg {
+  opacity: 0.6;
+}
+
+.active {
+  color: var(--gold);
+}
+
+.active svg {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(245, 200, 66, 0.4));
+}

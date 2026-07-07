@@ -1,0 +1,25 @@
+.root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  contain: strict;
+  background: #0a0603;
+}
+
+.canvas {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: top left;
+  will-change: transform;
+}
+
+@media (hover: none) and (pointer: coarse), (max-width: 920px) {
+  .canvas [class*='overflow-y-auto'],
+  .canvas aside {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
+  }
+}

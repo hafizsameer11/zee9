@@ -1,0 +1,203 @@
+.page {
+  padding: 16px 16px 20px;
+  animation: fade-in 0.3s ease-out;
+}
+
+.header {
+  padding-top: env(safe-area-inset-top, 0px);
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.balanceCard {
+  background: linear-gradient(135deg, var(--red) 0%, var(--red-dark) 100%);
+  border-radius: var(--radius-lg);
+  padding: 24px 20px;
+  border: 1px solid rgba(245, 200, 66, 0.25);
+  box-shadow: 0 8px 32px rgba(208, 0, 0, 0.3);
+}
+
+.balanceLabel {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.balanceAmount {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 4px 0 20px;
+}
+
+.currency {
+  font-size: 1rem;
+  color: var(--gold-light);
+  margin-right: 4px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.depositBtn,
+.withdrawBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.depositBtn {
+  background: var(--white);
+  color: var(--red);
+}
+
+.withdrawBtn {
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--white);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btnIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--red);
+  color: var(--white);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.withdrawBtn .btnIcon {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.methods {
+  margin-top: 24px;
+}
+
+.sectionTitle {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.methodRow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.method {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 8px;
+  background: var(--black-card);
+  border: 1px solid var(--border-red);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.methodEmoji {
+  font-size: 1.5rem;
+}
+
+.history {
+  margin-top: 24px;
+}
+
+.txList {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.txItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  background: var(--black-card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.txLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.txIcon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--black-elevated);
+  font-size: 1rem;
+}
+
+.txMethod {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.txDate {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.txRight {
+  text-align: right;
+}
+
+.txAmount {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.positive {
+  color: #22c55e;
+}
+
+.negative {
+  color: var(--red-glow);
+}
+
+.txStatus {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-top: 2px;
+  display: inline-block;
+}
+
+.completed {
+  color: #22c55e;
+}
+
+.pending {
+  color: var(--gold);
+}

@@ -1,0 +1,100 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.table th {
+  color: #f5c842;
+  font-weight: 800;
+  padding: 6px 4px;
+  border-bottom: 1px solid #8b6914;
+  text-align: left;
+}
+
+.table td {
+  padding: 6px 4px;
+  color: #fff;
+  border-bottom: 1px solid rgba(139, 105, 20, 0.2);
+}
+
+.gold {
+  color: #f5c842;
+  font-weight: 700;
+}
+
+.guide {
+  font-size: 10px;
+  color: #fff;
+  padding-left: 18px;
+  line-height: 1.6;
+}
+
+.guide li {
+  margin-bottom: 8px;
+}
+
+.empty {
+  text-align: center;
+  padding: 24px;
+}
+
+.empty span {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.empty p {
+  font-size: 12px;
+  color: #f5c842;
+  font-weight: 700;
+}
+
+.empty small {
+  font-size: 9px;
+  color: #c9a86c;
+}
+
+.share {
+  text-align: center;
+}
+
+.link {
+  font-size: 9px;
+  color: #f5c842;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #8b6914;
+  word-break: break-all;
+  margin-bottom: 10px;
+}
+
+.copyBtn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffe082, #ffb300);
+  color: #3e2723;
+  font-size: 11px;
+  font-weight: 900;
+  border: 2px solid #f5c842;
+  margin-bottom: 10px;
+}
+
+.shareBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.social {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid #f5c842;
+  color: #f5c842;
+  font-size: 9px;
+  font-weight: 700;
+}

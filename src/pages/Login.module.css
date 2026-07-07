@@ -1,0 +1,44 @@
+.page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(180deg, #5c1818, #2a0808);
+}
+
+.page h1 {
+  font-size: 16px;
+  color: #f5c842;
+  font-weight: 800;
+}
+
+.page input {
+  width: 240px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #8b6914;
+  background: #1a0505;
+  color: #fff;
+  font-size: 12px;
+}
+
+.page button {
+  padding: 8px 20px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ffb300, #e65100);
+  border: 1px solid #ffe082;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.skip {
+  background: transparent !important;
+  border: none !important;
+  color: #f5c842 !important;
+  font-size: 11px !important;
+  text-decoration: underline;
+}

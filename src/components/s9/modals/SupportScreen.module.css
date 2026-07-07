@@ -1,0 +1,167 @@
+.bodyPad {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 200px;
+}
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--zee-gold-light, #f5d76e);
+  margin-bottom: 8px;
+}
+
+.faq {
+  display: flex;
+  flex-direction: column;
+}
+
+.faqItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  color: #fff;
+  text-align: left;
+}
+
+.faqItem:active {
+  background: rgba(232, 197, 71, 0.08);
+}
+
+.faqIcon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.faqLabel {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.faqArrow {
+  color: var(--zee-gold, #e8c547);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.service {
+  display: flex;
+  flex-direction: column;
+}
+
+.serviceText {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+
+.contactRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.contactBtn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.contactBtn span {
+  font-size: 20px;
+}
+
+.contactBtn small {
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.whatsapp {
+  background: linear-gradient(180deg, #43a047, #1b5e20);
+}
+
+.live {
+  background: linear-gradient(180deg, #7b1fa2, #4a148c);
+}
+
+.telegram {
+  background: linear-gradient(180deg, #1e88e5, #0d47a1);
+}
+
+.facebookBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e53935, #b71c1c);
+  border: 1px solid #ff8a80;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fbIcon {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #fff;
+  color: #1877f2;
+  font-size: 14px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.gameId {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+.copyBtn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #66bb6a, #388e3c);
+  border: 1px solid #81c784;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+}

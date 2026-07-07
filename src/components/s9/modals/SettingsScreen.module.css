@@ -1,0 +1,124 @@
+.bodyPad {
+  padding: 14px 16px 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  margin-bottom: 16px;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.toggle {
+  position: relative;
+  width: 52px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.toggleOn {
+  background: linear-gradient(180deg, #43a047, #2e7d32);
+  justify-content: flex-end;
+}
+
+.toggleOff {
+  background: linear-gradient(180deg, #e53935, #b71c1c);
+  justify-content: flex-start;
+}
+
+.toggleKnob {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.toggleLabel {
+  position: absolute;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.toggleOn .toggleLabel {
+  left: 7px;
+}
+
+.toggleOff .toggleLabel {
+  right: 6px;
+}
+
+.langBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.chev {
+  color: var(--zee-gold, #e8c547);
+  font-size: 12px;
+}
+
+.greenBtn {
+  padding: 4px 14px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #66bb6a, #388e3c);
+  border: 1px solid #81c784;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.logout {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+  padding: 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff5252, #d32f2f);
+  border: 2px solid #ff8a80;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(211, 47, 47, 0.45);
+}

@@ -1,0 +1,146 @@
+.page {
+  padding: 16px 16px 20px;
+  animation: fade-in 0.3s ease-out;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: env(safe-area-inset-top, 0px);
+  margin-bottom: 20px;
+}
+
+.avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--red), var(--gold-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--white);
+  border: 2px solid var(--gold);
+  box-shadow: var(--shadow-gold);
+}
+
+.name {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.id {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.vip {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--gold);
+  background: rgba(245, 200, 66, 0.12);
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 200, 66, 0.3);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 8px;
+  background: var(--black-card);
+  border: 1px solid var(--border-red);
+  border-radius: var(--radius-sm);
+}
+
+.statValue {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.statLabel {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 12px;
+  background: var(--black-card);
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.menuItem:active {
+  background: var(--black-elevated);
+}
+
+.menuIcon {
+  font-size: 1.2rem;
+  width: 28px;
+  text-align: center;
+}
+
+.menuLabel {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.menuBadge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(245, 200, 66, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.menuArrow {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.logoutBtn {
+  width: 100%;
+  margin-top: 24px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-red);
+  color: var(--red-glow);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.version {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}

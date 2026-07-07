@@ -1,0 +1,258 @@
+.panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 10px;
+  overflow-y: auto;
+  animation: profileIn 0.2s ease-out;
+}
+
+@keyframes profileIn {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.identityCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #1e1e1e 0%, #141414 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.avatarWrap {
+  flex-shrink: 0;
+}
+
+.avatarRing {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(145deg, #f5d76e, #d4af37, #a67c00);
+  box-shadow: 0 0 20px rgba(232, 197, 71, 0.45);
+}
+
+.avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #2d0f0f;
+}
+
+.identityInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--zee-gold-light, #f5d76e);
+  text-shadow: 0 0 12px rgba(232, 197, 71, 0.35);
+  line-height: 1.1;
+}
+
+.id {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.vipBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3d2817 0%, #1a1008 100%);
+  border: 2px solid var(--zee-gold, #e8c547);
+  color: var(--zee-gold-light, #f5d76e);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  box-shadow:
+    0 0 18px rgba(232, 197, 71, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.vipCrown {
+  font-size: 16px;
+  filter: drop-shadow(0 0 4px rgba(232, 197, 71, 0.6));
+}
+
+.balances {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.balanceCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #1e1e1e 0%, #141414 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.balanceIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(232, 197, 71, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.balanceLabel {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.balanceValue {
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.balanceValue small {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.actionBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #5c1515 0%, #3d0a0a 100%);
+  border: 1px solid rgba(196, 30, 58, 0.4);
+  color: #fff;
+  min-height: 72px;
+}
+
+.actionBtn:active {
+  transform: scale(0.97);
+}
+
+.actionIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.icongreen {
+  color: #66bb6a;
+  border-color: rgba(102, 187, 106, 0.4);
+}
+
+.iconred {
+  color: #ef5350;
+  border-color: rgba(239, 83, 80, 0.4);
+}
+
+.icongold {
+  color: var(--zee-gold-light, #f5d76e);
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+.actionLabel {
+  font-size: 7px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.betsSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 80px;
+  background: linear-gradient(180deg, #1e1e1e 0%, #141414 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.betsHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.betsIcon {
+  font-size: 14px;
+  color: var(--zee-gold, #e8c547);
+}
+
+.betsHead h3 {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.betsEmpty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  gap: 4px;
+}
+
+.betsEmpty span {
+  font-size: 24px;
+  opacity: 0.4;
+}
+
+.betsEmpty p {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.betsEmpty small {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+}

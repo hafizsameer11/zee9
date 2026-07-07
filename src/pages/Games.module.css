@@ -1,0 +1,70 @@
+.page {
+  padding: 16px 16px 20px;
+  animation: fade-in 0.3s ease-out;
+}
+
+.header {
+  margin-bottom: 16px;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.gold {
+  background: linear-gradient(90deg, var(--gold-light), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.count {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.categories {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  scrollbar-width: none;
+}
+
+.categories::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--black-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.15s;
+}
+
+.chipActive {
+  background: linear-gradient(135deg, var(--red), var(--red-dark));
+  color: var(--white);
+  border-color: rgba(245, 200, 66, 0.3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 360px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

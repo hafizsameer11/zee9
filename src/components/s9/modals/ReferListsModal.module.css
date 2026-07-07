@@ -1,0 +1,131 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: rgba(4, 2, 2, 0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+}
+
+.modal {
+  width: 88%;
+  max-width: 640px;
+  height: 82%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--zee-bg);
+  border: 2px solid rgba(212, 175, 55, 0.55);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 0 32px rgba(196, 30, 58, 0.3);
+}
+
+.modal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: var(--zee-bg-glow);
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+.modal > * {
+  position: relative;
+  z-index: 1;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 10px 16px;
+  background: var(--zee-bg);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  flex-shrink: 0;
+}
+
+.header h2 {
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.close {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  border: none;
+  color: #f5c842;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #e67e22, #d35400);
+  border-bottom: 1px solid #f39c12;
+  flex-shrink: 0;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stat strong {
+  font-size: 11px;
+  font-weight: 900;
+  color: #f5c842;
+}
+
+.colHead {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr 0.8fr;
+  gap: 4px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, #5c1818, #4a0e0e);
+  border-bottom: 1px solid rgba(233, 30, 140, 0.3);
+  flex-shrink: 0;
+}
+
+.colHead span {
+  font-size: 9px;
+  font-weight: 700;
+  color: #e57373;
+  text-align: center;
+}
+
+.body {
+  flex: 1;
+  background: #2a0808;
+  min-height: 0;
+}
+
+.footer {
+  height: 8px;
+  background: linear-gradient(180deg, #6b1a1a, #4a0e0e);
+  border-radius: 0 0 14px 14px;
+  flex-shrink: 0;
+}

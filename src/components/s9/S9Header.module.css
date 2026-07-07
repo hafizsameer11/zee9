@@ -1,0 +1,230 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 8px;
+  min-height: 46px;
+  background: linear-gradient(180deg, #1a0808 0%, #120505 55%, #0a0303 100%);
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, transparent, var(--zee-gold-dark), var(--zee-gold), var(--zee-gold-dark), transparent) 1;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+  text-align: left;
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+
+.left:active {
+  background: rgba(232, 197, 71, 0.06);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid var(--zee-gold);
+  background: var(--zee-black);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--zee-gold-glow);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.logo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+  letter-spacing: 0.3px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.uid {
+  font-size: 8px;
+  color: var(--zee-muted);
+  font-weight: 600;
+}
+
+.vip {
+  font-size: 7px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(180deg, var(--zee-red-glow), var(--zee-red));
+  border: 1px solid var(--zee-gold);
+  border-radius: 3px;
+  padding: 1px 5px;
+  line-height: 1.3;
+  box-shadow: var(--zee-red-glow-shadow);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.balanceBox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 16px;
+  padding: 3px 4px 3px 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.balance {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--zee-gold-light);
+  min-width: 12px;
+  text-shadow: 0 0 8px rgba(232, 197, 71, 0.35);
+}
+
+.plusBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--zee-gold-light), var(--zee-gold-dark));
+  color: #1a0505;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 8px rgba(232, 197, 71, 0.3);
+  border: 1px solid #fff;
+}
+
+.withdraw {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  color: var(--zee-gold);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.actionBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 3px;
+}
+
+.actionCircle {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #3d1515 0%, #1a0808 100%);
+  border: 2px solid var(--zee-gold-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--zee-gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 8px rgba(232, 197, 71, 0.15);
+}
+
+.actionLabel {
+  font-size: 7px;
+  color: var(--zee-muted);
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.dot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--zee-red-glow);
+  border: 1px solid #fff;
+  box-shadow: 0 0 6px rgba(229, 57, 53, 0.8);
+}
+
+@media (hover: none) and (pointer: coarse), (max-width: 920px) {
+  .header {
+    min-height: 52px;
+    padding: 4px 10px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .name {
+    font-size: 13px;
+  }
+
+  .uid {
+    font-size: 9px;
+  }
+
+  .vip {
+    font-size: 8px;
+  }
+
+  .balance {
+    font-size: 16px;
+  }
+
+  .plusBtn {
+    width: 26px;
+    height: 26px;
+    font-size: 18px;
+  }
+
+  .withdraw {
+    font-size: 9px;
+  }
+
+  .actionCircle {
+    width: 32px;
+    height: 32px;
+  }
+
+  .actionLabel {
+    font-size: 8px;
+  }
+}

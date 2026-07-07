@@ -1,0 +1,220 @@
+.jackpot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, rgba(196, 30, 58, 0.35), rgba(100, 10, 20, 0.5));
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  border-radius: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 0 20px rgba(196, 30, 58, 0.2);
+}
+
+.jackpotLabel {
+  font-size: 9px;
+  font-weight: 900;
+  color: #ffcdd2;
+  letter-spacing: 3px;
+  animation: jackpotBlink 1.5s ease infinite;
+}
+
+.jackpotValue {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--zee-gold-light);
+  text-shadow: 0 0 12px rgba(232, 197, 71, 0.4);
+}
+
+@keyframes jackpotBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.machine {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.machineTop {
+  display: flex;
+  gap: 12px;
+  padding: 6px 20px;
+  background: linear-gradient(180deg, #3a2020, #1a1010);
+  border-radius: 12px 12px 0 0;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-bottom: none;
+}
+
+.lights {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffeb3b, #ff8f00);
+  box-shadow: 0 0 8px rgba(255, 235, 59, 0.8);
+  animation: lightBlink 0.8s ease infinite alternate;
+}
+
+.lights:nth-child(2) {
+  animation-delay: 0.25s;
+}
+.lights:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+@keyframes lightBlink {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.reelsWindow {
+  position: relative;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #0a0a0a, #151515, #0a0a0a);
+  border-left: 3px solid rgba(212, 175, 55, 0.5);
+  border-right: 3px solid rgba(212, 175, 55, 0.5);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+.winLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255, 82, 82, 0.8), transparent);
+  transform: translateY(-50%);
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 82, 82, 0.5);
+}
+
+.reels {
+  display: flex;
+  gap: 10px;
+}
+
+.reel {
+  width: 72px;
+  height: 88px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 45%, #1a1a1a 100%);
+  border: 2px solid rgba(212, 175, 55, 0.45);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: inset 0 6px 16px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+
+.reel::before,
+.reel::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.reel::before {
+  top: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent);
+}
+
+.reel::after {
+  bottom: 0;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.7), transparent);
+}
+
+.reelSymbol {
+  font-size: 36px;
+  font-weight: 900;
+  position: relative;
+  z-index: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.spinning .reelSymbol {
+  animation: symbolSpin 0.07s infinite;
+  color: var(--zee-gold);
+}
+
+@keyframes symbolSpin {
+  0% {
+    transform: translateY(-3px);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(3px);
+  }
+  100% {
+    transform: translateY(-3px);
+    opacity: 0.7;
+  }
+}
+
+.machineBase {
+  width: 100%;
+  max-width: 280px;
+  height: 12px;
+  background: linear-gradient(180deg, #2a1818, #1a0a0a);
+  border-radius: 0 0 10px 10px;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-top: none;
+}
+
+.paytable {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.payItem {
+  font-size: 9px;
+  color: var(--zee-muted);
+  font-weight: 700;
+}
+
+.payItem strong {
+  color: var(--zee-gold);
+}
+
+.spinBtn {
+  min-width: 160px;
+  font-size: 13px !important;
+}
+
+.winFlash {
+  animation: winFlash 0.8s ease;
+}
+
+@keyframes winFlash {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: drop-shadow(0 0 24px rgba(232, 197, 71, 0.7));
+  }
+}

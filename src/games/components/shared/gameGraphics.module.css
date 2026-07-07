@@ -1,0 +1,260 @@
+/* Premium casino game graphics — shared across all game UIs */
+
+.panelFrame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.statRow {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.statCard {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(30, 15, 15, 0.95), rgba(12, 6, 6, 0.98));
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.statLabel {
+  display: block;
+  font-size: 7px;
+  font-weight: 800;
+  color: var(--zee-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.statValue {
+  display: block;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.statValueGold {
+  color: var(--zee-gold-light);
+  text-shadow: 0 0 12px rgba(232, 197, 71, 0.4);
+}
+
+.statValueGreen {
+  color: #69f0ae;
+  text-shadow: 0 0 10px rgba(105, 240, 174, 0.35);
+}
+
+.arena {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(232, 197, 71, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, rgba(16, 8, 20, 0.98), rgba(6, 3, 8, 0.99));
+  box-shadow:
+    inset 0 0 50px rgba(0, 0, 0, 0.6),
+    0 8px 28px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.arenaGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+.arenaGlow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(106, 27, 154, 0.15) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+.btnPrimary {
+  position: relative;
+  padding: 11px 24px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffc107 0%, #ff8f00 35%, #e65100 70%, #bf360c 100%);
+  border: 1px solid rgba(255, 230, 140, 0.55);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 6px 0 #8b2500,
+    0 8px 20px rgba(230, 81, 0, 0.45);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.btnPrimary:active {
+  transform: translateY(3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 0 #8b2500,
+    0 4px 12px rgba(230, 81, 0, 0.35);
+}
+
+.btnCashout {
+  position: relative;
+  padding: 11px 24px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #76ff03 0%, #43a047 40%, #2e7d32 70%, #1b5e20 100%);
+  border: 1px solid rgba(200, 255, 150, 0.5);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 6px 0 #1b5e20,
+    0 8px 20px rgba(46, 125, 50, 0.4);
+  animation: cashGlow 1.5s ease-in-out infinite;
+}
+
+.btnCashout:disabled {
+  opacity: 0.4;
+  animation: none;
+  box-shadow: none;
+}
+
+@keyframes cashGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+.btnGhost {
+  padding: 11px 18px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(50, 25, 25, 0.9), rgba(25, 12, 12, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #bbb;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.actionBar {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.statusBar {
+  font-size: 10px;
+  color: var(--zee-muted);
+  text-align: center;
+  font-weight: 700;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+}
+
+.statusWin {
+  color: #69f0ae;
+  background: rgba(46, 125, 50, 0.15);
+}
+
+.statusLose {
+  color: #ff5252;
+  background: rgba(198, 40, 40, 0.15);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(4, 2, 8, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.overlayIcon {
+  font-size: 48px;
+  filter: drop-shadow(0 0 20px rgba(232, 197, 71, 0.5));
+  animation: floatIcon 2.5s ease-in-out infinite;
+}
+
+@keyframes floatIcon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.overlayTitle {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--zee-gold-light);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.overlaySub {
+  font-size: 10px;
+  color: var(--zee-muted);
+}
+
+.pillTabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pillTab {
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: none;
+  font-size: 10px;
+  font-weight: 800;
+  color: #888;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.pillTabActive {
+  background: linear-gradient(180deg, rgba(232, 197, 71, 0.25), rgba(166, 124, 0, 0.15));
+  color: var(--zee-gold-light);
+  box-shadow: 0 0 12px rgba(232, 197, 71, 0.15);
+}
+
+.pillTabIcon {
+  font-size: 12px;
+}

@@ -1,0 +1,90 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 8px 12px;
+  background: linear-gradient(160deg, var(--black-elevated) 0%, var(--black-card) 100%);
+  border: 1.5px solid var(--border-red);
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  min-height: 110px;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, rgba(208, 0, 0, 0.12) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.card:active {
+  transform: scale(0.96);
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(245, 200, 66, 0.15);
+}
+
+.sm {
+  min-height: 96px;
+  padding: 12px 6px 10px;
+}
+
+.badgeHot,
+.badgeNew {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.badgeHot {
+  background: var(--red);
+  color: var(--white);
+}
+
+.badgeNew {
+  background: var(--gold);
+  color: var(--black);
+}
+
+.emoji {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
+}
+
+.sm .emoji {
+  font-size: 1.6rem;
+}
+
+.name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse-glow 2s ease-in-out infinite;
+}

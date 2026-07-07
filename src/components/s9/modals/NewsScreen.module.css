@@ -1,0 +1,141 @@
+.bodyPad {
+  padding: 0;
+  overflow: hidden;
+}
+
+.layout {
+  display: flex;
+  height: 100%;
+  min-height: 220px;
+  max-height: 280px;
+}
+
+.sidebar {
+  width: 130px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border-right: 1px solid rgba(212, 175, 55, 0.2);
+  overflow-y: auto;
+}
+
+.tab {
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: left;
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(80, 20, 20, 0.5);
+  border: 1px solid transparent;
+  line-height: 1.25;
+}
+
+.tabActive {
+  background: linear-gradient(180deg, #e53935, #b71c1c);
+  color: #fff;
+  border-color: #ff8a80;
+  box-shadow: 0 0 10px rgba(229, 57, 53, 0.4);
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.banner {
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  margin-bottom: 8px;
+  padding: 4px 6px;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.bannerGold {
+  color: var(--zee-gold-light, #f5d76e);
+  font-weight: 900;
+}
+
+.tableWrap {
+  flex: 1;
+  overflow: auto;
+  margin-bottom: 6px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 7px;
+}
+
+.table th {
+  padding: 4px 3px;
+  font-weight: 800;
+  color: #fff;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.thBlue {
+  background: linear-gradient(180deg, #1976d2, #0d47a1);
+}
+
+.thGreen {
+  background: linear-gradient(180deg, #388e3c, #1b5e20);
+}
+
+.thGold {
+  background: linear-gradient(180deg, #f9a825, #e65100);
+}
+
+.table td {
+  padding: 3px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  vertical-align: top;
+}
+
+.cellHead {
+  font-size: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 1px;
+}
+
+.cellVal {
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 3px;
+}
+
+.note {
+  font-size: 7px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.claimBtn {
+  align-self: center;
+  padding: 6px 20px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe082, #ffb300, #ff8f00);
+  border: 2px solid #fff;
+  color: #1a0505;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 4px 12px rgba(255, 179, 0, 0.4);
+  flex-shrink: 0;
+}

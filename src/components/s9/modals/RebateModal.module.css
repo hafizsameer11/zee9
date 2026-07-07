@@ -1,0 +1,69 @@
+.body {
+  text-align: center;
+}
+
+.hero span {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.hero h3 {
+  font-size: 14px;
+  color: var(--zee-gold-light, #f5d76e);
+  font-weight: 900;
+}
+
+.hero p {
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-bottom: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.stat {
+  padding: 10px 6px;
+  background: linear-gradient(180deg, #1e1e1e, #141414);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 10px;
+}
+
+.stat strong {
+  display: block;
+  font-size: 13px;
+  color: var(--zee-gold-light, #f5d76e);
+  font-weight: 900;
+}
+
+.stat small {
+  font-size: 7px;
+  color: var(--zee-muted, #9a7b4f);
+}
+
+.claimBtn {
+  width: 100%;
+  padding: 11px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2d1515, #140808);
+  color: var(--zee-gold, #e8c547);
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  margin-bottom: 8px;
+}
+
+.claimBtn:disabled {
+  opacity: 0.45;
+}
+
+.note {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+}
