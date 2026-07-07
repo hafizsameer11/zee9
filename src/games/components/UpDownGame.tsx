@@ -29,7 +29,7 @@ function formatPkr(n: number) {
 export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [betAmount, setBetAmount] = useState(defaultBet)
@@ -83,7 +83,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   return (
     <UpDownDesignUI
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
       balance={balance}
@@ -102,13 +102,6 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       onBetAmount={setBetAmount}
       onRoll={play}
       onHome={() => navigate('/home')}
-      onMines={() => navigate('/play/mines')}
-      onAviator={() => navigate('/play/aviator')}
-      onTeenPatti={() => navigate('/play/teen-patti')}
-      onWingo={() => navigate('/play/wingo-lottery')}
-      onDoubleCrash={() => navigate('/play/double-crash')}
-      onCrash={() => navigate('/play/crash')}
-      onFortuneOx={() => navigate('/play/fortune-ox')}
     />
   )
 }

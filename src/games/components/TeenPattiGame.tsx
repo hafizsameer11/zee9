@@ -25,7 +25,7 @@ import styles from './teenPattiGame.module.css'
 export default function TeenPattiGame({ bet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [game, setGame] = useState<TeenPattiState | null>(null)
@@ -196,7 +196,7 @@ export default function TeenPattiGame({ bet, onMessage }: GameComponentProps) {
   return (
     <TeenPattiDesignUI
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       designW={DESIGN_W}
       designH={DESIGN_H}
       balance={balance}
@@ -206,8 +206,6 @@ export default function TeenPattiGame({ bet, onMessage }: GameComponentProps) {
       isYourTurn={!!isYourTurn}
       canShow={!!canShow}
       onHome={() => navigate('/home')}
-      onMines={() => navigate('/play/mines')}
-      onAviator={() => navigate('/play/aviator')}
       onJoin={beginRound}
       onBlind={onBlind}
       onSee={onSee}

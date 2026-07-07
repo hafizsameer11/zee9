@@ -1,3 +1,4 @@
+import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
 import type { RefObject } from 'react'
 import {
   BookOpen,
@@ -5,7 +6,6 @@ import {
   ChevronUp,
   Clock,
   Coins,
-  Crown,
   Diamond,
   Gift,
   Hash,
@@ -13,17 +13,13 @@ import {
   Info,
   Layers,
   MessageCircle,
-  Pickaxe,
-  Plane,
   Send,
   Settings,
   ShieldCheck,
-  Spade,
   Ticket,
   Timer,
   Trophy,
   Wallet,
-  Zap,
 } from 'lucide-react'
 import type { WingoBet, WingoBetType, WingoResult } from '../engines/wingo'
 import { ColorDot, WingoBall, WingoBallIdle, ballColorForNumber } from './wingoGfx'
@@ -68,7 +64,7 @@ function maxPayout(bet: WingoBet): number {
 
 export type WingoDesignUIProps = {
   viewportRef: RefObject<HTMLDivElement | null>
-  scale: number
+  layout: DesignLayout
   designW: number
   designH: number
   rootClassName: string
@@ -87,15 +83,12 @@ export type WingoDesignUIProps = {
   onSelect: (sel: { type: WingoBetType; value?: number } | null) => void
   onPlaceBet: () => void
   onHome: () => void
-  onMines: () => void
-  onAviator: () => void
-  onTeenPatti: () => void
   canBet: boolean
 }
 
 export default function WingoDesignUI({
   viewportRef,
-  scale,
+  layout,
   designW,
   designH,
   rootClassName,
@@ -114,9 +107,6 @@ export default function WingoDesignUI({
   onSelect,
   onPlaceBet,
   onHome,
-  onMines,
-  onAviator,
-  onTeenPatti,
   canBet,
 }: WingoDesignUIProps) {
   const secs = Math.ceil(timeLeft / 1000)
@@ -139,13 +129,9 @@ export default function WingoDesignUI({
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
-        style={{
-          width: designW,
-          height: designH,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
+        style={getDesignCanvasStyle(layout, designW, designH)}
       >
-        <div className="bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
+        <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-b border-solid flex px-8 py-4 justify-between items-center">
             <button type="button" className="flex items-center gap-3 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
               <div className="size-10 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] shadow-[0_0_18px_rgba(212,175,55,0.5)] rounded-xl flex justify-center items-center">
@@ -155,23 +141,6 @@ export default function WingoDesignUI({
                 Zee9
               </span>
             </button>
-            <nav className="flex items-center gap-2">
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onMines}>
-                <Pickaxe className="size-4" /> Mines
-              </button>
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onAviator}>
-                <Plane className="size-4" /> Aviator
-              </button>
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onTeenPatti}>
-                <Spade className="size-4" /> Teen Patti
-              </button>
-              <button type="button" className="font-bold rounded-full bg-neutral-800 text-neutral-50 text-sm border-white/15 border border-solid flex px-4 py-2 items-center gap-2 cursor-default">
-                <Zap className="size-4 text-[#f4d98a]" /> WINGO
-              </button>
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" disabled>
-                <Crown className="size-4" /> Premium
-              </button>
-            </nav>
             <div className="flex items-center gap-3">
               <div className="shadow-[0_0_16px_rgba(212,175,55,0.25)] rounded-full bg-[#0a0603]/70 border-[#d4af37]/50 border border-solid flex px-4 py-2 items-center gap-2">
                 <Wallet className="size-4 text-[#d4af37]" />
@@ -186,9 +155,9 @@ export default function WingoDesignUI({
             </div>
           </header>
 
-          <div className="min-h-0 flex p-6 flex-1 gap-6">
-            <aside className="shrink-0 flex flex-col w-[288px] min-h-0">
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid p-5 flex-1 flex flex-col gap-4 rounded-xl overflow-y-auto min-h-0">
+          <div className="game-body min-h-0 flex flex-1">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col min-h-0">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid flex-1 flex flex-col gap-3 rounded-xl overflow-y-auto min-h-0">
                 <div>
                   <div className="text-neutral-50 text-base flex items-center gap-2 font-semibold">
                     <BookOpen className="size-4 text-[#a1a1a1]" />
@@ -242,7 +211,7 @@ export default function WingoDesignUI({
               </div>
             </aside>
 
-            <main className="min-w-0 flex flex-col items-center flex-1 gap-4 min-h-0">
+            <main className="game-main min-w-0 flex flex-col items-center flex-1 min-h-0">
               <div className="flex justify-between items-end w-full shrink-0">
                 <div className="flex flex-col gap-1">
                   <h1 className="bg-gradient-to-b from-[#fbe6a8] via-[#e8c766] to-[#c99b2e] bg-clip-text text-transparent drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] font-black text-5xl leading-tight tracking-tighter">
@@ -373,8 +342,8 @@ export default function WingoDesignUI({
               </div>
             </main>
 
-            <aside className="shrink-0 flex flex-col gap-4 w-[288px] min-h-0">
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid p-5 rounded-xl flex flex-col gap-2">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col min-h-0">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="text-neutral-50 text-sm flex items-center gap-2 font-semibold">
                   <Info className="size-4 text-[#a1a1a1]" /> Round Info
                 </div>
@@ -400,7 +369,7 @@ export default function WingoDesignUI({
                 )}
               </div>
 
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid p-5 rounded-xl">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl">
                 <div className="text-neutral-50 text-sm flex items-center gap-2 font-semibold mb-2">
                   <History className="size-4 text-[#a1a1a1]" /> Result History
                 </div>
@@ -415,7 +384,7 @@ export default function WingoDesignUI({
                 </div>
               </div>
 
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid p-5 flex-1 flex flex-col gap-2 rounded-xl min-h-0 overflow-y-auto">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid flex-1 flex flex-col gap-2 rounded-xl min-h-0 overflow-y-auto">
                 <div className="text-neutral-50 text-sm flex items-center gap-2 font-semibold">
                   <Ticket className="size-4 text-[#a1a1a1]" /> My Bets
                 </div>
@@ -456,7 +425,7 @@ export default function WingoDesignUI({
             </aside>
           </div>
 
-          <footer className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center gap-6">
+          <footer className="game-footer backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center gap-6">
             <div className="min-w-0 flex items-center gap-3 overflow-hidden">
               <div className="shrink-0 rounded-full bg-[#1bd6a0]/15 border-[#1bd6a0]/40 border border-solid flex px-3 py-1.5 items-center gap-1.5">
                 <Trophy className="size-3.5 text-[#1bd6a0]" />

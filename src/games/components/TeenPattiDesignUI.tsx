@@ -1,9 +1,9 @@
+import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
 import type { RefObject } from 'react'
 import {
   BookOpen,
   CircleDollarSign,
   Coins,
-  Crown,
   Diamond,
   Eye,
   EyeOff,
@@ -12,7 +12,6 @@ import {
   History,
   MessageCircle,
   Pickaxe,
-  Plane,
   Send,
   Settings,
   Smile,
@@ -133,7 +132,7 @@ function MiniRankCard({ label }: { label: string }) {
 
 export type TeenPattiDesignUIProps = {
   viewportRef: RefObject<HTMLDivElement | null>
-  scale: number
+  layout: DesignLayout
   designW: number
   designH: number
   balance: number
@@ -143,8 +142,6 @@ export type TeenPattiDesignUIProps = {
   isYourTurn: boolean
   canShow: boolean
   onHome: () => void
-  onMines: () => void
-  onAviator: () => void
   onJoin: () => void
   onBlind: () => void
   onSee: () => void
@@ -158,7 +155,7 @@ export type TeenPattiDesignUIProps = {
 
 export default function TeenPattiDesignUI({
   viewportRef,
-  scale,
+  layout,
   designW,
   designH,
   balance,
@@ -168,8 +165,6 @@ export default function TeenPattiDesignUI({
   isYourTurn,
   canShow,
   onHome,
-  onMines,
-  onAviator,
   onJoin,
   onBlind,
   onSee,
@@ -335,13 +330,9 @@ export default function TeenPattiDesignUI({
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
-        style={{
-          width: designW,
-          height: designH,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
+        style={getDesignCanvasStyle(layout, designW, designH)}
       >
-        <div className="relative flex flex-col w-full h-full bg-[#0a0603] text-neutral-50 overflow-hidden">
+        <div className="game-ui relative flex flex-col w-full h-full bg-[#0a0603] text-neutral-50 overflow-hidden">
           <div className="pointer-events-none bg-[#d4af37]/12 absolute inset-0" />
 
           <header className="relative z-20 border-[#d4af37]/15 border-b border-solid flex px-12 py-4 justify-between items-center shrink-0">
@@ -357,21 +348,6 @@ export default function TeenPattiDesignUI({
                 <span className="font-semibold text-[#a1a1a1] text-[11px] tracking-[5.6px]">TEEN PATTI</span>
               </div>
             </button>
-
-            <nav className="backdrop-blur-md rounded-full bg-neutral-900/60 border-[#d4af37]/15 border border-solid flex p-1.5 items-center gap-2">
-              <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm leading-5 flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onMines}>
-                <Pickaxe className="size-4" /> Mines
-              </button>
-              <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm leading-5 flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onAviator}>
-                <Plane className="size-4" /> Aviator
-              </button>
-              <button type="button" className="bg-[linear-gradient(145deg,#f5d76e,#d4af37)] shadow-[0_0_18px_rgba(212,175,55,0.5)] font-semibold rounded-full text-[#1a1206] text-sm leading-5 flex px-5 py-2 items-center gap-2 border-0 cursor-pointer">
-                <Spade className="size-4" /> Teen Patti
-              </button>
-              <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm leading-5 flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" disabled>
-                <Crown className="size-4" /> Premium
-              </button>
-            </nav>
 
             <div className="flex items-center gap-3">
               <div className="bg-[linear-gradient(145deg,#2a1e06,#160f04)] shadow-[0_0_18px_rgba(212,175,55,0.2)] rounded-full border-[#d4af37]/40 border border-solid flex pl-3 pr-5 py-2 items-center gap-3">
@@ -392,9 +368,9 @@ export default function TeenPattiDesignUI({
             </div>
           </header>
 
-          <div className="relative z-10 min-h-0 flex px-8 py-6 flex-1 gap-6">
-            <aside className="shrink-0 flex flex-col w-[250px] min-h-0">
-              <div className="backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-neutral-900/50 border-[#d4af37]/25 border border-solid p-4 flex-1 flex flex-col gap-4 min-h-0 overflow-hidden rounded-xl">
+          <div className="game-body relative z-10 min-h-0 flex flex-1">
+            <aside className="game-sidebar shrink-0 flex flex-col min-h-0">
+              <div className="game-panel backdrop-blur-md shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-neutral-900/50 border-[#d4af37]/25 border border-solid flex-1 flex flex-col gap-3 min-h-0 overflow-hidden rounded-xl">
                 <div className="p-0 gap-1">
                   <div className="text-[#d4af37] text-base leading-6 flex items-center gap-2 font-semibold">
                     <BookOpen className="size-4" />
@@ -429,7 +405,7 @@ export default function TeenPattiDesignUI({
               </div>
             </aside>
 
-            <main className="min-w-0 flex flex-col flex-1 gap-4 min-h-0">
+            <main className="game-main min-w-0 flex flex-col flex-1 min-h-0">
               <div className="flex px-2 justify-between items-center shrink-0">
                 <div className="flex flex-col">
                   <h1 className="font-extrabold text-[#d4af37] text-2xl leading-8 tracking-tight">TEEN PATTI</h1>
@@ -577,8 +553,8 @@ export default function TeenPattiDesignUI({
               )}
             </main>
 
-            <aside className="shrink-0 flex flex-col gap-4 w-[250px] min-h-0">
-              <div className="backdrop-blur-md bg-neutral-900/50 border-[#d4af37]/25 border border-solid p-4 gap-3 flex flex-col rounded-xl">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col min-h-0">
+              <div className="game-panel backdrop-blur-md bg-neutral-900/50 border-[#d4af37]/25 border border-solid gap-3 flex flex-col rounded-xl">
                 <div className="text-[#d4af37] text-base leading-6 flex items-center gap-2 font-semibold">
                   <Trophy className="size-4" />
                   Round Info
@@ -609,7 +585,7 @@ export default function TeenPattiDesignUI({
                 </div>
               </div>
 
-              <div className="min-h-0 backdrop-blur-md bg-neutral-900/50 border-[#d4af37]/25 border border-solid p-4 flex-1 flex flex-col gap-3 overflow-hidden rounded-xl">
+              <div className="game-panel min-h-0 backdrop-blur-md bg-neutral-900/50 border-[#d4af37]/25 border border-solid flex-1 flex flex-col gap-3 overflow-hidden rounded-xl">
                 <div className="text-neutral-50 text-sm leading-5 flex items-center gap-2 font-semibold">
                   <MessageCircle className="size-4 text-[#d4af37]" />
                   Table Chat
@@ -639,7 +615,7 @@ export default function TeenPattiDesignUI({
             </aside>
           </div>
 
-          <footer className="relative z-10 border-[#d4af37]/15 border-t border-solid flex px-8 py-3 items-center gap-6 shrink-0">
+          <footer className="game-footer relative z-10 border-[#d4af37]/15 border-t border-solid flex px-8 py-3 items-center gap-6 shrink-0">
             <div className="flex items-center flex-1 gap-3 overflow-hidden">
               <span className="shrink-0 font-bold rounded-full bg-[#c41e3a]/15 text-[#c41e3a] text-[11px] border-[#c41e3a]/40 border border-solid flex px-2.5 py-1 items-center gap-1.5">
                 <span className="size-1.5 animate-pulse rounded-full bg-[#c41e3a]" />

@@ -21,7 +21,7 @@ export default function WingoGame({ bet: defaultBet, onMessage }: GameComponentP
   const navigate = useNavigate()
   const { id: gameId } = useParams<{ id: string }>()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [betAmount, setBetAmount] = useState(defaultBet)
@@ -93,7 +93,7 @@ export default function WingoGame({ bet: defaultBet, onMessage }: GameComponentP
   return (
     <WingoDesignUI
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       designW={DESIGN_W}
       designH={DESIGN_H}
       rootClassName={styles.root}
@@ -112,9 +112,6 @@ export default function WingoGame({ bet: defaultBet, onMessage }: GameComponentP
       onSelect={setSelected}
       onPlaceBet={placeBet}
       onHome={() => navigate('/home')}
-      onMines={() => navigate('/play/mines')}
-      onAviator={() => navigate('/play/aviator')}
-      onTeenPatti={() => navigate('/play/teen-patti')}
       canBet={canBet}
     />
   )

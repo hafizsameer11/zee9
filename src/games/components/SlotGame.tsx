@@ -16,7 +16,7 @@ function formatPkr(n: number) {
 export default function SlotGame({ gameId, bet: defaultBet, onMessage }: GameComponentProps) {
   const config = SLOT_CONFIGS[gameId] ?? SLOT_CONFIGS['crazy777']!
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { debit, credit, canAfford } = useWallet()
   const [betAmount, setBetAmount] = useState(defaultBet)
   const [reels, setReels] = useState<[SlotSymbol, SlotSymbol, SlotSymbol] | null>(null)
@@ -55,10 +55,9 @@ export default function SlotGame({ gameId, bet: defaultBet, onMessage }: GameCom
   return (
     <Zee9PremiumFrame
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
-      activeGameId={gameId}
       title={config.title.toUpperCase()}
       subtitle="Match symbols across the reels to win"
       accent="gold"

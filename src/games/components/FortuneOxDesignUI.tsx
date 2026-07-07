@@ -7,24 +7,19 @@ import {
   History,
   MessageCircle,
   Minus,
-  Pickaxe,
-  Plane,
   Plus,
   RefreshCw,
   RotateCw,
   Send,
   Settings,
   Sparkles,
-  Spade,
   Table,
-  TrendingUp,
   Trophy,
   Wallet,
-  Zap,
 } from 'lucide-react'
 import type { OxSymbol } from '../engines/fortuneOx'
 import { OX_SYMBOL_META } from '../engines/fortuneOx'
-import { DESIGN_H, DESIGN_W, getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
 import { OxMascot, OxSymbolCell } from './fortuneOxGfx'
 import './zee9Premium.tw.css'
 
@@ -57,12 +52,6 @@ export type FortuneOxDesignUIProps = {
   onQuickStake: (n: number) => void
   onSpin: () => void
   onHome: () => void
-  onMines: () => void
-  onAviator: () => void
-  onTeenPatti: () => void
-  onWingo: () => void
-  onDoubleCrash: () => void
-  onCrash: () => void
 }
 
 export default function FortuneOxDesignUI({
@@ -86,12 +75,6 @@ export default function FortuneOxDesignUI({
   onQuickStake,
   onSpin,
   onHome,
-  onMines,
-  onAviator,
-  onTeenPatti,
-  onWingo,
-  onDoubleCrash,
-  onCrash,
 }: FortuneOxDesignUIProps) {
   return (
     <div className={rootClassName} ref={viewportRef}>
@@ -99,7 +82,7 @@ export default function FortuneOxDesignUI({
         className={canvasClassName}
         style={getDesignCanvasStyle(layout)}
       >
-        <div className="bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.05_25),oklch(0.145_0_0))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
+        <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.05_25),oklch(0.145_0_0))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="bg-[#0a0603]/70 backdrop-blur-sm shrink-0 border-white/10 border-b border-solid flex px-8 justify-between items-center h-16">
             <button type="button" className="flex items-center gap-2 border-0 bg-transparent cursor-pointer p-0" onClick={onHome}>
               <div className="size-8 rotate-45 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] shadow-[0_0_12px_rgba(212,175,55,0.5)] rounded-sm flex justify-center items-center">
@@ -109,31 +92,6 @@ export default function FortuneOxDesignUI({
                 Zee9
               </span>
             </button>
-            <nav className="flex items-center gap-1">
-              {[
-                { label: 'Mines', icon: Pickaxe, onClick: onMines },
-                { label: 'Aviator', icon: Plane, onClick: onAviator },
-                { label: 'Teen Patti', icon: Spade, onClick: onTeenPatti },
-                { label: 'WINGO', icon: Zap, onClick: onWingo },
-                { label: 'DOUBLE CRASH', icon: TrendingUp, onClick: onDoubleCrash },
-                { label: 'CRASH', icon: Zap, onClick: onCrash },
-                { label: 'FORTUNE OX', icon: Zap, active: true },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={'onClick' in item ? item.onClick : undefined}
-                  className={`rounded-lg text-sm flex px-3 py-2 items-center gap-2 border-0 cursor-pointer ${
-                    item.active
-                      ? 'font-semibold bg-neutral-800 text-neutral-50 border border-white/10'
-                      : 'font-medium text-[#a1a1a1] bg-transparent'
-                  }`}
-                >
-                  <item.icon className={`size-4 ${item.active ? 'text-[#f4d98a]' : ''}`} />
-                  {item.label}
-                </button>
-              ))}
-            </nav>
             <div className="flex items-center gap-4">
               <div className="bg-gradient-to-br from-[#f4d98a] to-[#d4af37] shadow-[0_0_16px_rgba(212,175,55,0.35)] rounded-full flex px-4 py-2 items-center gap-2">
                 <Wallet className="size-4 text-[#1a0f02]" />
@@ -148,9 +106,9 @@ export default function FortuneOxDesignUI({
             </div>
           </header>
 
-          <div className="min-h-0 flex p-8 flex-1 gap-6">
-            <aside className="shrink-0 flex flex-col gap-6 w-[260px] min-h-0 overflow-y-auto">
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-6 flex flex-col gap-4">
+          <div className="game-body min-h-0 flex flex-1">
+            <aside className="game-sidebar shrink-0 flex flex-col">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-3">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <BookOpen className="size-4 text-[#a1a1a1]" /> How to Play
                 </div>
@@ -165,7 +123,7 @@ export default function FortuneOxDesignUI({
                   ),
                 )}
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-6 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm mb-2">
                   <Table className="size-4 text-[#a1a1a1]" /> Paytable
                 </div>
@@ -179,7 +137,7 @@ export default function FortuneOxDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-6 flex-1 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex-1 flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <RefreshCw className="size-4 text-[#a1a1a1]" /> Auto Spin Tips
                 </div>
@@ -194,7 +152,7 @@ export default function FortuneOxDesignUI({
               </div>
             </aside>
 
-            <main className="min-w-0 flex flex-col flex-1 gap-6 min-h-0">
+            <main className="game-main min-w-0 flex flex-col flex-1 min-h-0">
               <div className="flex justify-between items-end shrink-0">
                 <div>
                   <h1 className="bg-gradient-to-br from-[#f4d98a] via-[#d4af37] to-[#c41e3a] bg-clip-text text-transparent drop-shadow-[0_2px_12px_rgba(212,175,55,0.45)] font-black text-6xl tracking-tight">
@@ -208,7 +166,7 @@ export default function FortuneOxDesignUI({
                 </div>
               </div>
 
-              <div className="relative bg-[radial-gradient(ellipse_at_center,oklch(0.26_0.06_25),oklch(0.16_0.03_25))] shadow-[inset_0_0_40px_rgba(0,0,0,0.4)] border border-white/10 rounded-2xl p-8 flex-1 min-h-0 flex flex-col gap-6 overflow-hidden">
+              <div className="game-main-inner relative bg-[radial-gradient(ellipse_at_center,oklch(0.26_0.06_25),oklch(0.16_0.03_25))] shadow-[inset_0_0_40px_rgba(0,0,0,0.4)] border border-white/10 rounded-2xl p-6 flex-1 min-h-0 flex flex-col gap-4">
                 <OxMascot />
                 <div className="flex flex-col justify-center flex-1 gap-6 min-h-0">
                   <div className="bg-[oklch(0.18_0.02_25)] shadow-[inset_0_8px_30px_rgba(0,0,0,0.5)] rounded-2xl border border-white/10 p-4">
@@ -281,8 +239,8 @@ export default function FortuneOxDesignUI({
               </div>
             </main>
 
-            <aside className="shrink-0 flex flex-col gap-6 w-[280px] min-h-0 overflow-y-auto">
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-6 flex flex-col gap-2">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm mb-2">
                   <Trophy className="size-4 text-[#a1a1a1]" /> Recent Wins
                 </div>
@@ -301,7 +259,7 @@ export default function FortuneOxDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-6 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <Gem className="size-4 text-[#a1a1a1]" /> Grand Jackpot
                 </div>
@@ -311,7 +269,7 @@ export default function FortuneOxDesignUI({
                 </div>
                 <span className="text-[#a1a1a1] text-[10px]">74% to next drop</span>
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-6 flex-1 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex-1 flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <Flame className="size-4 text-[#a1a1a1]" /> Big Win History
                 </div>
@@ -331,7 +289,7 @@ export default function FortuneOxDesignUI({
             </aside>
           </div>
 
-          <footer className="bg-[#0a0603]/70 backdrop-blur-sm shrink-0 border-white/10 border-t border-solid flex px-8 justify-between items-center h-14">
+          <footer className="game-footer bg-[#0a0603]/70 backdrop-blur-sm shrink-0 border-white/10 border-t border-solid flex px-8 justify-between items-center h-14">
             <div className="flex items-center gap-4 overflow-hidden">
               <div className="flex items-center gap-1.5 shrink-0">
                 <Trophy className="size-4 text-[#1bd6a0]" />

@@ -4,18 +4,13 @@ import {
   Diamond,
   History,
   MessageCircle,
-  Pickaxe,
-  Plane,
   Send,
   Settings,
-  Spade,
-  TrendingUp,
   Trophy,
   Wallet,
-  Zap,
 } from 'lucide-react'
 import { useWallet } from '../../context/WalletContext'
-import { DESIGN_H, DESIGN_W, getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
 import './zee9Premium.tw.css'
 
 const LIVE_WINS = [
@@ -33,7 +28,6 @@ export type Zee9PremiumFrameProps = {
   layout: DesignLayout
   rootClassName: string
   canvasClassName: string
-  activeGameId: string
   title: string
   subtitle?: string
   accent?: 'gold' | 'blue' | 'green' | 'red'
@@ -46,7 +40,6 @@ export default function Zee9PremiumFrame({
   layout,
   rootClassName,
   canvasClassName,
-  activeGameId,
   title,
   subtitle,
   accent = 'gold',
@@ -65,25 +58,13 @@ export default function Zee9PremiumFrame({
           ? 'from-[#ff6467] to-[#c41e3a]'
           : 'from-[#f4d98a] via-[#d4af37] to-[#c41e3a]'
 
-  const nav = [
-    { id: 'mines', label: 'Mines', icon: Pickaxe, path: '/play/mines' },
-    { id: 'aviator', label: 'Aviator', icon: Plane, path: '/play/aviator' },
-    { id: 'teen-patti', label: 'Teen Patti', icon: Spade, path: '/play/teen-patti' },
-    { id: 'wingo-lottery', label: 'WINGO', icon: Zap, path: '/play/wingo-lottery' },
-    { id: 'double-crash', label: 'DOUBLE CRASH', icon: TrendingUp, path: '/play/double-crash' },
-    { id: 'crash', label: 'CRASH', icon: Zap, path: '/play/crash' },
-    { id: 'fortune-ox', label: 'FORTUNE OX', icon: Zap, path: '/play/fortune-ox' },
-  ]
-
-  const isActive = (id: string) => activeGameId === id || (activeGameId === 'wingo' && id === 'wingo-lottery')
-
   return (
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
         style={getDesignCanvasStyle(layout)}
       >
-        <div className="bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
+        <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="shrink-0 bg-[#0a0603]/80 backdrop-blur-md border-white/10 border-b border-solid flex px-8 justify-between items-center h-16">
             <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 cursor-pointer" onClick={() => navigate('/home')}>
               <div className="size-9 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] rotate-45 shadow-[0_0_16px_rgba(212,175,55,0.5)] rounded-lg flex justify-center items-center">
@@ -93,23 +74,6 @@ export default function Zee9PremiumFrame({
                 Zee9
               </span>
             </button>
-            <nav className="flex items-center gap-1 overflow-hidden">
-              {nav.map(({ id, label, icon: Icon, path }) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => navigate(path)}
-                  className={`font-medium rounded-full text-sm flex px-3 py-2 items-center gap-1.5 border-0 cursor-pointer shrink-0 ${
-                    isActive(id)
-                      ? 'bg-neutral-800 text-neutral-50 border border-white/15'
-                      : 'bg-transparent text-[#a1a1a1] hover:text-neutral-200'
-                  }`}
-                >
-                  <Icon className="size-4 shrink-0" />
-                  <span className="hidden xl:inline">{label}</span>
-                </button>
-              ))}
-            </nav>
             <div className="flex items-center gap-3 shrink-0">
               <div className="shadow-[0_0_14px_rgba(212,175,55,0.35)] rounded-full bg-[#0a0603]/70 border-[#d4af37]/50 border border-solid flex px-4 py-2 items-center gap-2">
                 <Wallet className="size-4 text-[#f4d98a]" />
@@ -133,9 +97,9 @@ export default function Zee9PremiumFrame({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 px-8 pb-4 overflow-hidden">{children}</div>
+          <div className="game-main min-h-0 flex-1 px-6 pb-4 overflow-y-auto">{children}</div>
 
-          <footer className="shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 justify-between items-center h-14">
+          <footer className="game-footer shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 justify-between items-center h-14">
             <div className="flex items-center gap-4 overflow-hidden">
               <div className="shrink-0 flex items-center gap-2">
                 <Trophy className="size-4 text-[#1bd6a0]" />

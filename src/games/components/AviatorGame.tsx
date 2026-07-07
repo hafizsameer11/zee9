@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { generateCrashPoint, multiplierAtElapsed } from '../engines/crash'
 import { buildAviatorCurvePaths, multiplierToProgress } from '../engines/aviatorCurve'
-import { DESIGN_H, DESIGN_W, useDesignScale } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import styles from './aviatorGame.module.css'
 
@@ -37,7 +37,7 @@ function historyChipClass(mult: number) {
 export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [globalPhase, setGlobalPhase] = useState<GlobalPhase>('idle')
@@ -165,11 +165,7 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
     <div className={styles.root} ref={viewportRef}>
       <div
         className={styles.canvas}
-        style={{
-          width: DESIGN_W,
-          height: DESIGN_H,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
+        style={getDesignCanvasStyle(layout)}
       >
         <div className={styles.glowTop} />
         <div className={styles.glowConic} />
@@ -183,18 +179,6 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
             </span>
             <span className={styles.logoText}>AVIATOR</span>
           </button>
-
-          <nav className={styles.nav}>
-            <button type="button" className={styles.navGhost} onClick={() => navigate('/play/mines')}>
-              <PickaxeIcon /> Mines
-            </button>
-            <button type="button" className={styles.navActive}>
-              <PlaneIcon /> Aviator
-            </button>
-            <button type="button" className={styles.navGhost} disabled>
-              <CrownIcon /> Premium
-            </button>
-          </nav>
 
           <div className={styles.headerRight}>
             <div className={styles.balancePill}>
@@ -503,24 +487,6 @@ function PlaneIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
       <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
-    </svg>
-  )
-}
-
-function PickaxeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26" />
-      <path d="m2 21 5-5" />
-      <path d="M12 11H2" />
-    </svg>
-  )
-}
-
-function CrownIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21 7l-2 13H5L3 7l4.094 2.164a1 1 0 0 0 1.516-.294z" />
     </svg>
   )
 }

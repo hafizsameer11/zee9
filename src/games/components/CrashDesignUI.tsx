@@ -7,8 +7,6 @@ import {
   Lock,
   MessageCircle,
   Minus,
-  Pickaxe,
-  Plane,
   Plus,
   Radio,
   RefreshCw,
@@ -16,7 +14,6 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  Spade,
   SquareCheck,
   TrendingUp,
   Trophy,
@@ -77,11 +74,6 @@ export type CrashDesignUIProps = {
   onBet: () => void
   onCashOut: () => void
   onHome: () => void
-  onMines: () => void
-  onAviator: () => void
-  onTeenPatti: () => void
-  onWingo: () => void
-  onDoubleCrash: () => void
 }
 
 export default function CrashDesignUI({
@@ -111,11 +103,6 @@ export default function CrashDesignUI({
   onBet,
   onCashOut,
   onHome,
-  onMines,
-  onAviator,
-  onTeenPatti,
-  onWingo,
-  onDoubleCrash,
 }: CrashDesignUIProps) {
   const progress = flying || crashed ? multiplierToCrashProgress(mult) : 0
   const showProgress = flying || crashed ? Math.max(progress, flying ? 0.03 : 0) : 0
@@ -137,7 +124,7 @@ export default function CrashDesignUI({
         className={canvasClassName}
         style={getDesignCanvasStyle(layout, designW, designH)}
       >
-        <div className="bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
+        <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="shrink-0 bg-[#0a0603]/80 backdrop-blur-md border-white/10 border-b border-solid flex px-8 justify-between items-center h-16">
             <div className="flex items-center gap-8">
               <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
@@ -148,26 +135,6 @@ export default function CrashDesignUI({
                   Zee9
                 </span>
               </button>
-              <nav className="flex items-center gap-1">
-                <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onMines}>
-                  <Pickaxe className="size-4" /> Mines
-                </button>
-                <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onAviator}>
-                  <Plane className="size-4" /> Aviator
-                </button>
-                <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onTeenPatti}>
-                  <Spade className="size-4" /> Teen Patti
-                </button>
-                <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onWingo}>
-                  <Zap className="size-4" /> WINGO
-                </button>
-                <button type="button" className="font-medium rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onDoubleCrash}>
-                  <TrendingUp className="size-4" /> DOUBLE CRASH
-                </button>
-                <button type="button" className="bg-gradient-to-br from-[#1565c0] to-[#2196f3] shadow-[0_0_18px_rgba(21,101,192,0.6)] font-semibold rounded-full text-white text-sm flex px-4 py-2 items-center gap-2 border-0 cursor-default">
-                  <Zap className="size-4" /> CRASH
-                </button>
-              </nav>
             </div>
             <div className="flex items-center gap-3">
               <div className="shadow-[0_0_14px_rgba(212,175,55,0.35)] rounded-full bg-[#0a0603]/70 border-[#d4af37]/50 border border-solid flex px-4 py-2 items-center gap-2">
@@ -183,9 +150,9 @@ export default function CrashDesignUI({
             </div>
           </header>
 
-          <div className="min-h-0 flex p-6 flex-1 gap-4">
-            <aside className="shrink-0 flex flex-col gap-4 w-[260px] min-h-0">
-              <div className="bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-3">
+          <div className="game-body min-h-0 flex flex-1">
+            <aside className="game-sidebar shrink-0 flex flex-col">
+              <div className="game-panel bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl flex flex-col gap-3">
                 <div className="font-semibold text-sm flex items-center gap-2">
                   <BookOpen className="size-4 text-[#5ea0f2]" />
                   How to Play
@@ -203,7 +170,7 @@ export default function CrashDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="font-semibold text-sm flex items-center gap-2">
                   <Zap className="size-4 text-[#f4d98a]" />
                   Auto Cashout Tips
@@ -219,7 +186,7 @@ export default function CrashDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl p-4 flex-1 flex flex-col gap-3">
+              <div className="game-panel bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl flex-1 flex flex-col gap-3">
                 <div className="font-semibold text-sm flex items-center gap-2">
                   <ShieldCheck className="size-4 text-[#1bd6a0]" />
                   Provably Fair
@@ -249,7 +216,7 @@ export default function CrashDesignUI({
               </div>
             </aside>
 
-            <main className="min-w-0 flex flex-col flex-1 gap-4 min-h-0">
+            <main className="game-main min-w-0 flex flex-col flex-1 min-h-0">
               <div className="flex justify-between items-start shrink-0">
                 <div className="flex flex-col gap-1">
                   <h1 className="bg-gradient-to-r from-[#5ea0f2] to-[#1565c0] bg-clip-text text-transparent drop-shadow-[0_0_18px_rgba(21,101,192,0.5)] font-extrabold text-5xl leading-tight tracking-tight">
@@ -409,8 +376,8 @@ export default function CrashDesignUI({
               </div>
             </main>
 
-            <aside className="shrink-0 flex flex-col gap-4 w-[280px] min-h-0">
-              <div className="bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-2">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col">
+              <div className="game-panel bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="font-semibold text-sm flex items-center gap-2">
                   <History className="size-4 text-[#5ea0f2]" />
                   Round History
@@ -423,7 +390,7 @@ export default function CrashDesignUI({
                   ))}
                 </div>
               </div>
-              <div className="bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl p-4 flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+              <div className="game-panel bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
                 <div className="font-semibold text-sm flex items-center gap-2 shrink-0">
                   <Radio className="size-4 text-[#1bd6a0]" />
                   Live Bets Feed
@@ -449,7 +416,7 @@ export default function CrashDesignUI({
                   ))}
                 </div>
               </div>
-              <div className="bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel bg-[#0a0603]/70 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[#a1a1a1] text-xs">Total in Play</span>
                   <span className="font-bold text-sm">PKR {formatPkr(totalStake)}</span>
@@ -462,7 +429,7 @@ export default function CrashDesignUI({
             </aside>
           </div>
 
-          <footer className="shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 justify-between items-center h-14">
+          <footer className="game-footer shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 justify-between items-center h-14">
             <div className="flex items-center gap-4 overflow-hidden">
               <div className="shrink-0 flex items-center gap-2">
                 <Trophy className="size-4 text-[#1bd6a0]" />

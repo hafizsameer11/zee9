@@ -9,7 +9,7 @@ import {
   type MinesRound,
 } from '../engines/mines'
 import type { GameComponentProps } from '../types'
-import { DESIGN_H, DESIGN_W, useDesignScale } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, useDesignScale } from '../hooks/useDesignScale'
 import { BombArt, FlameArt, GemArt, HiddenMarkArt, SparkArt } from './minesGfx'
 import styles from './minesGame.module.css'
 
@@ -41,7 +41,7 @@ function formatPkr(n: number) {
 export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [betAmount, setBetAmount] = useState(defaultBet)
@@ -124,11 +124,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
     <div className={styles.root} ref={viewportRef}>
       <div
         className={styles.canvas}
-        style={{
-          width: DESIGN_W,
-          height: DESIGN_H,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
+        style={getDesignCanvasStyle(layout)}
       >
         <div className={styles.ambientGlow} />
         <div className={`${styles.particle} ${styles.particleA}`} />
@@ -148,18 +144,6 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               <span className={styles.logoSub}>MINES</span>
             </span>
           </button>
-
-          <nav className={styles.nav}>
-            <button type="button" className={styles.navActive}>
-              <PickaxeIcon /> Mines
-            </button>
-            <button type="button" className={styles.navGhost} onClick={() => navigate('/play/aviator')}>
-              <PlaneIcon /> Aviator
-            </button>
-            <button type="button" className={styles.navGhost} disabled>
-              <CrownIcon /> Premium
-            </button>
-          </nav>
 
           <div className={styles.headerRight}>
             <div className={styles.balancePill}>
@@ -541,14 +525,6 @@ function GemIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M12 2L22 9v6l-10 7L2 15V9l10-7zm0 2.5L4 10v4.2l8 5.6 8-5.6V10l-8-5.5z" />
-    </svg>
-  )
-}
-
-function PlaneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
     </svg>
   )
 }

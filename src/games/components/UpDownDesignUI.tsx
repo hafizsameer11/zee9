@@ -9,20 +9,15 @@ import {
   History,
   Lock,
   MessageCircle,
-  Pickaxe,
-  Plane,
   Radio,
   RefreshCw,
   Send,
   Settings,
   ShieldCheck,
   Sparkles,
-  Spade,
   Target,
-  TrendingUp,
   Trophy,
   Wallet,
-  Zap,
 } from 'lucide-react'
 import type { UpDownChoice } from '../engines/dice'
 import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
@@ -66,13 +61,6 @@ export type UpDownDesignUIProps = {
   onBetAmount: (n: number) => void
   onRoll: () => void
   onHome: () => void
-  onMines: () => void
-  onAviator: () => void
-  onTeenPatti: () => void
-  onWingo: () => void
-  onDoubleCrash: () => void
-  onCrash: () => void
-  onFortuneOx: () => void
 }
 
 function zoneButtonClass(selected: boolean, zone: UpDownChoice): string {
@@ -104,13 +92,6 @@ export default function UpDownDesignUI({
   onBetAmount,
   onRoll,
   onHome,
-  onMines,
-  onAviator,
-  onTeenPatti,
-  onWingo,
-  onDoubleCrash,
-  onCrash,
-  onFortuneOx,
 }: UpDownDesignUIProps) {
   const d1 = rolling ? '?' : (dice?.[0] ?? '?')
   const d2 = rolling ? '?' : (dice?.[1] ?? '?')
@@ -122,44 +103,16 @@ export default function UpDownDesignUI({
         className={canvasClassName}
         style={getDesignCanvasStyle(layout)}
       >
-        <div className="bg-[radial-gradient(circle_at_50%_-10%,oklch(0.28_0.06_40),oklch(0.145_0.02_30))] min-h-full text-neutral-50 flex flex-col w-full h-full overflow-hidden">
+        <div className="game-ui bg-[radial-gradient(circle_at_50%_-10%,oklch(0.28_0.06_40),oklch(0.145_0.02_30))] min-h-full text-neutral-50 flex flex-col w-full h-full overflow-hidden">
           <header className="border-white/10 border-b border-solid flex px-8 py-4 justify-between items-center shrink-0 bg-[#0a0603]/60 backdrop-blur-sm">
-            <div className="flex items-center gap-8">
-              <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
-                <div className="size-9 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] rotate-45 shadow-[0_0_16px_rgba(212,175,55,0.4)] rounded-lg flex justify-center items-center">
-                  <Diamond className="size-4 -rotate-45 text-[#0a0603]" />
-                </div>
-                <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-[#f4d98a] to-[#d4af37] bg-clip-text text-transparent">
-                  Zee9
-                </span>
-              </button>
-              <nav className="flex items-center gap-1">
-                {[
-                  { label: 'Mines', icon: Pickaxe, onClick: onMines },
-                  { label: 'Aviator', icon: Plane, onClick: onAviator },
-                  { label: 'Teen Patti', icon: Spade, onClick: onTeenPatti },
-                  { label: 'WINGO', icon: Zap, onClick: onWingo },
-                  { label: 'DOUBLE CRASH', icon: TrendingUp, onClick: onDoubleCrash },
-                  { label: 'CRASH', icon: Zap, onClick: onCrash },
-                  { label: 'FORTUNE OX', icon: Zap, onClick: onFortuneOx },
-                  { label: '7 UP DOWN', icon: Dices, active: true },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={'onClick' in item ? item.onClick : undefined}
-                    className={`font-medium rounded-lg text-sm flex px-3 py-2 items-center gap-2 border-0 cursor-pointer ${
-                      item.active
-                        ? 'bg-gradient-to-r from-[#f4d98a] to-[#d4af37] shadow-[0_0_18px_rgba(212,175,55,0.45)] font-bold text-[#0a0603]'
-                        : 'text-[#a1a1a1] bg-transparent'
-                    }`}
-                  >
-                    <item.icon className="size-4" />
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
+            <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
+              <div className="size-9 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] rotate-45 shadow-[0_0_16px_rgba(212,175,55,0.4)] rounded-lg flex justify-center items-center">
+                <Diamond className="size-4 -rotate-45 text-[#0a0603]" />
+              </div>
+              <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-[#f4d98a] to-[#d4af37] bg-clip-text text-transparent">
+                Zee9
+              </span>
+            </button>
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-r from-[#f4d98a] to-[#d4af37] shadow-[0_0_16px_rgba(212,175,55,0.4)] font-bold rounded-full text-[#0a0603] text-sm flex px-4 py-2 items-center gap-2">
                 <Wallet className="size-4" />
@@ -174,9 +127,9 @@ export default function UpDownDesignUI({
             </div>
           </header>
 
-          <main className="flex px-8 py-6 flex-1 gap-6 min-h-0">
-            <aside className="shrink-0 flex flex-col gap-4 w-[260px] min-h-0 overflow-y-auto">
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4 flex flex-col gap-3">
+          <div className="game-body min-h-0 flex flex-1">
+            <aside className="game-sidebar shrink-0 flex flex-col">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-3">
                 <div className="flex items-center gap-2 font-bold text-sm">
                   <BookOpen className="size-4 text-[#f57f17]" /> How to Play
                 </div>
@@ -191,7 +144,7 @@ export default function UpDownDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-bold text-sm mb-1">
                   <Target className="size-4 text-[#f57f17]" /> Bet Zones
                 </div>
@@ -209,7 +162,7 @@ export default function UpDownDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-bold text-sm">
                   <ShieldCheck className="size-4 text-[#f57f17]" /> Provably Fair
                 </div>
@@ -217,7 +170,7 @@ export default function UpDownDesignUI({
                 <div className="text-[#a1a1a1] text-xs flex items-center gap-2"><CheckSquare className="size-3.5" /> Verifiable roll seed</div>
                 <div className="text-[#a1a1a1] text-xs flex items-center gap-2"><RefreshCw className="size-3.5" /> New round every 12s</div>
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4 mt-auto flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl mt-auto flex flex-col gap-2">
                 <div className="text-xs flex justify-between">
                   <span className="text-[#a1a1a1]">Your Win Rate</span>
                   <span className="font-bold text-[#fbc02d]">57%</span>
@@ -228,7 +181,7 @@ export default function UpDownDesignUI({
               </div>
             </aside>
 
-            <section className="flex flex-col flex-1 gap-5 min-h-0 min-w-0">
+            <main className="game-main flex flex-col flex-1 min-h-0 min-w-0">
               <div className="flex justify-between items-start shrink-0">
                 <div>
                   <h1 className="bg-gradient-to-r from-[#ffeb3b] via-[#fbc02d] to-[#f57f17] bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(245,127,23,0.4)] font-extrabold text-5xl tracking-tight">
@@ -245,7 +198,7 @@ export default function UpDownDesignUI({
                 </div>
               </div>
 
-              <div className="bg-[radial-gradient(circle_at_50%_20%,oklch(0.26_0.05_50),oklch(0.19_0.02_35))] relative border border-white/10 rounded-2xl p-6 flex-1 min-h-0 flex flex-col justify-center items-center gap-6 overflow-hidden">
+              <div className="game-main-inner bg-[radial-gradient(circle_at_50%_20%,oklch(0.26_0.05_50),oklch(0.19_0.02_35))] relative border border-white/10 rounded-2xl p-6 flex-1 min-h-0 flex flex-col justify-center items-center gap-6">
                 <div className="flex items-center gap-10">
                   <IllustratedDice value={d1} rolling={rolling} tilt="left" />
                   <IllustratedDice value={d2} rolling={rolling} tilt="right" />
@@ -320,10 +273,10 @@ export default function UpDownDesignUI({
                   ROLL · BET PKR {formatPkr(betAmount)}
                 </button>
               </div>
-            </section>
+            </main>
 
-            <aside className="shrink-0 flex flex-col gap-4 w-[280px] min-h-0 overflow-y-auto">
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl">
                 <div className="flex items-center gap-2 font-bold text-sm mb-3">
                   <History className="size-4 text-[#f57f17]" /> Round History
                 </div>
@@ -335,7 +288,7 @@ export default function UpDownDesignUI({
                   ))}
                 </div>
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4 flex-1 flex flex-col gap-3 min-h-0">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex-1 flex flex-col gap-3 min-h-0">
                 <div className="flex items-center gap-2 font-bold text-sm">
                   <Radio className="size-4 text-[#f57f17]" /> Live Bets Feed
                 </div>
@@ -358,7 +311,7 @@ export default function UpDownDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="bg-neutral-900/80 border border-white/10 rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
                 <div className="text-sm flex justify-between">
                   <span className="text-[#a1a1a1]">Total Stake</span>
                   <span className="font-bold">PKR {formatPkr(choice ? betAmount : 0)}</span>
@@ -369,9 +322,9 @@ export default function UpDownDesignUI({
                 </div>
               </div>
             </aside>
-          </main>
+          </div>
 
-          <footer className="border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center shrink-0 bg-[#0a0603]/60">
+          <footer className="game-footer border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center shrink-0 bg-[#0a0603]/60">
             <div className="flex items-center gap-4 overflow-hidden">
               <span className="shrink-0 font-bold text-[#fbc02d] text-xs flex items-center gap-2">
                 <Trophy className="size-4" /> LIVE WINS

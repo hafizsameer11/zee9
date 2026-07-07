@@ -27,7 +27,7 @@ export default function DiceGames({ gameId, bet: defaultBet, onMessage }: GameCo
 
 function BlackRedGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { debit, credit, canAfford } = useWallet()
   const [betAmount, setBetAmount] = useState(defaultBet)
   const [choice, setChoice] = useState<BlackRedChoice | null>(null)
@@ -62,10 +62,9 @@ function BlackRedGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   return (
     <Zee9PremiumFrame
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
-      activeGameId="black-red"
       title="BLACK RED"
       subtitle="Pick a color and spin the wheel"
       accent="red"
@@ -108,7 +107,7 @@ function BlackRedGame({ bet: defaultBet, onMessage }: GameComponentProps) {
 
 function JhandiGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { debit, credit, canAfford } = useWallet()
   const [betAmount, setBetAmount] = useState(defaultBet)
   const [choice, setChoice] = useState<JhandiSymbol | null>(null)
@@ -144,10 +143,9 @@ function JhandiGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   return (
     <Zee9PremiumFrame
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
-      activeGameId="jhandi-munda"
       title="JHANDI MUNDA"
       subtitle="Pick your symbol and roll six dice"
       accent="gold"

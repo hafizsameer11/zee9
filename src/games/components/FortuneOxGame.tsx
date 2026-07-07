@@ -110,12 +110,6 @@ export default function FortuneOxGame({ bet: defaultBet, onMessage }: GameCompon
       onQuickStake={setBetAmount}
       onSpin={spin}
       onHome={() => navigate('/home')}
-      onMines={() => navigate('/play/mines')}
-      onAviator={() => navigate('/play/aviator')}
-      onTeenPatti={() => navigate('/play/teen-patti')}
-      onWingo={() => navigate('/play/wingo-lottery')}
-      onDoubleCrash={() => navigate('/play/double-crash')}
-      onCrash={() => navigate('/play/crash')}
     />
   )
 }

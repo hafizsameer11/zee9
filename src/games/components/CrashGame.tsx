@@ -21,7 +21,7 @@ const LIVE_FEED = [
 export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [phase, setPhase] = useState<Phase>('idle')
@@ -127,7 +127,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
   return (
     <CrashDesignUI
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       designW={DESIGN_W}
       designH={DESIGN_H}
       rootClassName={styles.root}
@@ -152,11 +152,6 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
       onBet={startRound}
       onCashOut={cashOut}
       onHome={() => navigate('/home')}
-      onMines={() => navigate('/play/mines')}
-      onAviator={() => navigate('/play/aviator')}
-      onTeenPatti={() => navigate('/play/teen-patti')}
-      onWingo={() => navigate('/play/wingo-lottery')}
-      onDoubleCrash={() => navigate('/play/double-crash')}
     />
   )
 }

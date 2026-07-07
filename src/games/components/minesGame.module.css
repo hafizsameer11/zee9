@@ -12,20 +12,19 @@
 }
 
 .root {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
+  contain: strict;
   background: #0a0603;
 }
 
 .canvas {
-  position: absolute;
-  top: 50%;
-  left: 50%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform-origin: top left;
+  will-change: transform;
   color: var(--mines-text);
   font-family: Inter, system-ui, sans-serif;
   background:
@@ -311,24 +310,26 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 250px;
-  gap: 8px;
-  padding: 6px 12px;
+  grid-template-columns: 11.5rem minmax(0, 1fr) 11.5rem;
+  gap: 0.75rem;
+  padding: 0.5rem 0.875rem;
   align-items: stretch;
 }
 
 .betPanel,
 .leaderPanel {
   display: grid;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 16px;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 14px;
   border: 1px solid rgba(212, 175, 55, 0.3);
   background: var(--mines-card);
   backdrop-filter: blur(20px);
   box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 30px rgba(212, 175, 55, 0.05);
   min-height: 0;
   overflow: hidden;
+  font-size: 0.9375rem;
+  line-height: 1.4;
 }
 
 .betPanel {
@@ -368,7 +369,7 @@
 }
 
 .fieldLabel {
-  font-size: 12px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--mines-muted);
 }
@@ -756,7 +757,11 @@
   background: rgba(41, 24, 14, 0.45);
   backdrop-filter: blur(12px);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   min-height: 0;
 }
 

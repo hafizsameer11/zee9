@@ -22,7 +22,7 @@ function formatPkr(n: number) {
 export default function FishingGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const { id: gameId } = useParams<{ id: string }>()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { debit, credit, canAfford } = useWallet()
   const [betAmount, setBetAmount] = useState(defaultBet)
   const [fish, setFish] = useState<SwimFish[]>([])
@@ -88,10 +88,9 @@ export default function FishingGame({ bet: defaultBet, onMessage }: GameComponen
   return (
     <Zee9PremiumFrame
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
-      activeGameId={gameId ?? 'jackpot-fishing'}
       title={title}
       subtitle="Tap fish to shoot — bigger fish, bigger multipliers"
       accent="blue"

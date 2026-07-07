@@ -28,7 +28,7 @@ const LIVE_FEED = [
 export default function DoubleCrashGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const scale = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [globalPhase, setGlobalPhase] = useState<GlobalPhase>('idle')
@@ -195,7 +195,7 @@ export default function DoubleCrashGame({ bet: defaultBet, onMessage }: GameComp
   return (
     <DoubleCrashDesignUI
       viewportRef={viewportRef}
-      scale={scale}
+      layout={layout}
       designW={DESIGN_W}
       designH={DESIGN_H}
       rootClassName={styles.root}
@@ -217,10 +217,6 @@ export default function DoubleCrashGame({ bet: defaultBet, onMessage }: GameComp
       onUpdateSlot={updateSlot}
       onQuickStake={setBothBets}
       onHome={() => navigate('/home')}
-      onMines={() => navigate('/play/mines')}
-      onAviator={() => navigate('/play/aviator')}
-      onTeenPatti={() => navigate('/play/teen-patti')}
-      onWingo={() => navigate('/play/wingo-lottery')}
     />
   )
 }

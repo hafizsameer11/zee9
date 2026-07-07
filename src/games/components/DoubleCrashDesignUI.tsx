@@ -1,3 +1,4 @@
+import type { RefObject } from 'react'
 import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
 import {
   BookOpen,
@@ -7,8 +8,6 @@ import {
   Lock,
   MessageCircle,
   Minus,
-  Pickaxe,
-  Plane,
   Plus,
   Radio,
   RefreshCw,
@@ -16,8 +15,6 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  Spade,
-  TrendingUp,
   Trophy,
   Wallet,
   Zap,
@@ -218,10 +215,6 @@ export type DoubleCrashDesignUIProps = {
   onUpdateSlot: (index: number, patch: Partial<RocketSlot>) => void
   onQuickStake: (n: number) => void
   onHome: () => void
-  onMines: () => void
-  onAviator: () => void
-  onTeenPatti: () => void
-  onWingo: () => void
 }
 
 export default function DoubleCrashDesignUI({
@@ -246,10 +239,6 @@ export default function DoubleCrashDesignUI({
   onUpdateSlot,
   onQuickStake,
   onHome,
-  onMines,
-  onAviator,
-  onTeenPatti,
-  onWingo,
   displayMultA,
   displayMultB,
 }: DoubleCrashDesignUIProps) {
@@ -262,13 +251,9 @@ export default function DoubleCrashDesignUI({
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
-        style={{
-          width: designW,
-          height: designH,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
+        style={getDesignCanvasStyle(layout, designW, designH)}
       >
-        <div className="bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
+        <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-b border-solid flex px-8 py-4 justify-between items-center">
             <button type="button" className="flex items-center gap-3 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
               <div className="size-10 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] shadow-[0_0_18px_rgba(212,175,55,0.5)] rounded-xl flex justify-center items-center">
@@ -278,23 +263,6 @@ export default function DoubleCrashDesignUI({
                 Zee9
               </span>
             </button>
-            <nav className="flex items-center gap-2">
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onMines}>
-                <Pickaxe className="size-4" /> Mines
-              </button>
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onAviator}>
-                <Plane className="size-4" /> Aviator
-              </button>
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onTeenPatti}>
-                <Spade className="size-4" /> Teen Patti
-              </button>
-              <button type="button" className="font-semibold rounded-full text-[#a1a1a1] text-sm flex px-4 py-2 items-center gap-2 border-0 bg-transparent cursor-pointer" onClick={onWingo}>
-                <Zap className="size-4" /> WINGO
-              </button>
-              <button type="button" className="font-bold rounded-full bg-gradient-to-r from-[#c41e3a] to-[#8b1530] text-white text-sm border-white/15 border border-solid flex px-4 py-2 items-center gap-2 shadow-[0_0_20px_rgba(196,30,58,0.4)] cursor-default">
-                <TrendingUp className="size-4" /> DOUBLE CRASH
-              </button>
-            </nav>
             <div className="flex items-center gap-3">
               <div className="shadow-[0_0_16px_rgba(212,175,55,0.25)] rounded-full bg-[#0a0603]/70 border-[#d4af37]/50 border border-solid flex px-4 py-2 items-center gap-2">
                 <Wallet className="size-4 text-[#d4af37]" />
@@ -309,9 +277,9 @@ export default function DoubleCrashDesignUI({
             </div>
           </header>
 
-          <div className="min-h-0 flex p-6 flex-1 gap-6">
-            <aside className="shrink-0 flex flex-col gap-4 w-[260px] min-h-0">
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-3">
+          <div className="game-body min-h-0 flex flex-1">
+            <aside className="game-sidebar shrink-0 flex flex-col">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-3">
                 <div className="flex items-center gap-2 font-semibold text-base">
                   <BookOpen className="size-4 text-[#d4af37]" />
                   How to Play
@@ -330,7 +298,7 @@ export default function DoubleCrashDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <Zap className="size-4 text-[#f4d98a]" />
                   Auto Cashout Tips
@@ -346,7 +314,7 @@ export default function DoubleCrashDesignUI({
                   </div>
                 ))}
               </div>
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-2">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <ShieldCheck className="size-4 text-[#1bd6a0]" />
                   Provably Fair
@@ -363,7 +331,7 @@ export default function DoubleCrashDesignUI({
               </div>
             </aside>
 
-            <main className="min-w-0 flex flex-col flex-1 gap-4 min-h-0">
+            <main className="game-main min-w-0 flex flex-col flex-1 min-h-0">
               <div className="flex justify-between items-center shrink-0">
                 <div className="flex flex-col">
                   <h1 className="bg-gradient-to-r from-[#f4d98a] via-[#d4af37] to-[#c41e3a] bg-clip-text text-transparent font-black text-4xl leading-10 tracking-tight">
@@ -446,8 +414,8 @@ export default function DoubleCrashDesignUI({
               </div>
             </main>
 
-            <aside className="shrink-0 flex flex-col gap-4 w-[280px] min-h-0">
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl p-4 flex flex-col gap-2">
+            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
                   <History className="size-4 text-[#d4af37]" />
                   Round History
@@ -463,7 +431,7 @@ export default function DoubleCrashDesignUI({
                   ))}
                 </div>
               </div>
-              <div className="backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl p-4 flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
                 <div className="flex items-center gap-2 font-semibold text-sm shrink-0">
                   <Radio className="size-4 text-[#1bd6a0]" />
                   Live Bets Feed
@@ -512,7 +480,7 @@ export default function DoubleCrashDesignUI({
             </aside>
           </div>
 
-          <footer className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center">
+          <footer className="game-footer backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center">
             <div className="flex items-center gap-4 overflow-hidden">
               <div className="bg-[#d4af37]/15 shrink-0 rounded-full flex px-3 py-1.5 items-center gap-2">
                 <Trophy className="size-4 text-[#f4d98a]" />
@@ -540,4 +508,6 @@ export default function DoubleCrashDesignUI({
           </footer>
         </div>
       </div>
-    </div
+    </div>
+  )
+}

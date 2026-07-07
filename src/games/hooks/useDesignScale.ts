@@ -23,9 +23,9 @@ export function getDesignCanvasStyle(
     width: designW,
     height: designH,
     position: 'absolute',
-    left: layout.insetX,
-    top: layout.insetY,
-    transform: `scale(${layout.scale})`,
+    left: 0,
+    top: 0,
+    transform: `translate(${layout.insetX}px, ${layout.insetY}px) scale(${layout.scale})`,
     transformOrigin: 'top left',
   }
 }
@@ -42,8 +42,9 @@ export function useDesignScale(
     if (!el) return
 
     const update = () => {
-      const cw = el.clientWidth
-      const ch = el.clientHeight
+      const rect = el.getBoundingClientRect()
+      const cw = rect.width
+      const ch = rect.height
       if (cw <= 0 || ch <= 0) return
 
       const scale = Math.min(cw / designW, ch / designH)
@@ -53,15 +54,21 @@ export function useDesignScale(
 
       setLayout({
         scale: s,
-        insetX: (cw - scaledW) / 2,
-        insetY: (ch - scaledH) / 2,
+        insetX: Math.max(0, (cw - scaledW) / 2),
+        insetY: Math.max(0, (ch - scaledH) / 2),
       })
     }
 
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    return () => ro.disconnect()
+    window.addEventListener('orientationchange', update)
+    window.addEventListener('resize', update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('orientationchange', update)
+      window.removeEventListener('resize', update)
+    }
   }, [containerRef, designW, designH])
 
   return layout

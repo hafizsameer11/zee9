@@ -1,0 +1,102 @@
+/* Shared 3-column game layout — mobile-friendly sidebars + scrollable center */
+
+/* Inner game shell only — never put on the scaled design canvas */
+.game-ui {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.game-ui .game-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 0.875rem;
+  padding: 0.875rem 1.25rem;
+}
+
+.game-ui .game-sidebar {
+  flex-shrink: 0;
+  width: 11.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.game-ui .game-sidebar-wide {
+  width: 12.5rem;
+}
+
+.game-ui .game-panel {
+  padding: 0.875rem !important;
+  gap: 0.5rem;
+}
+
+.game-ui .game-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.game-ui .game-main-inner {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+/* Sidebar typography — larger & tighter */
+.game-ui .game-sidebar,
+.game-ui .game-sidebar-wide {
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.game-ui .game-sidebar .text-xs,
+.game-ui .game-sidebar-wide .text-xs,
+.game-ui .game-sidebar [class*='text-[10px]'],
+.game-ui .game-sidebar-wide [class*='text-[10px]'],
+.game-ui .game-sidebar [class*='text-[11px]'],
+.game-ui .game-sidebar-wide [class*='text-[11px]'] {
+  font-size: 0.8125rem !important;
+  line-height: 1.35 !important;
+}
+
+.game-ui .game-sidebar .text-sm,
+.game-ui .game-sidebar-wide .text-sm {
+  font-size: 0.9375rem !important;
+  line-height: 1.35 !important;
+}
+
+.game-ui .game-sidebar .font-semibold.text-sm,
+.game-ui .game-sidebar-wide .font-semibold.text-sm {
+  font-size: 1rem !important;
+}
+
+.game-ui .game-footer {
+  flex-shrink: 0;
+}
+
+.game-ui .game-footer .text-xs {
+  font-size: 0.8125rem !important;
+}
