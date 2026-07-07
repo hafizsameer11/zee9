@@ -1,0 +1,858 @@
+/* 7 Up Down — Super9 asset-driven scene (896×414 safe layout) */
+
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0a0404;
+}
+
+.canvas {
+  position: relative;
+  overflow: hidden;
+  transform-origin: top left;
+  will-change: transform;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.roomBg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+  pointer-events: none;
+  user-select: none;
+}
+
+.roomVignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 52%, transparent 38%, rgba(0, 0, 0, 0.45) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, transparent 12%, transparent 82%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* ── HUD overlays (do not shrink table) ── */
+.hudTop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  padding: 3px 8px 5px;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 3, 2, 0.96) 0%,
+    rgba(14, 7, 4, 0.9) 55%,
+    rgba(10, 5, 3, 0.72) 100%
+  );
+  border-bottom: 1px solid rgba(212, 168, 32, 0.28);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.hudTop > * {
+  pointer-events: auto;
+}
+
+.hudTopLeft {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.hudTopCenter {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 101;
+  pointer-events: none;
+}
+
+.hudTopRight {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.hudIconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.hudIconBtn img {
+  display: block;
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+}
+
+.hudPromo {
+  display: block;
+  height: 30px;
+  width: auto;
+  max-width: min(220px, 42vw);
+  object-fit: contain;
+  flex-shrink: 1;
+}
+
+.hudShakerImg {
+  position: absolute;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* ── Large centered table (reference-style) ── */
+.tableWrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 44px;
+  bottom: 58px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.tableWrap > * {
+  pointer-events: auto;
+}
+
+.tableStage {
+  position: relative;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 1424 / 734;
+  --felt-l: 12.95%;
+  --felt-t: 20.8%;
+  --felt-w: 74.1%;
+  --felt-h: 47.4%;
+  flex-shrink: 0;
+}
+
+.tableImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.5));
+}
+
+.zonesImg {
+  position: absolute;
+  left: var(--felt-l);
+  top: var(--felt-t);
+  width: var(--felt-w);
+  height: var(--felt-h);
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.tableInner {
+  position: absolute;
+  left: var(--felt-l);
+  top: var(--felt-t);
+  width: var(--felt-w);
+  height: var(--felt-h);
+  display: grid;
+  grid-template-columns: 1fr 0.62fr 1fr;
+  grid-template-rows: 16% 84%;
+  gap: 0;
+  z-index: 12;
+}
+
+.historyBar {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--felt-t) - 6.5%);
+  width: auto;
+  max-width: calc(var(--felt-w) + 6%);
+  height: 20px;
+  z-index: 18;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  overflow: hidden;
+  padding: 0 4px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.timerDock {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timerRingSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.timerNum {
+  position: absolute;
+  z-index: 3;
+  font-size: 17px;
+  font-weight: 900;
+  color: #ffe566;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(255, 200, 50, 0.6);
+}
+
+/* ── History (above zone columns, on table rail) ── */
+.historyRow {
+  display: none;
+}
+
+.historyTrack {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.histItem {
+  position: relative;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.histNum {
+  position: absolute;
+  z-index: 2;
+  font-size: 7px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  line-height: 1;
+}
+
+.histNew {
+  flex: 0 0 auto;
+  transform: scale(0.42);
+  transform-origin: center;
+}
+
+.histChart {
+  flex: 0 0 auto;
+  transform: scale(0.36);
+  transform-origin: center;
+}
+
+/* ── Zone columns (header + playfield per column) ── */
+.zoneTotalCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  grid-row: 1;
+  align-self: center;
+  background: transparent;
+}
+
+.zoneHead_down {
+  grid-column: 1;
+}
+
+.zoneHead_seven {
+  grid-column: 2;
+}
+
+.zoneNums {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.zoneNumsSeven {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transform: translateY(25px);
+}
+
+.zoneHead_up {
+  grid-column: 3;
+}
+
+.zoneBetBarDown,
+.zoneBetBarSeven,
+.zoneBetBarUp {
+  background: transparent;
+}
+
+.zoneRange {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+}
+
+.zoneTotalAmt {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  opacity: 0.95;
+}
+
+.zoneStar {
+  color: #ffd700;
+  font-size: 9px;
+}
+
+/* ── Betting zones ── */
+.zoneBetBtn {
+  grid-row: 2;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  min-width: 0;
+  min-height: 0;
+}
+
+.zonePlay_down {
+  grid-column: 1;
+}
+
+.zonePlay_seven {
+  grid-column: 2;
+}
+
+.zonePlay_up {
+  grid-column: 3;
+}
+
+.zoneBetBtn:disabled {
+  cursor: default;
+}
+
+.zoneColWin {
+  filter: brightness(1.25) drop-shadow(0 0 10px rgba(255, 230, 80, 0.5));
+}
+
+.zonePlayfield {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.zoneMult {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  transform: translateX(-50%);
+  font-size: clamp(22px, 6vw, 44px);
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.07);
+  letter-spacing: -2px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.realChipImg {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tableChip {
+  position: absolute;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+/* ── Players around table ── */
+.playerDock {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  top: 8%;
+  bottom: 8%;
+  width: 68px;
+}
+
+.playerDockLeft {
+  left: 0;
+}
+
+.playerDockRight {
+  right: 0;
+  align-items: flex-end;
+}
+
+.playerSeat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  position: relative;
+  width: 64px;
+}
+
+.playerBadge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.34);
+  transform-origin: center bottom;
+  z-index: 3;
+}
+
+.playerFace {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #d4a820;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(145deg, #3a2518, #1a0e08);
+}
+
+.avatarFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(145deg, #3a2518, #1a0e08);
+  color: #f5c518;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.playerName {
+  font-size: 7px;
+  font-weight: 700;
+  color: #ffe8c0;
+  max-width: 62px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.playerBal {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #f5c518;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+/* ── Bottom HUD ── */
+.hudBottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: 4px;
+  min-height: 58px;
+  max-height: 58px;
+  padding: 4px 8px 5px;
+  box-sizing: border-box;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(12, 5, 3, 0.85) 30%,
+    rgba(6, 2, 1, 0.98) 100%
+  );
+  pointer-events: none;
+}
+
+.hudBottom > * {
+  pointer-events: auto;
+}
+
+.hudBottomLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.hudBottomRight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  min-width: 72px;
+  overflow: visible;
+}
+
+.rebetBtn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  min-width: 64px;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  color: #2a2018;
+  cursor: pointer;
+  background: linear-gradient(180deg, #f0ece6 0%, #c8c0b4 45%, #a8a094 100%);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.rebetBtn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.rebetBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.selfDock {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.selfFace {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #4ade80;
+  object-fit: cover;
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.35);
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #3a2518, #1a0e08);
+}
+
+.selfMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.selfName {
+  font-size: 7px;
+  font-weight: 700;
+  color: #ffe8c0;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selfBal {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #f5c518;
+}
+
+.coinIcon {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.chipTray {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 4px 10px;
+  border-radius: 26px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.trayArrow {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.4);
+  color: #ddd;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.chipPickRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* Selector chips — CSS round poker chips */
+.selectorChip {
+  position: relative;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.selectorChip:hover {
+  transform: translateY(-2px) scale(1.04);
+}
+
+.selectorChipOn {
+  transform: translateY(-3px) scale(1.08);
+  filter: drop-shadow(0 0 12px rgba(255, 230, 80, 0.9));
+}
+
+.trayChip {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    inset 0 2px 5px rgba(255, 255, 255, 0.28),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.35),
+    0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+.trayChipRing {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+}
+
+.trayChipVal {
+  position: relative;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.trayChipWhite {
+  background: radial-gradient(circle at 32% 28%, #fff, #d8d8d8 52%, #9a9a9a);
+}
+
+.trayChipBlack {
+  background: radial-gradient(circle at 32% 28%, #666, #2a2a2a 52%, #111);
+}
+
+.trayChipGrey {
+  background: radial-gradient(circle at 32% 28%, #e8e8e8, #b0b0b0 52%, #787878);
+}
+
+.trayChipBrown {
+  background: radial-gradient(circle at 32% 28%, #d08040, #9a5520 52%, #5c3010);
+}
+
+.trayChipGold {
+  background: radial-gradient(circle at 32% 28%, #ffe566, #d4a820 52%, #9a7010);
+}
+
+.trayChipWhite .trayChipVal,
+.trayChipGrey .trayChipVal {
+  color: #222;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ── Flying chips + effects ── */
+.fxLayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  overflow: hidden;
+}
+
+.flyingChip {
+  position: absolute;
+  left: var(--from-x);
+  top: var(--from-y);
+  animation: chipFly 0.55s cubic-bezier(0.25, 0.8, 0.35, 1) var(--delay, 0ms) forwards;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.5));
+}
+
+@keyframes chipFly {
+  0% {
+    left: var(--from-x);
+    top: var(--from-y);
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.7;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    left: var(--to-x);
+    top: var(--to-y);
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.winFloat {
+  position: absolute;
+  font-size: 15px;
+  font-weight: 900;
+  color: #4ade80;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+  animation: winFloatUp 1.2s ease-out forwards;
+  z-index: 55;
+}
+
+@keyframes winFloatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-42px) scale(1.15); }
+}
+
+/* ── Result overlay ── */
+.resultVeil {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.resultCard {
+  padding: 14px 24px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(50, 30, 18, 0.96), rgba(18, 10, 6, 0.98));
+  border: 2px solid #c9a020;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65);
+  text-align: center;
+}
+
+.resultSum {
+  font-size: 44px;
+  font-weight: 900;
+  color: #f5c518;
+  line-height: 1;
+}
+
+.resultZone {
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.resultWin {
+  font-size: 15px;
+  font-weight: 900;
+  color: #4ade80;
+  margin-top: 4px;
+}
+
+.resultLose {
+  font-size: 12px;
+  color: #f87171;
+  margin-top: 4px;
+}

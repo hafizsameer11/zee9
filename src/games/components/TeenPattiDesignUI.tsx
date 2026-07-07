@@ -1,4 +1,4 @@
-import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
 import type { RefObject } from 'react'
 import {
   BookOpen,
@@ -324,10 +324,11 @@ export default function TeenPattiDesignUI({
 
   return (
     <div className={rootClassName} ref={viewportRef}>
-      <div
-        className={canvasClassName}
-        style={getDesignCanvasStyle(layout)}
-      >
+      <div style={getDesignScaleShellStyle(layout)}>
+        <div
+          className={canvasClassName}
+          style={getDesignCanvasStyle(layout)}
+        >
         <div className="game-ui relative flex flex-col w-full h-full bg-[#0a0603] text-neutral-50 overflow-hidden">
           <div className="pointer-events-none bg-[#d4af37]/12 absolute inset-0" />
 
@@ -655,6 +656,7 @@ export default function TeenPattiDesignUI({
               </button>
             </div>
           </footer>
+        </div>
         </div>
       </div>
     </div>

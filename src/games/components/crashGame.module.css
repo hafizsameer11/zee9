@@ -2,8 +2,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  contain: strict;
-  background: #0a0603;
+  background: #2a1a10;
 }
 
 .canvas {
@@ -12,4 +11,820 @@
   overflow: hidden;
   transform-origin: top left;
   will-change: transform;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.panelBg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 220, 140, 0.12) 0%, transparent 55%),
+    linear-gradient(180deg, #c4a574 0%, #a88658 18%, #8b6f48 45%, #7a6040 70%, #6b5238 100%);
+}
+
+.panelBg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.03) 0, rgba(0, 0, 0, 0.03) 2px, transparent 2px, transparent 6px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0, rgba(255, 255, 255, 0.04) 1px, transparent 1px, transparent 4px);
+  opacity: 0.6;
+}
+
+/* ── Top bar ── */
+.topBar {
+  position: relative;
+  z-index: 20;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 3px 6px 0;
+  gap: 4px;
+}
+
+.topLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.backBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #8b2030;
+  background: linear-gradient(180deg, #a82838 0%, #6b1018 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.backBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.promoBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 2px;
+  border-radius: 16px;
+  border: 2px solid #c9a020;
+  background: linear-gradient(180deg, #4a3020, #2a1808);
+  font-size: 8px;
+  font-weight: 700;
+  color: #ffe8a0;
+  white-space: nowrap;
+}
+
+.promoBadge strong {
+  color: #ffd700;
+}
+
+.promoIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.topCenter {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bankrollLabel {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #3a2818;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.flipClock {
+  display: flex;
+  gap: 2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #2a2018, #1a1008);
+  border: 2px solid #5c4830;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.flipDigit {
+  width: 16px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  color: #f0f0f0;
+  background: linear-gradient(180deg, #1a1410 0%, #1a1410 48%, #0d0a08 52%, #0d0a08 100%);
+  border-radius: 2px;
+  border: 1px solid #000;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.3);
+}
+
+.historyStrip {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  overflow-x: auto;
+  max-width: 100%;
+  padding: 2px 4px;
+  scrollbar-width: none;
+}
+
+.historyStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.historyItem {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 52px;
+}
+
+.historyLed {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #8eff8e, #2e8b2e);
+  box-shadow: 0 0 4px #4caf50;
+}
+
+.historyLedLow {
+  background: radial-gradient(circle at 35% 30%, #ff8a8a, #c62828);
+  box-shadow: 0 0 4px #e53935;
+}
+
+.historyLedHigh {
+  background: radial-gradient(circle at 35% 30%, #ffe566, #f9a825);
+  box-shadow: 0 0 4px #ffc107;
+}
+
+.historyRound {
+  font-size: 7px;
+  font-weight: 700;
+  color: #3a2818;
+  opacity: 0.85;
+}
+
+.historyMult {
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background-size: cover;
+  background-position: center;
+  min-width: 44px;
+  text-align: center;
+}
+
+.historyMultLow {
+  color: #ffcdd2;
+}
+
+.historyMultMid {
+  color: #b3e5fc;
+}
+
+.historyMultHigh {
+  color: #fff9c4;
+}
+
+.historyChartBtn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid #c9a020;
+  background: linear-gradient(180deg, #ff9800, #e65100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.historyChartBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #c9a020;
+  object-fit: cover;
+}
+
+.userPill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3d2810, #1a0c06);
+  border: 1px solid #5c3820;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.balanceBox {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #3d2810, #1a0c06);
+  border: 1px solid #5c3820;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.balanceChip {
+  width: 16px;
+  height: 16px;
+}
+
+.plusBtn {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: #d42030;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.addBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.addBtn span {
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.cartIcon {
+  width: 28px;
+  height: 22px;
+}
+
+.menuBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.menuBtn svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Main body ── */
+.body {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 4px;
+  padding: 2px 6px 4px;
+}
+
+.sideCol {
+  width: 58px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.sideLabel {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #3a2818;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.toggleStack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.toggleOption {
+  font-size: 7px;
+  font-weight: 700;
+  color: #4a3828;
+}
+
+.toggleSwitch {
+  position: relative;
+  width: 36px;
+  height: 56px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggleTrack {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #6a5a48, #8a7868, #6a5a48);
+  border: 2px solid #4a3828;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.toggleKnob {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 22px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #d8d0c8, #a89888);
+  border: 1px solid #6a5a48;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  transition: top 0.15s ease;
+}
+
+.toggleKnobTop {
+  top: 4px;
+}
+
+.toggleKnobBottom {
+  top: 28px;
+}
+
+.toggleLed {
+  position: absolute;
+  right: -8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #444;
+}
+
+.toggleLedOn {
+  top: 10px;
+  background: radial-gradient(circle at 35% 30%, #8eff8e, #2e8b2e);
+  box-shadow: 0 0 4px #4caf50;
+}
+
+.toggleLedOff {
+  bottom: 10px;
+  background: radial-gradient(circle at 35% 30%, #ff8a8a, #c62828);
+  box-shadow: 0 0 3px #e53935;
+}
+
+.hToggle {
+  width: 56px;
+  height: 28px;
+}
+
+.hToggle .toggleKnob {
+  width: 22px;
+  height: 20px;
+}
+
+.hToggle .toggleKnobTop {
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.hToggle .toggleKnobBottom {
+  left: auto;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.hToggle .toggleLedOn {
+  top: 50%;
+  right: auto;
+  left: -8px;
+  transform: translateY(-50%);
+}
+
+.hToggle .toggleLedOff {
+  bottom: auto;
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+}
+
+.socialBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #8b2030;
+  background: linear-gradient(180deg, #c03040, #801020);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.socialBtn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.vent {
+  flex: 1;
+  min-height: 20px;
+  opacity: 0.5;
+}
+
+.vent svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Graph screen ── */
+.graphWrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.graphFrame {
+  flex: 1;
+  min-height: 0;
+  padding: 5px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #e8c860 0%, #c9a030 25%, #a88020 50%, #d4b040 75%, #f0d070 100%);
+  border: 3px solid #8a6820;
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.3),
+    0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.graphScreen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #0a2848;
+  border: 2px solid #1a1a2a;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+}
+
+.graphBg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.35;
+}
+
+.graphGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(100, 180, 255, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(100, 180, 255, 0.15) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.graphAxisY {
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(150, 200, 255, 0.8);
+  pointer-events: none;
+}
+
+.graphAxisX {
+  position: absolute;
+  left: 28px;
+  right: 8px;
+  bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  font-weight: 700;
+  color: rgba(150, 200, 255, 0.8);
+  pointer-events: none;
+}
+
+.graphCurve {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.graphCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  gap: 2px;
+}
+
+.multDisplay {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 20px currentColor;
+}
+
+.multFlying {
+  color: #4caf50;
+}
+
+.multCrashed {
+  color: #e53935;
+}
+
+.multCashed {
+  color: #ffd54f;
+}
+
+.multWaiting {
+  color: #4caf50;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
+  padding: 0 12px;
+}
+
+.rocketPos {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(255, 100, 50, 0.6));
+}
+
+/* ── Bottom controls ── */
+.bottomBar {
+  position: relative;
+  z-index: 15;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px 6px;
+}
+
+.bottomSide {
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.betCluster {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.betMinus,
+.betPlus {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, #e05050 0%, #c02030 50%, #901020 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.betMinus:disabled,
+.betPlus:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.betDisplay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 12px;
+  min-width: 80px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #1a1410, #0a0806);
+  border: 2px solid #3a3028;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
+}
+
+.betLabel {
+  font-size: 8px;
+  font-weight: 800;
+  color: #e53935;
+  letter-spacing: 0.08em;
+}
+
+.betValue {
+  font-size: 18px;
+  font-weight: 900;
+  font-family: 'Courier New', monospace;
+  color: #e53935;
+  text-shadow: 0 0 8px rgba(229, 57, 53, 0.5);
+}
+
+.betBtn {
+  min-width: 120px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, #ffb040 0%, #ff8800 40%, #e06000 100%);
+  border-bottom: 3px solid #a04000;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.betBtn:active:not(:disabled) {
+  transform: translateY(2px);
+  border-bottom-width: 1px;
+}
+
+.betBtnCashout {
+  background: linear-gradient(180deg, #66bb6a 0%, #43a047 40%, #2e7d32 100%);
+  border-bottom-color: #1b5e20;
+}
+
+.betBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.betBtnWaiting {
+  background: linear-gradient(180deg, #888, #555);
+  border-bottom-color: #333;
+}
+
+/* ── Welcome modal ── */
+.welcomeOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.welcomeModal {
+  display: flex;
+  width: 88%;
+  max-width: 520px;
+  height: 72%;
+  max-height: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  border: 3px solid #c9a020;
+}
+
+.welcomeArt {
+  flex: 0.9;
+  background: linear-gradient(135deg, #4a1020, #2a0810);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.welcomeArt img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.welcomeBody {
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #6b1020, #4a0818);
+  border-left: 2px solid #c9a020;
+}
+
+.welcomeTitle {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  color: #fff;
+}
+
+.welcomeTitle em {
+  font-style: normal;
+  color: #ff9800;
+}
+
+.welcomeText {
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+.welcomeActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.welcomeBtn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffe566 0%, #ffb300 50%, #e68a00 100%);
+  border-bottom: 3px solid #a06000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.welcomeBtn:active {
+  transform: translateY(1px);
 }

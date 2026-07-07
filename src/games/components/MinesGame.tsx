@@ -9,11 +9,12 @@ import {
   type MinesRound,
 } from '../engines/mines'
 import type { GameComponentProps } from '../types'
-import { getDesignCanvasStyle, useDesignScale } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import {
   BackChevronIcon,
   CartWagonIcon,
   GemRevealIcon,
+  GuideHandIcon,
   MenuDiamondsIcon,
   MineRevealIcon,
   MoneyBagIcon,
@@ -119,7 +120,8 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
 
   return (
     <div className={styles.root} ref={viewportRef}>
-      <div className={styles.canvas} style={getDesignCanvasStyle(layout)}>
+      <div style={getDesignScaleShellStyle(layout)}>
+        <div className={styles.canvas} style={getDesignCanvasStyle(layout)}>
         <div className={styles.caveBg} aria-hidden />
 
         <header className={styles.topBar}>
@@ -255,54 +257,65 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               </div>
             </div>
 
-            <div className={styles.betRow}>
-              <button
-                type="button"
-                className={styles.stoneBtnMinus}
-                disabled={playing}
-                onClick={() => adjustBet(-1)}
-                aria-label="Decrease bet"
-              >
-                −
-              </button>
-              <div className={styles.betCenter}>
-                <span className={styles.betLabel}>Bets</span>
-                <PokerChipIcon className={styles.betChip} />
-                <span className={styles.betValue}>{formatCompact(betAmount)}</span>
+            <div className={styles.panelBottom}>
+              <div className={styles.betRow}>
+                <button
+                  type="button"
+                  className={styles.stoneBtnMinus}
+                  disabled={playing}
+                  onClick={() => adjustBet(-1)}
+                  aria-label="Decrease bet"
+                >
+                  −
+                </button>
+                <div className={styles.betCenter}>
+                  <span className={styles.betLabel}>Bets</span>
+                  <PokerChipIcon className={styles.betChip} />
+                  <span className={styles.betValue}>{formatCompact(betAmount)}</span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.stoneBtnPlus}
+                  disabled={playing}
+                  onClick={() => adjustBet(1)}
+                  aria-label="Increase bet"
+                >
+                  +
+                </button>
               </div>
-              <button
-                type="button"
-                className={styles.stoneBtnPlus}
-                disabled={playing}
-                onClick={() => adjustBet(1)}
-                aria-label="Increase bet"
-              >
-                +
-              </button>
-            </div>
 
-            {playing && (
-              <button
-                type="button"
-                className={styles.startBtn}
-                disabled={gemsFound === 0}
-                onClick={cashOut}
-              >
-                Cash Out · {formatAmount(currentWin)}
-              </button>
-            )}
-            {!playing && !ended && (
-              <button type="button" className={styles.startBtn} onClick={startRound}>
-                Start Game
-              </button>
-            )}
-            {ended && (
-              <button type="button" className={styles.startBtn} onClick={reset}>
-                Play Again
-              </button>
-            )}
+              {playing && (
+                <div className={styles.startBtnWrap}>
+                  <button
+                    type="button"
+                    className={styles.startBtn}
+                    disabled={gemsFound === 0}
+                    onClick={cashOut}
+                  >
+                    Cash Out · {formatAmount(currentWin)}
+                  </button>
+                </div>
+              )}
+              {!playing && !ended && (
+                <div className={styles.startBtnWrap}>
+                  <span className={styles.startBtnGlow} aria-hidden />
+                  <button type="button" className={styles.startBtn} onClick={startRound}>
+                    Start Game
+                  </button>
+                  <GuideHandIcon className={styles.guideHand} aria-hidden />
+                </div>
+              )}
+              {ended && (
+                <div className={styles.startBtnWrap}>
+                  <button type="button" className={styles.startBtn} onClick={reset}>
+                    Play Again
+                  </button>
+                </div>
+              )}
+            </div>
           </aside>
         </main>
+        </div>
       </div>
     </div>
   )

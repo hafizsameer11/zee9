@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 
 const STORAGE_KEY = 'zee9-demo-balance'
-const DEFAULT_BALANCE = 1250
+const DEFAULT_BALANCE = 3150
 
 type WalletContextValue = {
   balance: number

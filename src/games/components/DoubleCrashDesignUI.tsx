@@ -1,5 +1,5 @@
 import type { RefObject } from 'react'
-import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
 import {
   Diamond,
   History,
@@ -239,10 +239,11 @@ export default function DoubleCrashDesignUI({
 
   return (
     <div className={rootClassName} ref={viewportRef}>
-      <div
-        className={canvasClassName}
-        style={getDesignCanvasStyle(layout)}
-      >
+      <div style={getDesignScaleShellStyle(layout)}>
+        <div
+          className={canvasClassName}
+          style={getDesignCanvasStyle(layout)}
+        >
         <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-b border-solid flex px-3 justify-between items-center h-10">
             <div className="flex items-center gap-3">
@@ -433,6 +434,7 @@ export default function DoubleCrashDesignUI({
               <Send className="size-4 text-[#d4af37]" />
             </div>
           </footer>
+        </div>
         </div>
       </div>
     </div>

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import type { OxSymbol } from '../engines/fortuneOx'
 import { OX_SYMBOL_META } from '../engines/fortuneOx'
-import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
 import { OxMascot, OxSymbolCell } from './fortuneOxGfx'
 import './zee9Premium.tw.css'
 
@@ -78,10 +78,11 @@ export default function FortuneOxDesignUI({
 }: FortuneOxDesignUIProps) {
   return (
     <div className={rootClassName} ref={viewportRef}>
-      <div
-        className={canvasClassName}
-        style={getDesignCanvasStyle(layout)}
-      >
+      <div style={getDesignScaleShellStyle(layout)}>
+        <div
+          className={canvasClassName}
+          style={getDesignCanvasStyle(layout)}
+        >
         <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.05_25),oklch(0.145_0_0))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="bg-[#0a0603]/70 backdrop-blur-sm shrink-0 border-white/10 border-b border-solid flex px-8 justify-between items-center h-16">
             <button type="button" className="flex items-center gap-2 border-0 bg-transparent cursor-pointer p-0" onClick={onHome}>
@@ -311,6 +312,7 @@ export default function FortuneOxDesignUI({
               <Send className="size-4 text-[#a1a1a1]" />
             </div>
           </footer>
+        </div>
         </div>
       </div>
     </div>

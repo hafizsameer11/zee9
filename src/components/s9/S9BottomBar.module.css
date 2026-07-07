@@ -1,38 +1,45 @@
 .bar {
   display: flex;
-  align-items: center;
-  padding: 3px 8px 5px;
-  min-height: 52px;
-  background: linear-gradient(0deg, #0a0303 0%, #120505 60%, #1a0808 100%);
-  border-top: 2px solid transparent;
-  border-image: linear-gradient(90deg, transparent, var(--zee-gold-dark), var(--zee-gold), var(--zee-gold-dark), transparent) 1;
+  align-items: flex-end;
+  padding: 4px 8px 6px;
+  min-height: 58px;
+  background: linear-gradient(0deg, #080604 0%, #14100c 55%, #1a1410 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.4);
   flex-shrink: 0;
-  gap: 6px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+  gap: 8px;
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45), 0 -1px 0 rgba(255, 224, 130, 0.06) inset;
 }
 
 .refer {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  background: linear-gradient(180deg, var(--zee-red-glow) 0%, var(--zee-red) 55%, #8b0000 100%);
-  border: 2px solid var(--zee-gold);
-  box-shadow: var(--zee-red-glow-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  color: #fff;
+  gap: 6px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 22px;
+  background: var(--zee-gold-btn);
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  box-shadow: var(--zee-gold-glow-strong), 0 3px 10px rgba(0, 0, 0, 0.45);
+  color: #1a1008;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 900;
   flex-shrink: 0;
   position: relative;
+  overflow: hidden;
+  animation: s9GlowPulse 2.4s ease-in-out infinite;
 }
 
-.coinPile {
+.referGlow {
   position: absolute;
-  right: -2px;
-  bottom: -4px;
-  font-size: 12px;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: s9GoldShimmer 3s linear infinite;
+  pointer-events: none;
 }
 
 .features {
@@ -42,14 +49,14 @@
   flex: 1;
   width: 100%;
   min-width: 0;
-  padding: 0 4px;
+  padding: 0 2px 2px;
 }
 
 .feature {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: 2px;
   flex: 1;
   min-width: 0;
 }
@@ -60,39 +67,53 @@
   flex-shrink: 0;
 }
 
-.featureIcon {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #2d0f0f, #0a0303);
-  border: 2px solid var(--zee-gold-dark);
+.featureArt {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 0 8px rgba(232, 197, 71, 0.12);
+  animation: s9FloatSlow 3s ease-in-out infinite;
 }
+
+.anim_wheel svg,
+.anim_wheel .sprite {
+  animation: s9Spin 10s linear infinite;
+}
+
+.anim_betWheel {
+  animation: s9Float 2.4s ease-in-out infinite;
+}
+
+.anim_daily {
+  animation: s9Float 2.2s ease-in-out infinite;
+}
+
+.anim_recharge {
+  animation: s9TreasureGlow 2.4s ease-in-out infinite, s9FloatSlow 3s ease-in-out infinite;
+}
+
+.anim_cashback {
+  animation: s9FloatSlow 2.8s ease-in-out infinite;
+}
+
+.feature:nth-child(1) .featureArt { animation-delay: 0s; }
+.feature:nth-child(2) .featureArt { animation-delay: 0.15s; }
+.feature:nth-child(3) .featureArt { animation-delay: 0.3s; }
+.feature:nth-child(4) .featureArt { animation-delay: 0.45s; }
+.feature:nth-child(5) .featureArt { animation-delay: 0.6s; }
 
 .featureLabel {
   font-size: 7px;
   font-weight: 700;
-  color: var(--zee-muted);
-  margin-top: 1px;
-}
-
-.featureSub {
-  font-size: 6px;
-  color: var(--zee-red-glow);
-  font-weight: 800;
+  color: var(--zee-gold-light);
+  text-shadow: 0 0 4px rgba(240, 192, 64, 0.2);
+  line-height: 1.1;
+  text-align: center;
 }
 
 .featureDot {
   position: absolute;
-  top: -3px;
-  right: -5px;
+  top: 0;
+  right: -2px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -104,50 +125,63 @@
   align-items: center;
   justify-content: center;
   border: 1px solid #fff;
-  box-shadow: 0 0 6px rgba(229, 57, 53, 0.7);
-}
-
-.right {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.upArrow {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px solid var(--zee-gold-dark);
-  color: var(--zee-gold);
-  font-size: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  animation: s9DotPing 1.4s ease-in-out infinite;
+  z-index: 2;
 }
 
 .addCash {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  padding: 4px 12px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--zee-gold-light) 0%, var(--zee-gold-dark) 55%, #8b6914 100%);
-  border: 2px solid #fff;
-  box-shadow:
-    var(--zee-gold-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  color: #1a0505;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 22px;
+  background: var(--zee-gold-btn);
+  border: 1.5px solid #fff;
+  box-shadow: var(--zee-gold-glow-strong), 0 3px 10px rgba(0, 0, 0, 0.45);
+  color: #1a1008;
   position: relative;
-  min-width: 72px;
+  flex-shrink: 0;
+  overflow: hidden;
+  animation: s9GlowPulse 2s ease-in-out infinite;
 }
 
-.addCash span:not(.cashDot) {
-  font-size: 9px;
+.addCashShine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: s9GoldShimmer 2.5s linear infinite;
+  pointer-events: none;
+}
+
+.addPlus {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff, #ffe082);
+  border: 1px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
   font-weight: 900;
-  letter-spacing: 0.3px;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+  line-height: 1;
+  color: #1a1008;
+  flex-shrink: 0;
+}
+
+.addCashText {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .cashDot {
@@ -165,34 +199,26 @@
   align-items: center;
   justify-content: center;
   border: 1px solid #fff;
+  animation: s9DotPing 1.2s ease-in-out infinite;
+  z-index: 2;
 }
 
 @media (hover: none) and (pointer: coarse), (max-width: 920px) {
   .bar {
-    min-height: 58px;
-    padding: 4px 10px 6px;
+    min-height: 64px;
+    padding: 5px 10px 7px;
   }
 
   .refer {
     font-size: 11px;
-    padding: 7px 14px;
-  }
-
-  .featureIcon {
-    width: 34px;
-    height: 34px;
-    font-size: 16px;
+    padding: 9px 16px 9px 12px;
   }
 
   .featureLabel {
     font-size: 8px;
   }
 
-  .featureSub {
-    font-size: 7px;
-  }
-
-  .addCash span:not(.cashDot) {
-    font-size: 10px;
+  .addCashText {
+    font-size: 11px;
   }
 }

@@ -1,0 +1,531 @@
+.root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #0d0804;
+}
+
+.canvas {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform-origin: top left;
+  will-change: transform;
+}
+
+/* ── Shared screen shell (896×414 design canvas) ── */
+.fgScreen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0a0604;
+  color: #fff;
+}
+
+/* ── Header ── */
+.fgHeader {
+  flex-shrink: 0;
+  height: 36px;
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.25));
+  border-bottom: 1px solid rgba(255, 215, 0, 0.12);
+  z-index: 5;
+}
+
+.fgBackBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ef5350, #b71c1c);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.fgBackIcon {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  margin-top: -1px;
+}
+
+.fgLogoWrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.fgLogoSprite {
+  display: block;
+  max-width: 100%;
+}
+
+.fgHeaderSpacer {
+  width: 40px;
+}
+
+.fgHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.fgWinMultLabel {
+  font-size: 9px;
+  font-weight: 800;
+  color: #f4d98a;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.fgAddBtn {
+  border: none;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(180deg, #ef5350, #b71c1c);
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+.fgMenuBtn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ef5350, #b71c1c);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Intro carousel ── */
+.fgIntroStage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+.fgIntroViewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.fgIntroStrip {
+  display: block;
+  width: 300%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left center;
+  transition: transform 0.35s ease;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fgIntroArrowL,
+.fgIntroArrowR {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.fgIntroArrowL {
+  left: 4px;
+}
+
+.fgIntroArrowR {
+  right: 4px;
+}
+
+.fgIntroFooter {
+  flex-shrink: 0;
+  padding: 6px 12px 8px;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.fgIntroHint {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff6d0;
+  text-align: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.fgIntroDots {
+  display: flex;
+  gap: 7px;
+}
+
+.fgDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.fgDotOn {
+  background: #ffd54f;
+  box-shadow: 0 0 6px rgba(255, 213, 79, 0.9);
+}
+
+.fgIntroActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.fgContinueBtn {
+  position: relative;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fgContinueLabel {
+  position: absolute;
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.fgSkipLabel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+}
+
+.fgSkipLabel input {
+  accent-color: #ffd54f;
+  width: 13px;
+  height: 13px;
+}
+
+/* ── Play main area ── */
+.fgMain {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fgMainBg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+.fgSlotArea {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  box-sizing: border-box;
+}
+
+.fgFrame {
+  position: relative;
+  height: 100%;
+  max-height: 100%;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.fgFrameImg {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fgFrameOverlay {
+  position: absolute;
+  inset: 0;
+}
+
+.fgReelGrid {
+  position: absolute;
+  left: 7.3%;
+  top: 13.2%;
+  width: 50.4%;
+  height: 65.3%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0;
+}
+
+.fgReelCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  padding: 1px;
+  box-sizing: border-box;
+}
+
+.fgMultBubble {
+  position: absolute;
+  left: 58.2%;
+  width: 12%;
+  height: 9.5%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.7);
+  background: radial-gradient(circle at 30% 25%, #5c6bc0, #1a237e);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.fgMultBubbleOn {
+  opacity: 1;
+  border-color: #ffd54f;
+  box-shadow: 0 0 10px rgba(255, 213, 79, 0.75);
+  transform: scale(1.08);
+  color: #fff;
+}
+
+.fgReelWin {
+  animation: fgWinFlash 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes fgWinFlash {
+  from {
+    filter: drop-shadow(0 0 4px rgba(255, 213, 79, 0.4));
+  }
+  to {
+    filter: drop-shadow(0 0 10px rgba(255, 213, 79, 0.9));
+  }
+}
+
+.fgReelSpin {
+  animation: fgCellBlur 0.08s linear infinite;
+}
+
+@keyframes fgCellBlur {
+  0% {
+    opacity: 0.7;
+    transform: translateY(-1px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(1px);
+  }
+  100% {
+    opacity: 0.7;
+    transform: translateY(-1px);
+  }
+}
+
+.fgWildBadge {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 900;
+  color: #ff1744;
+  text-shadow: 0 1px 0 #fff, 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.fgBigWin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid #ffd54f;
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffd54f;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ── Play footer ── */
+.fgFooter {
+  flex-shrink: 0;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  gap: 6px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.45));
+  border-top: 1px solid rgba(255, 215, 0, 0.1);
+  z-index: 5;
+}
+
+.fgFooterLeft,
+.fgFooterRight {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.fgIconBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.5);
+  color: #ffd54f;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fgFooterStats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fgStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.fgStatLabel {
+  font-size: 8px;
+  font-weight: 800;
+  color: #bdbdbd;
+  letter-spacing: 0.06em;
+}
+
+.fgStatValue {
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.fgBetRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fgBetBtn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: #2e7d32;
+  color: #fff;
+  font-weight: 900;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fgBetBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fgSpinBtn {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fgSpinGfx {
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.fgSpinText {
+  position: absolute;
+  font-size: 9px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  margin-top: 2px;
+}
+
+.fgSpinBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fgSpinBtn:not(:disabled):active {
+  transform: scale(0.94);
+}

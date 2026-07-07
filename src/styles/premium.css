@@ -1,24 +1,32 @@
-/* Zee9 premium palette — warm gold/amber ornate lobby (matches S9 gold theme) */
+/* Zee9 / Super9 lobby — warm casino black + metallic gold */
 :root {
-  --zee-black: #0b0803;
-  --zee-maroon: #1c1407;      /* deep gold-brown base */
-  --zee-maroon-mid: #2e2109;  /* panel / tile interior */
-  --zee-red: #c41e3a;
-  --zee-red-glow: #e53935;
-  --zee-gold: #e8c34a;
-  --zee-gold-light: #f7dc7a;
-  --zee-gold-dark: #8a6a1c;
+  --zee-black: #0a0806;
+  --zee-charcoal: #14100c;
+  --zee-charcoal-mid: #1c1610;
+  --zee-charcoal-light: #261e14;
+  --zee-panel: rgba(18, 14, 10, 0.97);
+  --zee-red: #e91e63;
+  --zee-red-glow: #ff4081;
+  --zee-red-deep: #c2185b;
+  --zee-gold: #f0c040;
+  --zee-gold-light: #ffe082;
+  --zee-gold-mid: #d4af37;
+  --zee-gold-dark: #b8860b;
+  --zee-gold-deep: #8a6a1c;
   --zee-gold-border: #d4af37;
-  --zee-cream: #f3e8cf;
-  --zee-muted: #b0925e;
-  --zee-panel: rgba(30, 21, 7, 0.88);
-  --zee-gold-glow: 0 0 12px rgba(232, 195, 74, 0.4);
-  --zee-red-glow-shadow: 0 0 14px rgba(196, 30, 58, 0.45);
-  --zee-tile-border: linear-gradient(145deg, #f7dc7a 0%, #d4af37 40%, #8a6a1c 100%);
-  /* Home / lobby background — warm gold-brown, shared by modals & full screens */
-  --zee-bg: linear-gradient(180deg, #241a08 0%, #191204 45%, #0d0902 100%);
+  --zee-cream: #f5f0e0;
+  --zee-muted: #9a8f7a;
+  --zee-text-dim: #7a7060;
+  --zee-gold-glow: 0 0 12px rgba(240, 192, 64, 0.4), 0 0 24px rgba(240, 192, 64, 0.15);
+  --zee-gold-glow-strong: 0 0 16px rgba(255, 224, 130, 0.55), 0 0 32px rgba(240, 192, 64, 0.25);
+  --zee-red-glow-shadow: 0 0 10px rgba(233, 30, 99, 0.4);
+  --zee-tile-border: linear-gradient(145deg, #ffe082 0%, #d4af37 45%, #8a6a1c 100%);
+  --zee-gold-btn: linear-gradient(180deg, #ffe082 0%, #f0c040 38%, #b8860b 72%, #8a6a1c 100%);
+  --zee-bg: #0c0a08;
   --zee-bg-glow:
-    radial-gradient(ellipse at 50% 0%, rgba(232, 195, 74, 0.12) 0%, transparent 55%),
-    radial-gradient(ellipse at 18% 28%, rgba(200, 150, 40, 0.07) 0%, transparent 50%),
-    radial-gradient(ellipse at 82% 78%, rgba(166, 124, 0, 0.07) 0%, transparent 45%);
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(240, 192, 64, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 40% 30% at 10% 90%, rgba(184, 134, 11, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 35% 25% at 90% 80%, rgba(255, 224, 130, 0.05) 0%, transparent 45%);
+  --zee-maroon: var(--zee-charcoal);
+  --zee-maroon-mid: var(--zee-charcoal-mid);
 }

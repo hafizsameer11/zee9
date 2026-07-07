@@ -29,6 +29,7 @@ export default function GamePlay() {
   if (isPlayableGame(gameId)) {
     return (
       <div className={styles.shell}>
+        {message && <div className={styles.toast}>{message}</div>}
         <GameComponent gameId={gameId} bet={bet} onMessage={setMessage} />
       </div>
     )

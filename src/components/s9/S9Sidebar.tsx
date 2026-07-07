@@ -13,12 +13,13 @@ export default function S9Sidebar({ active, onSelect }: Props) {
 
   return (
     <nav className={styles.sidebar}>
-      {items.map((item) => (
+      {items.map((item, index) => (
         <button
           key={item.id}
           type="button"
           className={`${styles.item} ${active === item.id ? styles.active : ''}`}
           onClick={() => onSelect(item.id)}
+          style={{ animationDelay: `${index * 0.12}s` }}
         >
           <span className={styles.iconWrap}>
             <SidebarIcon name={item.id} size={14} />

@@ -1,13 +1,12 @@
-/** Premium games with full UI — shown in the lobby for now. */
+/** Premium games with full S9-style UI — shown in the lobby. */
 export const DEVELOPED_GAME_IDS = new Set<string>([
-  'mines',
-  'aviator',
-  'teen-patti',
+  'fortune-gems',
+  'fortune-ox',
   'wingo-lottery',
   'wingo',
-  'double-crash',
+  'aviator',
   'crash',
-  'fortune-ox',
+  'mines',
   '7up-down',
 ])
 

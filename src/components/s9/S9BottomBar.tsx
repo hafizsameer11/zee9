@@ -1,76 +1,70 @@
-import { IconCart, IconShare } from './S9Icons'
+import S9AssetIcon from './S9AssetIcon'
+import S9CalendarIcon from './S9CalendarIcon'
+import { IconCart } from './S9Icons'
 import styles from './S9BottomBar.module.css'
 
 type Props = {
   onDeposit: () => void
   onWheel: () => void
   onRefer: () => void
-  onWelcome: () => void
-  onGrabBonus: () => void
+  onDailyBonus: () => void
   onBetWheel: () => void
-  onRebate: () => void
-  onScrollTop: () => void
+  onRecharge: () => void
+  onCashback: () => void
 }
 
 const FEATURES = [
-  { icon: '🎡', label: 'Wheel', key: 'wheel' as const },
-  { icon: '🎁', label: 'Welcome', sub: '2d 23h', key: 'welcome' as const },
-  { icon: '🧧', label: 'Grab Bonus', dot: true, key: 'grab' as const },
-  { icon: '🎯', label: 'Bet Wheel', key: 'betWheel' as const },
-  { icon: '🏺', label: 'Rebate', key: 'rebate' as const },
+  { key: 'wheel' as const, label: 'Wheel', icon: <S9AssetIcon name="wheel" size={44} />, anim: 'wheel' },
+  { key: 'daily' as const, label: 'Daily Bonus', icon: <S9CalendarIcon day="07" size={44} />, anim: 'daily' },
+  { key: 'betWheel' as const, label: 'Bet Bonus', icon: <S9AssetIcon name="betWheel" size={44} />, anim: 'betWheel' },
+  { key: 'recharge' as const, label: 'Recharge', icon: <S9AssetIcon name="recharge" size={44} />, dot: true, anim: 'recharge' },
+  { key: 'cashback' as const, label: 'Cashback', icon: <S9CalendarIcon day="30" size={44} />, anim: 'cashback' },
 ]
 
 export default function S9BottomBar({
   onDeposit,
   onWheel,
   onRefer,
-  onWelcome,
-  onGrabBonus,
+  onDailyBonus,
   onBetWheel,
-  onRebate,
-  onScrollTop,
+  onRecharge,
+  onCashback,
 }: Props) {
   const handlers = {
     wheel: onWheel,
-    welcome: onWelcome,
-    grab: onGrabBonus,
+    daily: onDailyBonus,
     betWheel: onBetWheel,
-    rebate: onRebate,
+    recharge: onRecharge,
+    cashback: onCashback,
   }
+
   return (
     <footer className={styles.bar}>
       <button type="button" className={styles.refer} onClick={onRefer}>
-        <IconShare size={14} />
-        <span>Refer&amp;Earn</span>
-        <span className={styles.coinPile}>🪙</span>
+        <S9AssetIcon name="referShare" size={20} />
+        <span>Refer &amp; Earn</span>
+        <span className={styles.referGlow} aria-hidden />
       </button>
 
       <div className={styles.features}>
-        {FEATURES.map((f) => (
-          <button
-            key={f.label}
-            type="button"
-            className={styles.feature}
-            onClick={handlers[f.key]}
-          >
+        {FEATURES.map(({ key, label, icon, dot, anim }) => (
+          <button key={key} type="button" className={styles.feature} onClick={handlers[key]}>
             <span className={styles.iconWrap}>
-              <span className={styles.featureIcon}>{f.icon}</span>
-              {f.dot && <span className={styles.featureDot}>1</span>}
+              <span className={`${styles.featureArt} ${styles[`anim_${anim}`]}`}>{icon}</span>
+              {dot && <span className={styles.featureDot}>1</span>}
             </span>
-            <span className={styles.featureLabel}>{f.label}</span>
-            {f.sub && <span className={styles.featureSub}>{f.sub}</span>}
+            <span className={styles.featureLabel}>{label}</span>
           </button>
         ))}
       </div>
 
-      <div className={styles.right}>
-        <button type="button" className={styles.upArrow} onClick={onScrollTop}>▲</button>
-        <button type="button" className={styles.addCash} onClick={onDeposit}>
-          <IconCart size={18} />
-          <span>ADD CASH</span>
-          <span className={styles.cashDot}>1</span>
-        </button>
-      </div>
+      <button type="button" className={styles.addCash} onClick={onDeposit}>
+        <span className={styles.addCashShine} aria-hidden />
+        <span className={styles.addPlus}>+</span>
+        <IconCart size={20} />
+        <span className={styles.addCashText}>ADD CASH</span>
+        <span className={styles.cashDot}>1</span>
+      </button>
     </footer>
   )
 }

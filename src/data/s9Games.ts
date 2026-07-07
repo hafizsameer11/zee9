@@ -1,6 +1,12 @@
 import { isDevelopedGame } from '../games/developedGames'
 
-export const DEMO_BALANCE = 1250
+export const DEMO_BALANCE = 3150
+
+export const S9_CURRENCY_SYMBOL = '₹'
+
+export function formatS9Amount(n: number) {
+  return `${S9_CURRENCY_SYMBOL}${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+}
 
 export type S9Category = 'hot' | 'love' | 'games' | 'slot' | 'live' | 'card' | 'sports' | 'all'
 
@@ -25,14 +31,13 @@ export type CategoryConfig = {
 }
 
 export const SIDEBAR_ITEMS: { id: S9Category; label: string }[] = [
-  { id: 'hot', label: 'HOT' },
-  { id: 'love', label: 'LOVE' },
+  { id: 'love', label: 'LOBBY' },
   { id: 'games', label: 'GAMES' },
   { id: 'slot', label: 'SLOT' },
   { id: 'live', label: 'LIVE' },
-  { id: 'card', label: 'CARD' },
-  { id: 'sports', label: 'SPORTS' },
-  { id: 'all', label: 'ALL' },
+  { id: 'card', label: 'EVENTS' },
+  { id: 'sports', label: 'RANKING' },
+  { id: 'all', label: 'MORE' },
 ]
 
 export const CATEGORY_CONFIG: Record<S9Category, CategoryConfig> = {
@@ -96,11 +101,12 @@ export const S9_GAMES: S9Game[] = [
   // HOT
   { id: 'mahjong-ways-2', name: 'Mahjong Ways 2', badge: 'hot', categories: ['hot', 'slot', 'all'], emoji: '🀄', thumbBg: 'linear-gradient(145deg,#2e7d32,#1b5e20,#0d3010)', barColor: '#2e7d32' },
   { id: 'pinata-wins', name: 'Pinata Wins', badge: 'new', categories: ['hot', 'love', 'slot', 'all'], emoji: '💃', thumbBg: 'linear-gradient(145deg,#ff6b35,#c0392b,#8e44ad)', barColor: '#e67e22' },
-  { id: 'wingo-lottery', name: 'WINGO LOTTERY', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '🎯', thumbBg: 'linear-gradient(145deg,#ff5722,#ff9800,#ffeb3b)', barColor: '#e65100' },
+  { id: 'wingo-lottery', name: 'WINZO LOTTERY', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '🎯', thumbBg: 'linear-gradient(145deg,#ff5722,#ff9800,#ffeb3b)', barColor: '#e65100' },
   { id: 'teen-patti', name: 'TEEN PATTI', badge: 'hot', categories: ['hot', 'card', 'live', 'all'], emoji: '🂡', thumbBg: 'linear-gradient(145deg,#1b5e20,#2e7d32,#1a1a1a)', barColor: '#2e7d32' },
   { id: 'mines', name: 'MINES', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '💣', thumbBg: 'linear-gradient(145deg,#37474f,#263238,#000)', barColor: '#455a64' },
   { id: 'aviator', name: 'AVIATOR', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '✈️', thumbBg: 'linear-gradient(145deg,#e53935,#b71c1c,#1a1a1a)', barColor: '#c62828' },
   { id: 'fortune-ox', name: 'Fortune Ox', badge: 'new', categories: ['hot', 'slot', 'all'], emoji: '🐂', thumbBg: 'linear-gradient(145deg,#ef5350,#c62828,#b71c1c)', barColor: '#2980b9' },
+  { id: 'fortune-gems', name: 'Fortune Gems', badge: 'hot', categories: ['hot', 'slot', 'all'], emoji: '💎', thumbBg: 'linear-gradient(145deg,#ffd54f,#ff8f00,#e65100)', barColor: '#f57c00' },
   { id: 'crazy777', name: 'Crazy777', categories: ['hot', 'slot', 'all'], emoji: '7️⃣', thumbBg: 'linear-gradient(145deg,#ffeb3b,#ff9800,#e65100)', barColor: '#27ae60' },
   { id: 'double-crash', name: 'DOUBLE CRASH', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '🚀', thumbBg: 'linear-gradient(145deg,#e91e8c,#9c27b0,#673ab7)', barColor: '#ad1457' },
   { id: 'super-ace', name: 'Super Ace', categories: ['hot', 'slot', 'all'], emoji: '👑', thumbBg: 'linear-gradient(145deg,#ffd54f,#ff8f00,#e65100)', barColor: '#f39c12' },
@@ -110,7 +116,7 @@ export const S9_GAMES: S9Game[] = [
   { id: 'fortune-dragon', name: 'Fortune Dragon', badge: 'new', categories: ['love', 'slot', 'all'], emoji: '🐉', thumbBg: 'linear-gradient(145deg,#ffd700,#ff6f00,#bf360c)', barColor: '#e65100' },
   { id: 'fruit-party', name: 'Fruit Party', categories: ['love', 'slot', 'all'], emoji: '🍒', thumbBg: 'linear-gradient(145deg,#e91e63,#f06292,#fce4ec)', barColor: '#e91e8c' },
   { id: 'wild-bounty', name: 'Wild Bounty Showdown', categories: ['love', 'games', 'all'], emoji: '🤠', thumbBg: 'linear-gradient(145deg,#d84315,#bf360c,#4e342e)', barColor: '#d35400' },
-  { id: 'treasures-aztec', name: 'Treasures of Aztec', categories: ['love', 'slot', 'all'], emoji: '👸', thumbBg: 'linear-gradient(145deg,#6a1b9a,#4a148c,#311b92)', barColor: '#8e24aa' },
+  { id: 'treasures-aztec', name: 'TREASURES OF AZTEC', categories: ['love', 'slot', 'all'], emoji: '👸', thumbBg: 'linear-gradient(145deg,#6a1b9a,#4a148c,#311b92)', barColor: '#8e24aa' },
 
   // GAMES
   { id: 'wingo', name: 'WinGo', badge: 'hot', categories: ['games', 'all'], emoji: '🎱', thumbBg: 'linear-gradient(145deg,#e53935,#1e88e5,#43a047)', barColor: '#c0392b' },
@@ -139,7 +145,7 @@ export const S9_GAMES: S9Game[] = [
   { id: 'texas', name: 'Texas Cowboys', categories: ['card', 'all'], emoji: '🤠', thumbBg: 'linear-gradient(145deg,#795548,#5d4037,#3e2723)', barColor: '#6d4c41' },
 
   // SPORTS
-  { id: 'cricket', name: '9W Cricket', badge: 'live', categories: ['sports', 'all'], emoji: '🏏', thumbBg: 'linear-gradient(145deg,#1565c0,#0d47a1,#1b5e20)', barColor: '#1565c0' },
+  { id: 'cricket', name: '9W CRICKET', badge: 'live', categories: ['sports', 'all'], emoji: '🏏', thumbBg: 'linear-gradient(145deg,#1565c0,#0d47a1,#1b5e20)', barColor: '#1565c0' },
   { id: 'cricket-battle', name: 'Cricket Battle', categories: ['sports', 'all'], emoji: '🏆', thumbBg: 'linear-gradient(145deg,#1b5e20,#33691e,#1b5e20)', barColor: '#2e7d32' },
   { id: 'football', name: 'Football Pro', categories: ['sports', 'all'], emoji: '⚽', thumbBg: 'linear-gradient(145deg,#1565c0,#0d47a1,#01579b)', barColor: '#1976d2' },
 
@@ -162,8 +168,41 @@ export function getDevelopedSidebarCategories(): typeof SIDEBAR_ITEMS {
   )
 }
 
+export const LOBBY_FEATURED_GAME_IDS = [
+  'fortune-gems',
+  'fortune-ox',
+  'wingo-lottery',
+  'aviator',
+  'crash',
+  'mines',
+  '7up-down',
+  'wingo',
+] as const
+
+export const REGISTER_BONUS_TIERS = [
+  { deposit: '₹100', cashback: '₹50', maxClaim: '₹50' },
+  { deposit: '₹500', cashback: '₹300', maxClaim: '₹300' },
+  { deposit: '₹1000', cashback: '₹700', maxClaim: '₹700' },
+  { deposit: '₹5000', cashback: '₹4000', maxClaim: '₹4000' },
+]
+
+export const DEMO_PLAYER = {
+  name: 'Player_289005',
+  vipLevel: 5,
+  vipProgress: 8500,
+  vipTarget: 12000,
+}
+
+export const PROMO_LEVEL_BONUS = { current: 3777, max: 3777 }
+
+export function getLobbyFeaturedGames(): S9Game[] {
+  return LOBBY_FEATURED_GAME_IDS.map(
+    (id) => S9_GAMES.find((g) => g.id === id)!,
+  ).filter(Boolean)
+}
+
 export const TICKER_MESSAGES =
-  'Player User_G23363 won 22,344 in AndarBahar game, congratulations on his victory!'
+  'Player Zee9_King won 24,280 in Aviator game, congratulations! Player User_G23363 won 22,344 in AndarBahar game, congratulations on his victory!'
 
 const GAME_THUMBS: Partial<Record<string, string>> = {
   'mahjong-ways-2': '/games/mahjong-ways-2.png',
@@ -173,6 +212,7 @@ const GAME_THUMBS: Partial<Record<string, string>> = {
   mines: '/games/mines.png',
   aviator: '/games/aviator.png',
   'fortune-ox': '/games/fortune-ox.png',
+  'fortune-gems': '/games/fortune-gems/bg-intro.png',
   crazy777: '/games/crazy777.png',
   'double-crash': '/games/double-crash.png',
   'super-ace': '/games/super-ace.png',

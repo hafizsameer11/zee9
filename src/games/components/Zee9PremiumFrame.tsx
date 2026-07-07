@@ -10,7 +10,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useWallet } from '../../context/WalletContext'
-import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
 import './zee9Premium.tw.css'
 
 const LIVE_WINS = [
@@ -60,10 +60,11 @@ export default function Zee9PremiumFrame({
 
   return (
     <div className={rootClassName} ref={viewportRef}>
-      <div
-        className={canvasClassName}
-        style={getDesignCanvasStyle(layout)}
-      >
+      <div style={getDesignScaleShellStyle(layout)}>
+        <div
+          className={canvasClassName}
+          style={getDesignCanvasStyle(layout)}
+        >
         <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="shrink-0 bg-[#0a0603]/80 backdrop-blur-md border-white/10 border-b border-solid flex px-8 justify-between items-center h-16">
             <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 cursor-pointer" onClick={() => navigate('/home')}>
@@ -124,6 +125,7 @@ export default function Zee9PremiumFrame({
               </div>
             </div>
           </footer>
+        </div>
         </div>
       </div>
     </div>

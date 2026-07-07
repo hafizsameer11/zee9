@@ -1,43 +1,58 @@
-import type { RefObject } from 'react'
-import {
-  BookOpen,
-  CheckSquare,
-  ChevronDown,
-  ChevronUp,
-  Diamond,
-  Dices,
-  History,
-  Lock,
-  MessageCircle,
-  Radio,
-  RefreshCw,
-  Send,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  Trophy,
-  Wallet,
-} from 'lucide-react'
+import { useCallback, useState, type CSSProperties, type RefObject } from 'react'
+import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
 import type { UpDownChoice } from '../engines/dice'
-import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
-import { IllustratedDice, choiceLabel, sumHistoryClass } from './upDownGfx'
-import './upDown.tw.css'
+import styles from './upDownClassic.module.css'
+import {
+  CHIP_SELECTOR_VALUES,
+  historySpriteForSum,
+  UP_DOWN_HUD,
+  UP_DOWN_IMG,
+  UP_DOWN_SPRITES,
+} from './upDownAssets'
+import { AtlasSprite, SceneImage } from './upDownSprite'
+import { zoneForSum } from './upDownClassicGfx'
+import {
+  CoinIcon,
+  SelectorChip,
+  TableChipImg,
+  type ChipColor,
+} from './upDownChips'
 
-const STAKES = [50, 100, 500, 1000]
-
-type LastResult = { won: boolean; sum: number; win: number; pick: UpDownChoice }
-
-type LiveFeedItem = {
-  initials: string
-  name: string
-  bet: number
-  pick: string
-  status: 'won' | 'lost' | 'rolling'
+export type TableChip = {
+  id: string
+  value: number
+  color: ChipColor
+  x: number
+  y: number
+  rot: number
+  zone: UpDownChoice
 }
 
-function formatPkr(n: number) {
-  return n.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+export type FlyingChip = {
+  id: string
+  value: number
+  color: ChipColor
+  fromX: number
+  fromY: number
+  toX: number
+  toY: number
+  delay?: number
+}
+
+export type AiPlayer = {
+  id: string
+  name: string
+  balance: number
+  badge?: 'WINNER' | 'LUCKY'
+  side: 'left' | 'right'
+  avatar: string
+}
+
+export type WinFloat = {
+  id: string
+  text: string
+  x: number
+  y: number
 }
 
 export type UpDownDesignUIProps = {
@@ -46,29 +61,127 @@ export type UpDownDesignUIProps = {
   rootClassName: string
   canvasClassName: string
   balance: number
+  playerName: string
+  playerAvatar: string
   betAmount: number
-  choice: UpDownChoice | null
-  dice: [number, number] | null
-  rolling: boolean
-  sum: number | null
+  phase: 'betting' | 'rolling' | 'result'
+  countdown: number
+  roundSec: number
   history: number[]
-  roundNo: number
-  lastResult: LastResult | null
-  liveFeed: LiveFeedItem[]
-  liveWins: { name: string; amount: number; pick: string }[]
-  potentialWin: number
-  onChoice: (c: UpDownChoice) => void
+  zoneTotals: Record<UpDownChoice, number>
+  tableChips: TableChip[]
+  flyingChips: FlyingChip[]
+  winFloats: WinFloat[]
+  aiPlayers: AiPlayer[]
+  lastResult: { sum: number; won: boolean; win: number } | null
+  winningZone: UpDownChoice | null
   onBetAmount: (n: number) => void
-  onRoll: () => void
+  onZoneBet: (zone: UpDownChoice) => void
+  onRebet: () => void
   onHome: () => void
+  registerSeatRef: (playerId: string, el: HTMLDivElement | null) => void
+  registerZoneRef: (zone: UpDownChoice, el: HTMLDivElement | null) => void
+  registerSelfRef: (el: HTMLDivElement | null) => void
 }
 
-function zoneButtonClass(selected: boolean, zone: UpDownChoice): string {
-  const base = 'group rounded-2xl bg-neutral-800/70 border-2 border-solid flex p-4 flex-col items-center gap-2 cursor-pointer transition-all border-transparent'
-  if (!selected) return base
-  if (zone === 'up') return `${base} ring-2 ring-[#ffeb3b] shadow-[0_0_20px_rgba(255,235,59,0.3)]`
-  if (zone === 'seven') return `${base} ring-2 ring-[#fbc02d] shadow-[0_0_20px_rgba(251,192,45,0.35)]`
-  return `${base} ring-2 ring-[#f57f17] shadow-[0_0_20px_rgba(245,127,23,0.35)]`
+const ZONES: {
+  id: UpDownChoice
+  mult: string
+  range: string
+  bar: string
+}[] = [
+  { id: 'down', mult: 'X2', range: '2–6', bar: styles.zoneBetBarDown! },
+  { id: 'seven', mult: 'X5', range: '7', bar: styles.zoneBetBarSeven! },
+  { id: 'up', mult: 'X2', range: '8–12', bar: styles.zoneBetBarUp! },
+]
+
+const ZONE_HEAD_CLASS: Record<UpDownChoice, string> = {
+  down: styles.zoneHead_down!,
+  seven: styles.zoneHead_seven!,
+  up: styles.zoneHead_up!,
+}
+
+const ZONE_PLAY_CLASS: Record<UpDownChoice, string> = {
+  down: styles.zonePlay_down!,
+  seven: styles.zonePlay_seven!,
+  up: styles.zonePlay_up!,
+}
+
+function formatNum(n: number) {
+  return n.toLocaleString('en-PK', { maximumFractionDigits: 0 })
+}
+
+function HudImgBtn({
+  src,
+  alt,
+  className,
+  onClick,
+}: {
+  src: string
+  alt: string
+  className?: string
+  onClick?: () => void
+}) {
+  return (
+    <button type="button" className={`${styles.hudIconBtn} ${className ?? ''}`} onClick={onClick} aria-label={alt}>
+      <img src={src} alt="" draggable={false} />
+    </button>
+  )
+}
+
+function Avatar({ src, name, className }: { src: string; name: string; className: string }) {
+  const [failed, setFailed] = useState(false)
+  const initials = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?'
+
+  if (failed) {
+    return (
+      <span className={`${styles.avatarFallback} ${className}`} aria-hidden>
+        {initials}
+      </span>
+    )
+  }
+
+  return <img src={src} className={className} alt="" onError={() => setFailed(true)} />
+}
+
+function TimerRing({ countdown, max }: { countdown: number; max: number }) {
+  const r = 22
+  const c = 2 * Math.PI * r
+  const p = Math.max(0, Math.min(1, countdown / max))
+  return (
+    <svg className={styles.timerRingSvg} viewBox="0 0 52 52" aria-hidden>
+      <circle cx="26" cy="26" r={r} fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="4" />
+      <circle
+        cx="26"
+        cy="26"
+        r={r}
+        fill="none"
+        stroke="#f5c518"
+        strokeWidth="4"
+        strokeLinecap="round"
+        strokeDasharray={`${c * p} ${c}`}
+      />
+    </svg>
+  )
+}
+
+function FlyingChipView({ color, fromX, fromY, toX, toY, delay }: FlyingChip) {
+  return (
+    <div
+      className={styles.flyingChip}
+      style={
+        {
+          '--from-x': `${fromX}px`,
+          '--from-y': `${fromY}px`,
+          '--to-x': `${toX}px`,
+          '--to-y': `${toY}px`,
+          '--delay': `${delay ?? 0}ms`,
+        } as CSSProperties
+      }
+    >
+      <TableChipImg color={color} size={26} />
+    </div>
+  )
 }
 
 export default function UpDownDesignUI({
@@ -77,278 +190,244 @@ export default function UpDownDesignUI({
   rootClassName,
   canvasClassName,
   balance,
+  playerName,
+  playerAvatar,
   betAmount,
-  choice,
-  dice,
-  rolling,
-  sum,
+  phase,
+  countdown,
+  roundSec,
   history,
-  roundNo,
+  zoneTotals,
+  tableChips,
+  flyingChips,
+  winFloats,
+  aiPlayers,
   lastResult,
-  liveFeed,
-  liveWins,
-  potentialWin,
-  onChoice,
+  winningZone,
   onBetAmount,
-  onRoll,
+  onZoneBet,
+  onRebet,
   onHome,
+  registerSeatRef,
+  registerZoneRef,
+  registerSelfRef,
 }: UpDownDesignUIProps) {
-  const d1 = rolling ? '?' : (dice?.[0] ?? '?')
-  const d2 = rolling ? '?' : (dice?.[1] ?? '?')
-  const displaySum = sum ?? (lastResult?.sum ?? 8)
+  const canBet = phase === 'betting'
+  const leftPlayers = aiPlayers.filter((p) => p.side === 'left')
+  const rightPlayers = aiPlayers.filter((p) => p.side === 'right')
+
+  const chipsForZone = useCallback(
+    (zone: UpDownChoice) => tableChips.filter((c) => c.zone === zone),
+    [tableChips],
+  )
 
   return (
     <div className={rootClassName} ref={viewportRef}>
-      <div
-        className={canvasClassName}
-        style={getDesignCanvasStyle(layout)}
-      >
-        <div className="game-ui bg-[radial-gradient(circle_at_50%_-10%,oklch(0.28_0.06_40),oklch(0.145_0.02_30))] min-h-full text-neutral-50 flex flex-col w-full h-full overflow-hidden">
-          <header className="border-white/10 border-b border-solid flex px-8 py-4 justify-between items-center shrink-0 bg-[#0a0603]/60 backdrop-blur-sm">
-            <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
-              <div className="size-9 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] rotate-45 shadow-[0_0_16px_rgba(212,175,55,0.4)] rounded-lg flex justify-center items-center">
-                <Diamond className="size-4 -rotate-45 text-[#0a0603]" />
-              </div>
-              <span className="font-extrabold text-2xl tracking-tight bg-gradient-to-r from-[#f4d98a] to-[#d4af37] bg-clip-text text-transparent">
-                Zee9
-              </span>
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-r from-[#f4d98a] to-[#d4af37] shadow-[0_0_16px_rgba(212,175,55,0.4)] font-bold rounded-full text-[#0a0603] text-sm flex px-4 py-2 items-center gap-2">
-                <Wallet className="size-4" />
-                PKR {formatPkr(balance)}
-              </div>
-              <button type="button" className="size-9 rounded-full bg-neutral-800 text-[#a1a1a1] border-0 flex justify-center items-center">
-                <History className="size-4" />
-              </button>
-              <button type="button" className="size-9 rounded-full bg-neutral-800 text-[#a1a1a1] border-0 flex justify-center items-center">
-                <Settings className="size-4" />
-              </button>
-            </div>
-          </header>
+      <div style={getDesignScaleShellStyle(layout)}>
+        <div className={canvasClassName} style={getDesignCanvasStyle(layout)}>
+          <div className={styles.scene} data-updown-play-area>
+            <SceneImage src={UP_DOWN_IMG.roomBg} className={styles.roomBg} alt="" />
+            <div className={styles.roomVignette} aria-hidden />
 
-          <div className="game-body min-h-0 flex flex-1">
-            <aside className="game-sidebar shrink-0 flex flex-col">
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-3">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <BookOpen className="size-4 text-[#f57f17]" /> How to Play
+            {/* ── Top HUD ── */}
+            <header className={styles.hudTop}>
+              <div className={styles.hudTopLeft}>
+                <HudImgBtn src={UP_DOWN_HUD.back} alt="Back" onClick={onHome} />
+                <img src={UP_DOWN_HUD.promo} className={styles.hudPromo} alt="Play Game Rs10" draggable={false} />
+              </div>
+
+              <div className={styles.hudTopCenter}>
+                <div className={styles.timerDock}>
+                  <TimerRing countdown={countdown} max={roundSec} />
+                  <img src={UP_DOWN_HUD.shaker} className={styles.hudShakerImg} alt="" draggable={false} />
+                  <span className={styles.timerNum}>{countdown}</span>
                 </div>
-                {[
-                  'Pick 7 UP, 7 DOWN or Lucky 7 and set your stake.',
-                  'Roll two dice — the sum decides the result.',
-                  'Match your zone to win the payout.',
-                ].map((t, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="size-5 shrink-0 font-bold rounded-full bg-neutral-800 text-[11px] flex justify-center items-center">{i + 1}</span>
-                    <span className="text-[#a1a1a1] text-xs">{t}</span>
+              </div>
+
+              <div className={styles.hudTopRight}>
+                <HudImgBtn src={UP_DOWN_HUD.add} alt="Add chips" />
+                <HudImgBtn src={UP_DOWN_HUD.menu} alt="Menu" />
+              </div>
+            </header>
+
+            <div className={styles.tableWrap}>
+              <div className={`${styles.playerDock} ${styles.playerDockLeft}`}>
+                {leftPlayers.map((p) => (
+                  <div key={p.id} className={styles.playerSeat} ref={(el) => registerSeatRef(p.id, el)}>
+                    {p.badge === 'WINNER' && (
+                      <AtlasSprite def={UP_DOWN_SPRITES.winnerBadge} className={styles.playerBadge} scale={1} alt="" />
+                    )}
+                    <Avatar src={p.avatar} name={p.name} className={styles.playerFace} />
+                    <span className={styles.playerName}>{p.name}</span>
+                    <span className={styles.playerBal}>
+                      <CoinIcon size={11} />
+                      {formatNum(p.balance)}
+                    </span>
                   </div>
                 ))}
               </div>
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
-                <div className="flex items-center gap-2 font-bold text-sm mb-1">
-                  <Target className="size-4 text-[#f57f17]" /> Bet Zones
-                </div>
-                {[
-                  { icon: ChevronUp, label: '7 UP · 8–12', mult: '2×', color: 'text-[#fbc02d]' },
-                  { icon: ChevronDown, label: '7 DOWN · 2–6', mult: '2×', color: 'text-[#f57f17]' },
-                  { icon: Sparkles, label: 'Lucky 7 · exact', mult: '5×', color: 'text-[#ffeb3b]' },
-                ].map((row) => (
-                  <div key={row.label} className="rounded-lg bg-neutral-800/60 flex px-3 py-2 justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <row.icon className={`size-4 ${row.color}`} />
-                      <span className="font-medium text-xs">{row.label}</span>
-                    </div>
-                    <span className={`font-bold text-xs ${row.color}`}>{row.mult}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <ShieldCheck className="size-4 text-[#f57f17]" /> Provably Fair
-                </div>
-                <div className="text-[#a1a1a1] text-xs flex items-center gap-2"><Lock className="size-3.5" /> Dice locked before roll</div>
-                <div className="text-[#a1a1a1] text-xs flex items-center gap-2"><CheckSquare className="size-3.5" /> Verifiable roll seed</div>
-                <div className="text-[#a1a1a1] text-xs flex items-center gap-2"><RefreshCw className="size-3.5" /> New round every 12s</div>
-              </div>
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl mt-auto flex flex-col gap-2">
-                <div className="text-xs flex justify-between">
-                  <span className="text-[#a1a1a1]">Your Win Rate</span>
-                  <span className="font-bold text-[#fbc02d]">57%</span>
-                </div>
-                <div className="rounded-full bg-neutral-800 h-1.5 overflow-hidden">
-                  <div className="w-[57%] bg-gradient-to-r from-[#f57f17] to-[#ffeb3b] rounded-full h-full" />
-                </div>
-              </div>
-            </aside>
 
-            <main className="game-main flex flex-col flex-1 min-h-0 min-w-0">
-              <div className="flex justify-between items-start shrink-0">
-                <div>
-                  <h1 className="bg-gradient-to-r from-[#ffeb3b] via-[#fbc02d] to-[#f57f17] bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(245,127,23,0.4)] font-extrabold text-5xl tracking-tight">
-                    7 UP DOWN
-                  </h1>
-                  <p className="text-[#a1a1a1] text-sm">Roll the dice — bet above, below or exactly 7</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`font-bold rounded-full text-xs flex px-3 py-1.5 items-center gap-2 ${rolling ? 'bg-[#ff6467]/20 text-[#ff6467]' : 'bg-[#1bd6a0]/15 text-[#1bd6a0]'}`}>
-                    <span className={`size-2 rounded-full ${rolling ? 'bg-[#ff6467] animate-pulse' : 'bg-[#1bd6a0]'}`} />
-                    {rolling ? 'ROLLING' : 'LIVE ROUND'}
-                  </span>
-                  <span className="font-medium rounded-full bg-neutral-800 text-[#a1a1a1] text-xs px-3 py-1.5"># Round {roundNo}</span>
-                </div>
-              </div>
+              <div className={styles.tableStage}>
+                <SceneImage src={UP_DOWN_IMG.table} className={styles.tableImg} alt="" />
+                <SceneImage src={UP_DOWN_IMG.zones} className={styles.zonesImg} alt="" />
 
-              <div className="game-main-inner bg-[radial-gradient(circle_at_50%_20%,oklch(0.26_0.05_50),oklch(0.19_0.02_35))] relative border border-white/10 rounded-2xl p-6 flex-1 min-h-0 flex flex-col justify-center items-center gap-6">
-                <div className="flex items-center gap-10">
-                  <IllustratedDice value={d1} rolling={rolling} tilt="left" />
-                  <IllustratedDice value={d2} rolling={rolling} tilt="right" />
-                </div>
-                <div className="flex flex-col items-center gap-3">
-                  <div className="relative size-40 bg-gradient-to-br from-[#ffeb3b] via-[#fbc02d] to-[#f57f17] shadow-[0_0_50px_rgba(255,235,59,0.55),inset_0_6px_16px_rgba(255,255,255,0.55),inset_0_-10px_20px_rgba(0,0,0,0.3)] rounded-full flex justify-center items-center">
-                    <div className="size-10 blur-md rounded-full bg-white/40 absolute left-8 top-5" aria-hidden />
-                    <span className="drop-shadow-sm font-black text-[#0a0603] text-7xl">{displaySum}</span>
+                <div className={styles.historyBar}>
+                  <div className={styles.historyTrack}>
+                    {history.slice(0, 14).map((h, i) => (
+                      <span key={`${h}-${i}`} className={styles.histItem}>
+                        <AtlasSprite def={historySpriteForSum(h)} scale={0.44} />
+                        <span className={styles.histNum}>{h}</span>
+                      </span>
+                    ))}
                   </div>
-                  {lastResult && !rolling && (
-                    <span
-                      className={`font-extrabold rounded-full text-sm px-5 py-2 ${
-                        lastResult.won
-                          ? 'bg-gradient-to-r from-[#fbc02d] to-[#f57f17] shadow-[0_0_20px_rgba(251,192,45,0.5)] text-[#0a0603]'
-                          : 'bg-[#c41e3a]/20 text-[#ff6467] border border-[#c41e3a]/40'
-                      }`}
+                  <AtlasSprite def={UP_DOWN_SPRITES.histNew} className={styles.histNew} scale={0.44} />
+                  <AtlasSprite def={UP_DOWN_SPRITES.histChart} className={styles.histChart} scale={0.4} />
+                </div>
+
+                <div className={styles.tableInner}>
+                  {ZONES.map((z) => (
+                    <div
+                      key={`head-${z.id}`}
+                      className={`${styles.zoneTotalCell} ${z.bar} ${ZONE_HEAD_CLASS[z.id]}`}
                     >
-                      {lastResult.won
-                        ? `WIN · ${choiceLabel(lastResult.pick)} · +PKR ${formatPkr(lastResult.win)}`
-                        : `LOSE · Sum ${lastResult.sum}`}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 shrink-0">
-                <button type="button" className={zoneButtonClass(choice === 'up', 'up')} onClick={() => onChoice('up')}>
-                  <div className="size-11 bg-gradient-to-br from-[#fbc02d] to-[#f57f17] shadow-[inset_0_2px_4px_rgba(255,255,255,0.5),0_4px_8px_rgba(0,0,0,0.3)] rounded-full flex justify-center items-center">
-                    <ChevronUp className="size-6 text-[#0a0603]" />
-                  </div>
-                  <span className="font-bold text-sm">7 UP</span>
-                  <span className="text-[#a1a1a1] text-xs">Sum 8–12 · 2×</span>
-                </button>
-                <button type="button" className={zoneButtonClass(choice === 'seven', 'seven')} onClick={() => onChoice('seven')}>
-                  <div className="size-11 bg-gradient-to-br from-[#ffeb3b] to-[#fbc02d] shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),0_4px_8px_rgba(0,0,0,0.3)] rounded-full flex justify-center items-center">
-                    <Sparkles className="size-5 text-[#0a0603]" />
-                  </div>
-                  <span className="font-bold text-sm">LUCKY 7</span>
-                  <span className="text-[#a1a1a1] text-xs">Exact 7 · 5×</span>
-                </button>
-                <button type="button" className={zoneButtonClass(choice === 'down', 'down')} onClick={() => onChoice('down')}>
-                  <div className="size-11 bg-gradient-to-br from-[#f57f17] to-[#c41e3a] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4),0_4px_8px_rgba(0,0,0,0.3)] rounded-full flex justify-center items-center">
-                    <ChevronDown className="size-6 text-white" />
-                  </div>
-                  <span className="font-bold text-sm">7 DOWN</span>
-                  <span className="text-[#a1a1a1] text-xs">Sum 2–6 · 2×</span>
-                </button>
-              </div>
-
-              <div className="flex items-center gap-4 shrink-0">
-                <span className="text-[#a1a1a1] text-xs mr-1">Stake</span>
-                {STAKES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    disabled={rolling}
-                    onClick={() => onBetAmount(s)}
-                    className={`font-medium rounded-lg text-sm px-4 py-2 border-0 cursor-pointer disabled:opacity-40 ${
-                      betAmount === s ? 'font-bold bg-neutral-200 text-neutral-900' : 'bg-neutral-800 text-neutral-50'
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  disabled={rolling || !choice}
-                  onClick={onRoll}
-                  className="bg-gradient-to-r from-[#ffeb3b] via-[#fbc02d] to-[#f57f17] shadow-[0_0_28px_rgba(251,192,45,0.5)] font-extrabold rounded-xl text-[#0a0603] text-base flex py-3.5 justify-center items-center flex-1 gap-2 border-0 cursor-pointer disabled:opacity-50"
-                >
-                  <Dices className="size-5" />
-                  ROLL · BET PKR {formatPkr(betAmount)}
-                </button>
-              </div>
-            </main>
-
-            <aside className="game-sidebar game-sidebar-wide shrink-0 flex flex-col">
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl">
-                <div className="flex items-center gap-2 font-bold text-sm mb-3">
-                  <History className="size-4 text-[#f57f17]" /> Round History
-                </div>
-                <div className="grid grid-cols-6 gap-2">
-                  {history.map((h, i) => (
-                    <span key={`${h}-${i}`} className={`aspect-square font-bold rounded-full text-xs flex justify-center items-center ${sumHistoryClass(h)}`}>
-                      {h}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex-1 flex flex-col gap-3 min-h-0">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <Radio className="size-4 text-[#f57f17]" /> Live Bets Feed
-                </div>
-                {liveFeed.map((row) => (
-                  <div key={row.name} className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <span className="size-8 font-bold rounded-full bg-neutral-800 text-[11px] flex justify-center items-center">{row.initials}</span>
-                      <div>
-                        <div className="font-medium text-xs">{row.name}</div>
-                        <div className="text-[#a1a1a1] text-[11px]">PKR {formatPkr(row.bet)} · {row.pick}</div>
+                      <div className={z.id === 'seven' ? styles.zoneNumsSeven : styles.zoneNums}>
+                        <span className={styles.zoneRange}>{z.range}</span>
+                        <span className={styles.zoneTotalAmt}>
+                          <CoinIcon size={10} />
+                          {formatNum(zoneTotals[z.id])}
+                        </span>
+                        {z.id === 'up' && zoneTotals.up >= zoneTotals.down && (
+                          <span className={styles.zoneStar}>★</span>
+                        )}
                       </div>
                     </div>
-                    <span
-                      className={`text-xs font-bold ${
-                        row.status === 'won' ? 'text-[#fbc02d]' : row.status === 'lost' ? 'text-[#ff6467]' : 'text-[#a1a1a1] font-medium'
-                      }`}
+                  ))}
+
+                  {ZONES.map((z) => (
+                    <button
+                      key={`bet-${z.id}`}
+                      type="button"
+                      className={`${styles.zoneBetBtn} ${ZONE_PLAY_CLASS[z.id]} ${winningZone === z.id ? styles.zoneColWin : ''}`}
+                      disabled={!canBet}
+                      onClick={() => onZoneBet(z.id)}
                     >
-                      {row.status === 'won' ? 'WON' : row.status === 'lost' ? 'lost' : 'rolling'}
+                      <div className={styles.zonePlayfield} ref={(el) => registerZoneRef(z.id, el)}>
+                        {chipsForZone(z.id).map((c) => (
+                          <TableChipImg
+                            key={c.id}
+                            color={c.color}
+                            size={22 + (c.value >= 500 ? 4 : c.value >= 100 ? 2 : 0)}
+                            className={styles.tableChip}
+                            style={{
+                              left: `${c.x}%`,
+                              top: `${c.y}%`,
+                              transform: `translate(-50%, -50%) rotate(${c.rot}deg)`,
+                            }}
+                          />
+                        ))}
+                        <span className={styles.zoneMult}>{z.mult}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {phase === 'result' && lastResult && (
+                  <div className={styles.resultVeil}>
+                    <div className={styles.resultCard}>
+                      <div className={styles.resultSum}>{lastResult.sum}</div>
+                      <div className={styles.resultZone}>
+                        {zoneForSum(lastResult.sum) === 'down'
+                          ? '2–6 DOWN'
+                          : zoneForSum(lastResult.sum) === 'up'
+                            ? '8–12 UP'
+                            : 'LUCKY 7'}
+                      </div>
+                      {lastResult.won ? (
+                        <div className={styles.resultWin}>+{formatNum(lastResult.win)}</div>
+                      ) : (
+                        <div className={styles.resultLose}>Better luck next round</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className={`${styles.playerDock} ${styles.playerDockRight}`}>
+                {rightPlayers.map((p) => (
+                  <div key={p.id} className={styles.playerSeat} ref={(el) => registerSeatRef(p.id, el)}>
+                    {p.badge === 'LUCKY' && (
+                      <AtlasSprite def={UP_DOWN_SPRITES.luckyBadge} className={styles.playerBadge} scale={1} alt="" />
+                    )}
+                    <Avatar src={p.avatar} name={p.name} className={styles.playerFace} />
+                    <span className={styles.playerName}>{p.name}</span>
+                    <span className={styles.playerBal}>
+                      <CoinIcon size={11} />
+                      {formatNum(p.balance)}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="game-panel bg-neutral-900/80 border border-white/10 rounded-xl flex flex-col gap-2">
-                <div className="text-sm flex justify-between">
-                  <span className="text-[#a1a1a1]">Total Stake</span>
-                  <span className="font-bold">PKR {formatPkr(choice ? betAmount : 0)}</span>
-                </div>
-                <div className="text-sm flex justify-between">
-                  <span className="text-[#a1a1a1]">Potential Win</span>
-                  <span className="font-bold text-[#fbc02d]">PKR {formatPkr(choice ? potentialWin : 0)}</span>
-                </div>
-              </div>
-            </aside>
-          </div>
+            </div>
 
-          <footer className="game-footer border-white/10 border-t border-solid flex px-8 py-3 justify-between items-center shrink-0 bg-[#0a0603]/60">
-            <div className="flex items-center gap-4 overflow-hidden">
-              <span className="shrink-0 font-bold text-[#fbc02d] text-xs flex items-center gap-2">
-                <Trophy className="size-4" /> LIVE WINS
-              </span>
-              <div className="text-xs flex items-center gap-4 overflow-hidden whitespace-nowrap text-[#a1a1a1]">
-                {liveWins.map((w, i) => (
-                  <span key={w.name}>
-                    {i > 0 && ' · '}
-                    <span className="font-bold text-neutral-50">{w.name}</span> won{' '}
-                    <span className="font-bold text-[#fbc02d]">PKR {formatPkr(w.amount)}</span> on {w.pick}
-                  </span>
-                ))}
-              </div>
+            <div className={styles.fxLayer}>
+              {flyingChips.map((fc) => (
+                <FlyingChipView key={fc.id} {...fc} />
+              ))}
+              {winFloats.map((wf) => (
+                <span key={wf.id} className={styles.winFloat} style={{ left: wf.x, top: wf.y }}>
+                  {wf.text}
+                </span>
+              ))}
             </div>
-            <div className="flex items-center gap-2 w-80 shrink-0">
-              <div className="rounded-full bg-neutral-800 flex px-4 py-2 items-center flex-1 gap-2">
-                <MessageCircle className="size-4 text-[#a1a1a1]" />
-                <input className="bg-transparent outline-none text-xs flex-1" placeholder="Type a message..." readOnly />
+
+            {/* ── Bottom HUD ── */}
+            <footer className={styles.hudBottom}>
+              <div className={styles.hudBottomLeft}>
+                <HudImgBtn src={UP_DOWN_HUD.social} alt="Social" />
+                <div className={styles.selfDock} ref={registerSelfRef}>
+                  <Avatar src={playerAvatar} name={playerName} className={styles.selfFace} />
+                  <div className={styles.selfMeta}>
+                    <span className={styles.selfName}>{playerName}</span>
+                    <span className={styles.selfBal}>
+                      <CoinIcon size={12} />
+                      {formatNum(balance)}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <button type="button" className="size-9 rounded-full bg-neutral-200 text-neutral-900 border-0 flex justify-center items-center">
-                <Send className="size-4" />
-              </button>
-            </div>
-          </footer>
+
+              <div className={styles.chipTray}>
+                <button type="button" className={styles.trayArrow} aria-label="Previous">
+                  ‹
+                </button>
+                <div className={styles.chipPickRow}>
+                  {CHIP_SELECTOR_VALUES.map((v) => (
+                    <SelectorChip
+                      key={v}
+                      value={v}
+                      selected={betAmount === v}
+                      onClick={() => onBetAmount(v)}
+                    />
+                  ))}
+                </div>
+                <button type="button" className={styles.trayArrow} aria-label="Next">
+                  ›
+                </button>
+              </div>
+
+              <div className={styles.hudBottomRight}>
+                <button
+                  type="button"
+                  className={styles.rebetBtn}
+                  disabled={!canBet}
+                  onClick={onRebet}
+                  aria-label="ReBet"
+                >
+                  ReBet
+                </button>
+              </div>
+            </footer>
+          </div>
         </div>
       </div>
     </div>

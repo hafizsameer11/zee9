@@ -32,15 +32,24 @@ const DEFAULT_LAYOUT: DesignLayout = {
   designH: DESIGN_H,
 }
 
+export function getDesignScaleShellStyle(layout: DesignLayout): CSSProperties {
+  return {
+    position: 'absolute',
+    left: layout.insetX,
+    top: layout.insetY,
+    width: layout.designW * layout.scale,
+    height: layout.designH * layout.scale,
+    overflow: 'hidden',
+  }
+}
+
 export function getDesignCanvasStyle(layout: DesignLayout): CSSProperties {
   return {
     width: layout.designW,
     height: layout.designH,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    transform: `translate(${layout.insetX}px, ${layout.insetY}px) scale(${layout.scale})`,
+    transform: `scale(${layout.scale})`,
     transformOrigin: 'top left',
+    boxSizing: 'border-box',
   }
 }
 
@@ -65,12 +74,18 @@ export function useDesignScale(
       const ch = rect.height
       if (cw <= 0 || ch <= 0) return
 
-      // Width-fit: canvas always spans the full width, height stretches to
-      // fill the container so there is never a letterbox bar.
-      const scale = cw / designW
-      const designH = Math.round(ch / scale)
+      // Contain-fit: entire design canvas stays inside the viewport (896×414 frame).
+      const scale = Math.min(cw / designW, ch / baseDesignH)
+      const scaledW = designW * scale
+      const scaledH = baseDesignH * scale
 
-      setLayout({ scale, insetX: 0, insetY: 0, designW, designH })
+      setLayout({
+        scale,
+        insetX: (cw - scaledW) / 2,
+        insetY: (ch - scaledH) / 2,
+        designW,
+        designH: baseDesignH,
+      })
     }
 
     update()

@@ -32,6 +32,13 @@ export function numberToColor(n: number): WingoColor {
   return COLOR_MAP[n] ?? 'red'
 }
 
+/** Display colors for history swatches (0 and 5 show dual colors). */
+export function numberToDisplayColors(n: number): WingoColor[] {
+  if (n === 0) return ['red', 'violet']
+  if (n === 5) return ['green', 'violet']
+  return [numberToColor(n)]
+}
+
 export function numberToSize(n: number): WingoSize {
   return n >= 5 ? 'big' : 'small'
 }

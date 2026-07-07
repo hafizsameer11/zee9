@@ -2,8 +2,8 @@
 
 export type Point = { x: number; y: number }
 
-const VIEW_W = 1000
-const VIEW_H = 720
+export const VIEW_W = 1000
+export const VIEW_H = 720
 
 const SEG1 = {
   p0: { x: 0, y: 720 },
@@ -101,6 +101,30 @@ export function buildAviatorCurvePaths(progress: number): {
       top: (tip.y / VIEW_H) * 100,
     },
   }
+}
+
+/** Sample points along the curve from 0 → progress (for canvas rendering) */
+export function sampleAviatorCurve(progress: number, segments = 64): Point[] {
+  const t = Math.min(1, Math.max(0, progress))
+  if (t <= 0) return [pointOnAviatorCurve(0)]
+  const count = Math.max(2, Math.ceil(segments * t))
+  const pts: Point[] = []
+  for (let i = 0; i <= count; i++) {
+    pts.push(pointOnAviatorCurve((i / count) * t))
+  }
+  return pts
+}
+
+/** Tangent angle in degrees for plane rotation (canvas: 0=right, positive=clockwise) */
+export function curveTangentAngle(progress: number): number {
+  const eps = 0.008
+  const t0 = Math.max(0, progress - eps)
+  const t1 = Math.min(1, progress + eps)
+  const a = pointOnAviatorCurve(t0)
+  const b = pointOnAviatorCurve(t1)
+  const dx = (b.x - a.x) / VIEW_W
+  const dy = (b.y - a.y) / VIEW_H
+  return (Math.atan2(dy, dx) * 180) / Math.PI
 }
 
 /** Full static curve (design reference) */

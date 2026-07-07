@@ -148,3 +148,47 @@ export function MenuDiamondsIcon({ className }: { className?: string }) {
     </svg>
   )
 }
+
+/** White cartoon glove — tutorial “tap here” pointer */
+export function GuideHandIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 80 90" fill="none" aria-hidden>
+      <ellipse cx="40" cy="78" rx="18" ry="6" fill="#000" opacity="0.18" />
+      <path
+        d="M18 52c-2-14 8-28 22-30 10-1 18 4 20 14 1 6-1 12-6 16l-4 22c-1 6-8 8-12 4l-8-10c-4-5-3-12 2-16z"
+        fill="#fff"
+        stroke="#d8d8d8"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M40 22c0-10 8-16 16-14 6 1 10 7 10 14v28c0 4-3 7-7 7s-7-3-7-7V22z"
+        fill="#fff"
+        stroke="#d8d8d8"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M52 20c6-2 12 2 14 10 2 8-2 16-8 20"
+        fill="#fff"
+        stroke="#d8d8d8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M28 38c-6-2-10 2-10 10 0 6 4 10 8 10"
+        fill="#fff"
+        stroke="#d8d8d8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <path
+        d="M22 48c-5 0-8 4-6 9 2 4 6 5 10 2"
+        fill="#fff"
+        stroke="#d8d8d8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <ellipse cx="48" cy="18" rx="4" ry="5" fill="#f5f5f5" opacity="0.7" />
+      <path d="M44 8 L48 2" stroke="#333" strokeWidth="2" strokeLinecap="round" opacity="0.15" />
+    </svg>
+  )
+}

@@ -1,57 +1,60 @@
 import { forwardRef } from 'react'
 import { getGameThumb, type S9Game } from '../../data/s9Games'
-import { isPlayableGame } from '../../games/registry'
 import styles from './S9GameGrid.module.css'
 
 type Props = {
   games: S9Game[]
   onPlay: (id: string) => void
+  columns?: 4 | 5
   scrollable?: boolean
+  fixedRows?: number
 }
 
 const S9GameGrid = forwardRef<HTMLDivElement, Props>(function S9GameGrid(
-  { games, onPlay, scrollable },
+  { games, onPlay, columns = 4, scrollable, fixedRows },
   ref,
 ) {
-  const display = scrollable ? games : games.slice(0, 10)
+  const gridClass = fixedRows
+    ? styles.gridFixed
+    : scrollable
+      ? styles.gridVertical
+      : columns === 4
+        ? styles.grid4
+        : styles.grid
 
   return (
     <div ref={ref} className={styles.wrap}>
-      <div className={scrollable ? styles.gridVertical : styles.grid}>
-        {display.map((game) => (
+      <div className={gridClass}>
+        {games.map((game, index) => (
           <button
             key={game.id}
             type="button"
-            className={styles.tile}
+            className={`${styles.tile} ${game.badge === 'hot' ? styles.tileHot : ''}`}
             onClick={() => onPlay(game.id)}
+            style={{ animationDelay: `${(index % 8) * 0.05}s` }}
           >
-            <div className={styles.thumb}>
+            <div className={styles.tileFrame} aria-hidden />
+            <div className={styles.thumb} style={{ background: game.thumbBg }}>
               <img
                 className={styles.thumbImg}
                 src={getGameThumb(game)}
                 alt=""
                 loading="lazy"
               />
+              <span className={styles.thumbEmoji} aria-hidden>{game.emoji}</span>
               <div className={styles.thumbOverlay} />
+              <span className={styles.tileShine} aria-hidden />
               {game.badge === 'hot' && (
                 <span className={`${styles.badge} ${styles.badgeHot}`}>
-                  <span className={styles.badgeFlame} aria-hidden>🔥</span> HOT
+                  <span className={styles.badgeFlame}>🔥</span>
+                  Hot
                 </span>
               )}
-              {game.badge === 'new' && (
-                <span className={`${styles.badge} ${styles.badgeNew}`}>NEW</span>
+              {game.id === 'aviator' && (
+                <span className={styles.multiplier}>99,999x</span>
               )}
-              {game.badge === 'live' && (
-                <span className={`${styles.badge} ${styles.badgeLive}`}>LIVE</span>
-              )}
-              {isPlayableGame(game.id) ? (
-                <span className={`${styles.badge} ${styles.badgePlay}`}>PLAY</span>
-              ) : (
-                <span className={`${styles.badge} ${styles.badgeSoon}`}>SOON</span>
-              )}
-              {game.id === 'lobby' && <span className={styles.moreBtn}>More+</span>}
             </div>
-            <div className={styles.bar}>
+            <div className={styles.bar} style={{ background: `linear-gradient(180deg, ${game.barColor}dd, #0a0806 100%)` }}>
               <span className={styles.barText}>{game.name}</span>
             </div>
           </button>

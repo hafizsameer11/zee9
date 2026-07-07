@@ -1,4 +1,5 @@
 import { numberToColor, type WingoColor } from '../engines/wingo'
+import type { CSSProperties } from 'react'
 
 export const BALL_GRADIENT: Record<WingoColor, string> = {
   green:
@@ -18,12 +19,23 @@ export function ballColorForNumber(n: number): WingoColor {
   return numberToColor(n)
 }
 
-type BallSize = 'hero' | 'grid' | 'history' | 'mini' | 'dot'
+const SPLIT_GRADIENT: Record<string, string> = {
+  '0': 'linear-gradient(135deg, #ef4444 50%, #a855f7 50%)',
+  '5': 'linear-gradient(135deg, #22c55e 50%, #a855f7 50%)',
+}
+
+export function isSplitNumber(n: number) {
+  return n === 0 || n === 5
+}
+
+type BallSize = 'hero' | 'grid' | 'history' | 'mini' | 'dot' | 'compact' | 'bet'
 
 const SIZE: Record<BallSize, { w: number; text: string; blur: string }> = {
   hero: { w: 176, text: 'text-7xl', blur: 'size-14 left-8 top-6' },
   grid: { w: 64, text: 'text-2xl', blur: 'size-6 left-3 top-2' },
+  bet: { w: 34, text: 'text-sm', blur: 'size-3 left-1 top-0.5' },
   history: { w: 32, text: 'text-xs', blur: 'size-3 left-1 top-0.5' },
+  compact: { w: 22, text: 'text-[10px]', blur: 'size-2 left-0.5 top-0' },
   mini: { w: 24, text: 'text-[10px]', blur: 'size-2 left-1 top-0.5' },
   dot: { w: 20, text: 'text-[0px]', blur: 'size-2 left-1 top-0.5' },
 }
@@ -35,6 +47,7 @@ export function WingoBall({
   selected,
   onClick,
   className = '',
+  style,
 }: {
   number?: number
   color: WingoColor
@@ -42,22 +55,28 @@ export function WingoBall({
   selected?: boolean
   onClick?: () => void
   className?: string
+  style?: CSSProperties
 }) {
   const s = SIZE[size]
   const px = s.w
   const Tag = onClick ? 'button' : 'span'
+  const splitBg = number != null && isSplitNumber(number) ? SPLIT_GRADIENT[String(number)] : undefined
   return (
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={`relative rounded-full flex justify-center items-center overflow-hidden leading-none font-black text-white ${s.text} ${
-        selected ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0603]' : ''
+        selected ? 'ring-2 ring-white ring-offset-1 ring-offset-[#d4f5e9]' : ''
       } ${onClick ? 'cursor-pointer transition-transform hover:scale-105' : ''} ${className}`}
       style={{
         width: px,
         height: px,
-        background: BALL_GRADIENT[color],
-        boxShadow: size === 'history' || size === 'mini' || size === 'dot' ? BALL_SHADOW_SM : BALL_SHADOW,
+        background: splitBg ?? BALL_GRADIENT[color],
+        boxShadow:
+          size === 'history' || size === 'compact' || size === 'mini' || size === 'dot'
+            ? BALL_SHADOW_SM
+            : BALL_SHADOW,
+        ...style,
       }}
     >
       <span

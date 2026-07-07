@@ -3,12 +3,12 @@
   inset: 0;
   overflow: hidden;
   contain: strict;
-  background: #0a0603;
+  background: #000b1e;
 }
 
 .canvas {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   transform-origin: top left;
   will-change: transform;
