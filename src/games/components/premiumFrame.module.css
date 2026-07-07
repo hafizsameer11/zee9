@@ -18,7 +18,7 @@
   .canvas [class*='overflow-y-auto'],
   .canvas aside {
     -webkit-overflow-scrolling: touch;
-    touch-action: pan-y;
+    touch-action: manipulation;
     overscroll-behavior: contain;
   }
 }

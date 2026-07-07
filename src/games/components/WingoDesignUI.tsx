@@ -65,8 +65,6 @@ function maxPayout(bet: WingoBet): number {
 export type WingoDesignUIProps = {
   viewportRef: RefObject<HTMLDivElement | null>
   layout: DesignLayout
-  designW: number
-  designH: number
   rootClassName: string
   canvasClassName: string
   title: string
@@ -89,8 +87,6 @@ export type WingoDesignUIProps = {
 export default function WingoDesignUI({
   viewportRef,
   layout,
-  designW,
-  designH,
   rootClassName,
   canvasClassName,
   title,
@@ -129,7 +125,7 @@ export default function WingoDesignUI({
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
-        style={getDesignCanvasStyle(layout, designW, designH)}
+        style={getDesignCanvasStyle(layout)}
       >
         <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
           <header className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-b border-solid flex px-8 py-4 justify-between items-center">

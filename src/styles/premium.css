@@ -1,23 +1,24 @@
-/* Zee9 premium palette — lobby keeps dark maroon, not logo checkerboard */
+/* Zee9 premium palette — warm gold/amber ornate lobby (matches S9 gold theme) */
 :root {
-  --zee-black: #080404;
-  --zee-maroon: #1a0808;
-  --zee-maroon-mid: #2d0f0f;
+  --zee-black: #0b0803;
+  --zee-maroon: #1c1407;      /* deep gold-brown base */
+  --zee-maroon-mid: #2e2109;  /* panel / tile interior */
   --zee-red: #c41e3a;
   --zee-red-glow: #e53935;
-  --zee-gold: #e8c547;
-  --zee-gold-light: #f5d76e;
-  --zee-gold-dark: #a67c00;
+  --zee-gold: #e8c34a;
+  --zee-gold-light: #f7dc7a;
+  --zee-gold-dark: #8a6a1c;
   --zee-gold-border: #d4af37;
-  --zee-cream: #f0e6d3;
-  --zee-muted: #9a7b4f;
-  --zee-panel: rgba(12, 4, 4, 0.85);
-  --zee-gold-glow: 0 0 12px rgba(232, 197, 71, 0.35);
+  --zee-cream: #f3e8cf;
+  --zee-muted: #b0925e;
+  --zee-panel: rgba(30, 21, 7, 0.88);
+  --zee-gold-glow: 0 0 12px rgba(232, 195, 74, 0.4);
   --zee-red-glow-shadow: 0 0 14px rgba(196, 30, 58, 0.45);
-  --zee-tile-border: linear-gradient(145deg, #f5d76e 0%, #d4af37 40%, #a67c00 100%);
-  /* Home / lobby background — shared by modals & full screens */
-  --zee-bg: linear-gradient(180deg, #1a0808 0%, #120505 45%, #0a0303 100%);
+  --zee-tile-border: linear-gradient(145deg, #f7dc7a 0%, #d4af37 40%, #8a6a1c 100%);
+  /* Home / lobby background — warm gold-brown, shared by modals & full screens */
+  --zee-bg: linear-gradient(180deg, #241a08 0%, #191204 45%, #0d0902 100%);
   --zee-bg-glow:
-    radial-gradient(ellipse at 20% 30%, rgba(196, 30, 58, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(166, 124, 0, 0.06) 0%, transparent 45%);
+    radial-gradient(ellipse at 50% 0%, rgba(232, 195, 74, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at 18% 28%, rgba(200, 150, 40, 0.07) 0%, transparent 50%),
+    radial-gradient(ellipse at 82% 78%, rgba(166, 124, 0, 0.07) 0%, transparent 45%);
 }

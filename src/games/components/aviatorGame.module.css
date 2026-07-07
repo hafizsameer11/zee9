@@ -239,7 +239,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: manipulation;
   font-size: 0.9375rem;
   line-height: 1.4;
 }
@@ -504,7 +504,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: manipulation;
 }
 
 .historyWrap {
@@ -729,7 +729,7 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: manipulation;
   font-size: 0.9375rem;
   line-height: 1.4;
 }

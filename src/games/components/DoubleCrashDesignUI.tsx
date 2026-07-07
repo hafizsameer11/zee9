@@ -1,23 +1,17 @@
 import type { RefObject } from 'react'
 import { getDesignCanvasStyle, type DesignLayout } from '../hooks/useDesignScale'
 import {
-  BookOpen,
   Diamond,
-  Dice5,
   History,
-  Lock,
   MessageCircle,
   Minus,
   Plus,
   Radio,
-  RefreshCw,
   Rocket,
   Send,
   Settings,
-  ShieldCheck,
   Trophy,
   Wallet,
-  Zap,
 } from 'lucide-react'
 import { buildRocketCurve, multiplierToRocketProgress } from '../engines/doubleCrashCurve'
 import { IllustratedRocket, historyChipClass } from './doubleCrashGfx'
@@ -103,10 +97,10 @@ function RocketPanel({
         className={`absolute inset-0 bg-[linear-gradient(${accentGlow}_0.06)_1px,transparent_1px),linear-gradient(90deg,${accentGlow}_0.06)_1px,transparent_1px)] bg-[length:24px_24px]`}
       />
       <div
-        className={`${accentText} border ${accentBorder} rounded-full border-solid flex absolute left-4 top-4 px-3 py-1.5 items-center gap-2 bg-black/30`}
+        className={`${accentText} border ${accentBorder} rounded-full border-solid flex absolute left-2 top-2 px-2 py-0.5 items-center gap-1 bg-black/30 z-10`}
       >
-        <Rocket className="size-4" />
-        <span className="font-bold text-xs leading-4">{label}</span>
+        <Rocket className="size-3" />
+        <span className="font-bold text-[9px]">{label}</span>
       </div>
 
       <div className="flex absolute inset-0 justify-center items-center">
@@ -128,13 +122,13 @@ function RocketPanel({
           </div>
         )}
         {!flying && slot.phase === 'idle' && (
-          <div className="flex flex-col items-center gap-2 opacity-50">
-            <IllustratedRocket variant={variant} size={48} />
-            <span className="text-[#a1a1a1] text-sm">Ready to launch</span>
+          <div className="flex flex-col items-center gap-1 opacity-50">
+            <IllustratedRocket variant={variant} size={36} />
+            <span className="text-[#a1a1a1] text-[9px] uppercase tracking-widest">Ready to launch</span>
           </div>
         )}
         <span
-          className={`top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-black text-6xl leading-none absolute ${accentText} ${
+          className={`top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-black text-3xl leading-none absolute ${accentText} ${
             crashed && slot.phase === 'lost' ? 'text-[#ff6467]' : ''
           } ${slot.phase === 'cashed' ? 'text-[#1bd6a0]' : ''}`}
         >
@@ -143,48 +137,48 @@ function RocketPanel({
       </div>
 
       <div
-        className={`bg-[#0a0603]/90 backdrop-blur-sm border-t ${accentBorder} border-solid flex absolute inset-x-0 bottom-0 p-4 items-center gap-3`}
+        className={`bg-[#0a0603]/90 backdrop-blur-sm border-t ${accentBorder} border-solid flex absolute inset-x-0 bottom-0 p-1.5 items-center gap-1.5`}
       >
-        <div className="flex items-center flex-1 gap-2">
-          <div className="bg-neutral-900 rounded-lg border-white/10 border border-solid flex items-center overflow-hidden">
+        <div className="flex items-center flex-1 gap-1.5 min-w-0">
+          <div className="bg-neutral-900 rounded-md border-white/10 border border-solid flex items-center overflow-hidden">
             <button
               type="button"
-              className="text-[#a1a1a1] px-3 py-2 border-0 bg-transparent cursor-pointer disabled:opacity-40"
+              className="text-[#a1a1a1] size-7 flex justify-center items-center border-0 bg-transparent cursor-pointer disabled:opacity-40"
               onClick={onMinus}
               disabled={flying}
             >
               <Minus className="size-3" />
             </button>
-            <span className="font-bold text-sm leading-5 px-3 min-w-[80px] text-center">
-              PKR {formatPkr(slot.bet)}
+            <span className="font-bold text-[10px] px-1 min-w-[52px] text-center">
+              {formatPkr(slot.bet)}
             </span>
             <button
               type="button"
-              className="text-[#a1a1a1] px-3 py-2 border-0 bg-transparent cursor-pointer disabled:opacity-40"
+              className="text-[#a1a1a1] size-7 flex justify-center items-center border-0 bg-transparent cursor-pointer disabled:opacity-40"
               onClick={onPlus}
               disabled={flying}
             >
               <Plus className="size-3" />
             </button>
           </div>
-          <span className="text-[#a1a1a1] text-xs leading-4 shrink-0">auto {slot.autoAt.toFixed(1)}×</span>
+          <span className="text-[#a1a1a1] text-[9px] shrink-0">auto {slot.autoAt.toFixed(1)}×</span>
         </div>
         {canCash ? (
           <button
             type="button"
-            className={`font-bold rounded-lg text-sm leading-5 px-5 py-2.5 border-0 cursor-pointer ${
+            className={`font-bold rounded-md text-[10px] px-2.5 h-7 border-0 cursor-pointer shrink-0 ${
               variant === 'a'
-                ? 'bg-gradient-to-br from-[#1bd6a0] to-[#0d8f6a] text-[#0a0603] shadow-[0_0_20px_rgba(27,214,160,0.5)]'
-                : 'bg-gradient-to-br from-[#c41e3a] to-[#8b1530] text-white shadow-[0_0_20px_rgba(196,30,58,0.5)]'
+                ? 'bg-gradient-to-br from-[#1bd6a0] to-[#0d8f6a] text-[#0a0603] shadow-[0_0_14px_rgba(27,214,160,0.5)]'
+                : 'bg-gradient-to-br from-[#c41e3a] to-[#8b1530] text-white shadow-[0_0_14px_rgba(196,30,58,0.5)]'
             }`}
             onClick={onCashOut}
           >
             CASH OUT · {formatPkr(winAmt)}
           </button>
         ) : slot.phase === 'cashed' ? (
-          <span className="font-bold text-[#1bd6a0] text-sm">WON!</span>
+          <span className="font-bold text-[#1bd6a0] text-[10px]">WON!</span>
         ) : slot.phase === 'lost' ? (
-          <span className="font-bold text-[#ff6467] text-sm">CRASHED</span>
+          <span className="font-bold text-[#ff6467] text-[10px]">CRASHED</span>
         ) : null}
       </div>
     </div>
@@ -194,8 +188,6 @@ function RocketPanel({
 export type DoubleCrashDesignUIProps = {
   viewportRef: RefObject<HTMLDivElement | null>
   layout: DesignLayout
-  designW: number
-  designH: number
   rootClassName: string
   canvasClassName: string
   balance: number
@@ -220,8 +212,6 @@ export type DoubleCrashDesignUIProps = {
 export default function DoubleCrashDesignUI({
   viewportRef,
   layout,
-  designW,
-  designH,
   rootClassName,
   canvasClassName,
   balance,
@@ -251,110 +241,47 @@ export default function DoubleCrashDesignUI({
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
-        style={getDesignCanvasStyle(layout, designW, designH)}
+        style={getDesignCanvasStyle(layout)}
       >
         <div className="game-ui bg-[radial-gradient(ellipse_at_top,oklch(0.22_0.04_40),oklch(0.145_0.01_40))] flex flex-col w-full h-full overflow-hidden text-neutral-50">
-          <header className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-b border-solid flex px-8 py-4 justify-between items-center">
-            <button type="button" className="flex items-center gap-3 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
-              <div className="size-10 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] shadow-[0_0_18px_rgba(212,175,55,0.5)] rounded-xl flex justify-center items-center">
-                <Diamond className="size-5 text-[#0a0603]" />
-              </div>
-              <span className="bg-gradient-to-r from-[#f4d98a] to-[#d4af37] bg-clip-text text-transparent font-black text-2xl leading-8 tracking-tight">
-                Zee9
-              </span>
-            </button>
+          <header className="backdrop-blur-md shrink-0 bg-[#0a0603]/80 border-white/10 border-b border-solid flex px-3 justify-between items-center h-10">
             <div className="flex items-center gap-3">
-              <div className="shadow-[0_0_16px_rgba(212,175,55,0.25)] rounded-full bg-[#0a0603]/70 border-[#d4af37]/50 border border-solid flex px-4 py-2 items-center gap-2">
-                <Wallet className="size-4 text-[#d4af37]" />
-                <span className="font-bold text-[#f4d98a] text-sm">PKR {formatPkr(balance)}</span>
-              </div>
-              <button type="button" className="size-9 rounded-full bg-neutral-800 text-[#a1a1a1] border-white/10 border border-solid flex justify-center items-center">
-                <History className="size-4" />
+              <button type="button" className="flex items-center gap-1.5 border-0 bg-transparent p-0 cursor-pointer" onClick={onHome}>
+                <div className="size-6 bg-gradient-to-br from-[#f4d98a] to-[#d4af37] shadow-[0_0_10px_rgba(212,175,55,0.5)] rounded flex justify-center items-center">
+                  <Diamond className="size-3 text-[#0a0603]" />
+                </div>
+                <span className="bg-gradient-to-r from-[#f4d98a] to-[#d4af37] bg-clip-text text-transparent font-black text-sm tracking-tight">
+                  Zee9
+                </span>
               </button>
-              <button type="button" className="size-9 rounded-full bg-neutral-800 text-[#a1a1a1] border-white/10 border border-solid flex justify-center items-center">
-                <Settings className="size-4" />
+              <h1 className="bg-gradient-to-r from-[#f4d98a] via-[#d4af37] to-[#c41e3a] bg-clip-text text-transparent font-black text-sm tracking-wide">
+                DOUBLE CRASH
+              </h1>
+              <div className="bg-[#c41e3a]/15 border-[#c41e3a]/40 rounded-full border border-solid flex px-2 py-0.5 items-center gap-1.5">
+                <span className={`size-1.5 rounded-full ${flying ? 'bg-[#ff6467] animate-pulse' : 'bg-[#a1a1a1]'}`} />
+                <span className={`font-bold text-[9px] ${flying ? 'text-[#ff6467]' : 'text-[#a1a1a1]'}`}>
+                  {flying ? 'LIVE' : 'WAITING'}
+                </span>
+              </div>
+              <span className="text-[#a1a1a1] text-[9px]">Round {roundNo}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="shadow-[0_0_10px_rgba(212,175,55,0.25)] rounded-full bg-[#0a0603]/70 border-[#d4af37]/50 border border-solid flex px-2.5 py-1 items-center gap-1.5">
+                <Wallet className="size-3 text-[#d4af37]" />
+                <span className="font-bold text-[#f4d98a] text-[11px]">PKR {formatPkr(balance)}</span>
+              </div>
+              <button type="button" className="size-7 rounded-full bg-neutral-800 text-[#a1a1a1] border-white/10 border border-solid flex justify-center items-center">
+                <History className="size-3.5" />
+              </button>
+              <button type="button" className="size-7 rounded-full bg-neutral-800 text-[#a1a1a1] border-white/10 border border-solid flex justify-center items-center">
+                <Settings className="size-3.5" />
               </button>
             </div>
           </header>
 
           <div className="game-body min-h-0 flex flex-1">
-            <aside className="game-sidebar shrink-0 flex flex-col">
-              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-3">
-                <div className="flex items-center gap-2 font-semibold text-base">
-                  <BookOpen className="size-4 text-[#d4af37]" />
-                  How to Play
-                </div>
-                <p className="text-[#a1a1a1] text-xs">Two rockets. Cash out before crash.</p>
-                {[
-                  'Place a bet on either rocket before liftoff.',
-                  'Multiplier rises as the rocket climbs higher.',
-                  'Cash out before the rocket explodes to win.',
-                ].map((text, i) => (
-                  <div key={i} className="text-xs leading-4 flex items-start gap-2">
-                    <span className="size-5 shrink-0 bg-[#d4af37]/20 text-[#f4d98a] font-bold rounded-full flex justify-center items-center">
-                      {i + 1}
-                    </span>
-                    <span className="text-[#a1a1a1]">{text}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
-                <div className="flex items-center gap-2 font-semibold text-sm">
-                  <Zap className="size-4 text-[#f4d98a]" />
-                  Auto Cashout Tips
-                </div>
-                {[
-                  { label: 'Safe target', val: '1.5×', color: 'text-[#1bd6a0]' },
-                  { label: 'Balanced target', val: '2.5×', color: 'text-[#f4d98a]' },
-                  { label: 'High risk target', val: '10×+', color: 'text-[#ff6467]' },
-                ].map((row) => (
-                  <div key={row.label} className="bg-neutral-900/60 rounded-lg flex p-2 justify-between items-center">
-                    <span className="text-[#a1a1a1] text-xs">{row.label}</span>
-                    <span className={`font-bold text-xs ${row.color}`}>{row.val}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="game-panel backdrop-blur-md bg-[#0a0603]/60 border-white/10 border border-solid rounded-xl flex flex-col gap-2">
-                <div className="flex items-center gap-2 font-semibold text-sm">
-                  <ShieldCheck className="size-4 text-[#1bd6a0]" />
-                  Provably Fair
-                </div>
-                <div className="text-[#a1a1a1] text-xs flex items-center gap-2">
-                  <Lock className="size-3" /> Bets lock at liftoff
-                </div>
-                <div className="text-[#a1a1a1] text-xs flex items-center gap-2">
-                  <Dice5 className="size-3" /> Verifiable crash seed
-                </div>
-                <div className="text-[#a1a1a1] text-xs flex items-center gap-2">
-                  <RefreshCw className="size-3" /> New round every 20s
-                </div>
-              </div>
-            </aside>
-
             <main className="game-main min-w-0 flex flex-col flex-1 min-h-0">
-              <div className="flex justify-between items-center shrink-0">
-                <div className="flex flex-col">
-                  <h1 className="bg-gradient-to-r from-[#f4d98a] via-[#d4af37] to-[#c41e3a] bg-clip-text text-transparent font-black text-4xl leading-10 tracking-tight">
-                    DOUBLE CRASH
-                  </h1>
-                  <p className="text-[#a1a1a1] text-sm leading-5">
-                    Two rockets, double the thrill — cash out before they blow
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="bg-[#c41e3a]/15 border-[#c41e3a]/40 rounded-full border border-solid flex px-4 py-2 items-center gap-2">
-                    <span className={`size-2 rounded-full ${flying ? 'bg-[#ff6467] animate-pulse' : 'bg-[#a1a1a1]'}`} />
-                    <span className={`font-bold text-sm ${flying ? 'text-[#ff6467]' : 'text-[#a1a1a1]'}`}>
-                      {flying ? 'LIVE ROUND' : 'WAITING'}
-                    </span>
-                  </div>
-                  <div className="bg-neutral-900 border-white/10 rounded-full text-[#a1a1a1] text-sm border border-solid px-4 py-2">
-                    # Round {roundNo}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 min-h-0 flex-1 gap-4">
+              <div className="grid grid-cols-2 min-h-0 flex-1 gap-2">
                 <RocketPanel
                   variant="a"
                   label="ROCKET A"
@@ -387,14 +314,14 @@ export default function DoubleCrashDesignUI({
                 />
               </div>
 
-              <div className="flex items-center gap-4 shrink-0">
-                <span className="shrink-0 text-[#a1a1a1] text-xs">Quick Stake</span>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="shrink-0 text-[#a1a1a1] text-[9px] uppercase">Quick</span>
+                <div className="flex items-center gap-1">
                   {STAKES.map((s) => (
                     <button
                       key={s}
                       type="button"
-                      className="bg-neutral-900 rounded-lg text-[#a1a1a1] text-sm border-white/10 border border-solid px-4 py-2 cursor-pointer hover:border-[#d4af37]/40 disabled:opacity-40"
+                      className="bg-neutral-900 rounded-md text-[#a1a1a1] text-[10px] font-semibold border-white/10 border border-solid min-w-10 px-1.5 h-8 cursor-pointer hover:border-[#d4af37]/40 disabled:opacity-40"
                       onClick={() => onQuickStake(s)}
                       disabled={flying}
                     >
@@ -404,12 +331,12 @@ export default function DoubleCrashDesignUI({
                 </div>
                 <button
                   type="button"
-                  className="bg-gradient-to-br from-[#f4d98a] to-[#d4af37] text-[#0a0603] shadow-[0_0_30px_rgba(212,175,55,0.5)] font-black rounded-xl text-base leading-6 flex ml-auto px-8 py-3 items-center gap-2 border-0 cursor-pointer disabled:opacity-50"
+                  className="bg-gradient-to-br from-[#f4d98a] to-[#d4af37] text-[#0a0603] shadow-[0_0_16px_rgba(212,175,55,0.5)] font-black rounded-lg text-xs flex ml-auto px-4 items-center gap-1.5 h-9 border-0 cursor-pointer disabled:opacity-50"
                   onClick={onPlaceBoth}
                   disabled={flying || placeBothTotal <= 0}
                 >
-                  <Rocket className="size-5" />
-                  PLACE BOTH · PKR {formatPkr(placeBothTotal)}
+                  <Rocket className="size-3.5" />
+                  PLACE BOTH · {formatPkr(placeBothTotal)}
                 </button>
               </div>
             </main>

@@ -1,6 +1,5 @@
-@layer theme, utilities;
-@import 'tailwindcss/theme.css' layer(theme);
-@import 'tailwindcss/utilities.css' layer(utilities);
+@import 'tailwindcss/theme.css';
+@import 'tailwindcss/utilities.css';
 @import './gameUILayout.css';
 @source './FortuneOxDesignUI.tsx';
 @source './Zee9PremiumFrame.tsx';

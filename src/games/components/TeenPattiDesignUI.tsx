@@ -133,8 +133,6 @@ function MiniRankCard({ label }: { label: string }) {
 export type TeenPattiDesignUIProps = {
   viewportRef: RefObject<HTMLDivElement | null>
   layout: DesignLayout
-  designW: number
-  designH: number
   balance: number
   boot: number
   game: TeenPattiState | null
@@ -156,8 +154,6 @@ export type TeenPattiDesignUIProps = {
 export default function TeenPattiDesignUI({
   viewportRef,
   layout,
-  designW,
-  designH,
   balance,
   boot,
   game,
@@ -330,7 +326,7 @@ export default function TeenPattiDesignUI({
     <div className={rootClassName} ref={viewportRef}>
       <div
         className={canvasClassName}
-        style={getDesignCanvasStyle(layout, designW, designH)}
+        style={getDesignCanvasStyle(layout)}
       >
         <div className="game-ui relative flex flex-col w-full h-full bg-[#0a0603] text-neutral-50 overflow-hidden">
           <div className="pointer-events-none bg-[#d4af37]/12 absolute inset-0" />

@@ -7,7 +7,7 @@ import {
   wingoPayoutMultiplier,
   type WingoBetType,
 } from '../engines/wingo'
-import { DESIGN_H, DESIGN_W, useDesignScale } from '../hooks/useDesignScale'
+import { useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import WingoDesignUI from './WingoDesignUI'
 import styles from './wingoGame.module.css'
@@ -94,8 +94,6 @@ export default function WingoGame({ bet: defaultBet, onMessage }: GameComponentP
     <WingoDesignUI
       viewportRef={viewportRef}
       layout={layout}
-      designW={DESIGN_W}
-      designH={DESIGN_H}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
       title={title}

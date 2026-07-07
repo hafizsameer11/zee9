@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { generateCrashPoint, multiplierAtElapsed } from '../engines/crash'
 import { buildAviatorCurvePaths, multiplierToProgress } from '../engines/aviatorCurve'
-import { getDesignCanvasStyle, useDesignScale } from '../hooks/useDesignScale'
+import { getDesignCanvasStyle, useDesignScale, LEGACY_DESIGN_W, LEGACY_DESIGN_H } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import styles from './aviatorGame.module.css'
 
@@ -37,7 +37,7 @@ function historyChipClass(mult: number) {
 export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
-  const layout = useDesignScale(viewportRef)
+  const layout = useDesignScale(viewportRef, LEGACY_DESIGN_W, LEGACY_DESIGN_H)
   const { balance, debit, credit, canAfford } = useWallet()
 
   const [globalPhase, setGlobalPhase] = useState<GlobalPhase>('idle')

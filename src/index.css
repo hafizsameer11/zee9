@@ -1,9 +1,13 @@
+/* Layer order: base resets lose to Tailwind theme/utilities in the game UIs */
+@layer base, theme, utilities;
+
 :root {
   --red: #d00000;
   --gold: #f5c842;
   --maroon: #3d0e0e;
 }
 
+@layer base {
 *,
 *::before,
 *::after {
@@ -47,6 +51,8 @@ button {
 img {
   display: block;
   max-width: 100%;
+}
+
 }
 
 @keyframes fade-in {

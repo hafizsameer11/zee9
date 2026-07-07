@@ -1,27 +1,41 @@
 import { useEffect, useState, type CSSProperties, type RefObject } from 'react'
 
-/** Match 896×414 mobile frame so games fill edge-to-edge. */
+/**
+ * Design canvas system — games are laid out on a fixed-width design canvas
+ * that is scaled to fill the viewport edge-to-edge (width-fit, dynamic height).
+ *
+ * Default design width matches the 896×414 mobile frame, so games render at
+ * ~0.83–1.05 scale on real phones and text stays readable. Legacy games that
+ * were px-tuned on the old 1920-wide canvas pass LEGACY_DESIGN_W explicitly.
+ */
 export const FRAME_W = 896
 export const FRAME_H = 414
-export const DESIGN_W = 1920
-export const DESIGN_H = Math.round(DESIGN_W * (FRAME_H / FRAME_W))
+export const DESIGN_W = FRAME_W
+export const DESIGN_H = FRAME_H
+export const LEGACY_DESIGN_W = 1920
+export const LEGACY_DESIGN_H = Math.round(LEGACY_DESIGN_W * (FRAME_H / FRAME_W))
 
 export type DesignLayout = {
   scale: number
   insetX: number
   insetY: number
+  /** Actual canvas size — height is dynamic so the game fills any aspect ratio */
+  designW: number
+  designH: number
 }
 
-const DEFAULT_LAYOUT: DesignLayout = { scale: 0.45, insetX: 0, insetY: 0 }
+const DEFAULT_LAYOUT: DesignLayout = {
+  scale: 1,
+  insetX: 0,
+  insetY: 0,
+  designW: DESIGN_W,
+  designH: DESIGN_H,
+}
 
-export function getDesignCanvasStyle(
-  layout: DesignLayout,
-  designW = DESIGN_W,
-  designH = DESIGN_H,
-): CSSProperties {
+export function getDesignCanvasStyle(layout: DesignLayout): CSSProperties {
   return {
-    width: designW,
-    height: designH,
+    width: layout.designW,
+    height: layout.designH,
     position: 'absolute',
     left: 0,
     top: 0,
@@ -33,9 +47,13 @@ export function getDesignCanvasStyle(
 export function useDesignScale(
   containerRef: RefObject<HTMLDivElement | null>,
   designW = DESIGN_W,
-  designH = DESIGN_H,
+  baseDesignH = DESIGN_H,
 ): DesignLayout {
-  const [layout, setLayout] = useState<DesignLayout>(DEFAULT_LAYOUT)
+  const [layout, setLayout] = useState<DesignLayout>({
+    ...DEFAULT_LAYOUT,
+    designW,
+    designH: baseDesignH,
+  })
 
   useEffect(() => {
     const el = containerRef.current
@@ -47,16 +65,12 @@ export function useDesignScale(
       const ch = rect.height
       if (cw <= 0 || ch <= 0) return
 
-      const scale = Math.min(cw / designW, ch / designH)
-      const s = scale > 0 ? scale : 0.45
-      const scaledW = designW * s
-      const scaledH = designH * s
+      // Width-fit: canvas always spans the full width, height stretches to
+      // fill the container so there is never a letterbox bar.
+      const scale = cw / designW
+      const designH = Math.round(ch / scale)
 
-      setLayout({
-        scale: s,
-        insetX: Math.max(0, (cw - scaledW) / 2),
-        insetY: Math.max(0, (ch - scaledH) / 2),
-      })
+      setLayout({ scale, insetX: 0, insetY: 0, designW, designH })
     }
 
     update()
@@ -69,7 +83,7 @@ export function useDesignScale(
       window.removeEventListener('orientationchange', update)
       window.removeEventListener('resize', update)
     }
-  }, [containerRef, designW, designH])
+  }, [containerRef, designW, baseDesignH])
 
   return layout
 }

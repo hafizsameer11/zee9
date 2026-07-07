@@ -17,7 +17,7 @@ import {
   startGame,
   type TeenPattiState,
 } from '../engines/teenPatti'
-import { DESIGN_H, DESIGN_W, useDesignScale } from '../hooks/useDesignScale'
+import { useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import TeenPattiDesignUI from './TeenPattiDesignUI'
 import styles from './teenPattiGame.module.css'
@@ -197,8 +197,6 @@ export default function TeenPattiGame({ bet, onMessage }: GameComponentProps) {
     <TeenPattiDesignUI
       viewportRef={viewportRef}
       layout={layout}
-      designW={DESIGN_W}
-      designH={DESIGN_H}
       balance={balance}
       boot={boot}
       game={game}

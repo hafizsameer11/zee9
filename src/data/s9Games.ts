@@ -180,8 +180,19 @@ const GAME_THUMBS: Partial<Record<string, string>> = {
   'lightning-roulette': '/games/lightning-roulette.png',
   'jackpot-fishing': '/games/jackpot-fishing.png',
   cricket: '/games/cricket.png',
-  crash: '/games/double-crash.png',
-  wingo: '/games/wingo-lottery.png',
+  crash: '/games/crash.png',
+  wingo: '/games/wingo.png',
+  ak47: '/games/ak47.png',
+  'lucky-pachinko': '/games/lucky-pachinko.png',
+  'ocean-king': '/games/ocean-king.png',
+  'wild-bounty': '/games/wild-bounty.png',
+  lobby: '/games/lobby.png',
+  'clover-coins': '/games/clover-coins.png',
+  'fortune-dragon': '/games/fortune-dragon.png',
+  'fortune-coins': '/games/fortune-coins.png',
+  'money-coming': '/games/money-coming.png',
+  'all-star-fishing': '/games/all-star-fishing.png',
+  '7up-down': '/games/7up-down.png',
 }
 
 const CATEGORY_THUMB: Record<S9Category, string> = {

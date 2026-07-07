@@ -6,7 +6,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
+  touch-action: manipulation;
   overscroll-behavior-y: contain;
   transform: translateZ(0);
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { generateCrashPoint, multiplierAtElapsed } from '../engines/crash'
-import { DESIGN_H, DESIGN_W, useDesignScale } from '../hooks/useDesignScale'
+import { useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import CrashDesignUI from './CrashDesignUI'
 import styles from './crashGame.module.css'
@@ -128,8 +128,6 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
     <CrashDesignUI
       viewportRef={viewportRef}
       layout={layout}
-      designW={DESIGN_W}
-      designH={DESIGN_H}
       rootClassName={styles.root}
       canvasClassName={styles.canvas}
       balance={balance}
