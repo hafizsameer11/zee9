@@ -1,26 +1,24 @@
 :root {
-  --wood: #3d2214;
+  --wood: #4a2c18;
   --wood-dark: #2a160c;
-  --wood-light: #5c3820;
-  --gold-tile: #e8c040;
-  --gold-tile-dark: #c9a020;
-  --gold-tile-light: #ffe878;
-  --cream: #f5f0e1;
-  --cream-dark: #e8dcc8;
-  --orange-btn: #e85a20;
-  --orange-btn-dark: #c43e10;
-  --stone: #8a8a8a;
-  --stone-dark: #5a5a5a;
-  --stone-light: #b8b8b8;
-  --red-mult: #d32f2f;
-  --yellow-val: #f5c400;
+  --wood-mid: #3d2516;
+  --gold-tile: #f0c830;
+  --gold-tile-dark: #c89818;
+  --gold-tile-light: #ffe566;
+  --cream: #f8f2e4;
+  --orange-plus: #e86a28;
+  --orange-plus-dark: #c44e10;
+  --stone-minus: #9a9a9a;
+  --stone-minus-dark: #6a6a6a;
+  --red-mult: #d42030;
+  --yellow-val: #f5c800;
 }
 
 .root {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #0a1520;
+  background: #1a0e08;
 }
 
 .canvas {
@@ -29,33 +27,30 @@
   overflow: hidden;
   transform-origin: top left;
   will-change: transform;
-  font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Arial Black', 'Arial', sans-serif;
   color: #fff;
 }
 
+/* Cave scene — warm dark, subtle teal only in shadows */
 .caveBg {
   position: absolute;
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 15% 80%, rgba(60, 120, 180, 0.35), transparent 45%),
-    radial-gradient(ellipse at 85% 20%, rgba(80, 60, 140, 0.25), transparent 40%),
-    radial-gradient(ellipse at 50% 100%, rgba(20, 40, 60, 0.9), transparent 60%),
-    linear-gradient(180deg, #1a2838 0%, #0d1820 40%, #1a2030 100%);
+    linear-gradient(180deg, rgba(20, 12, 8, 0.55) 0%, rgba(30, 18, 10, 0.4) 50%, rgba(15, 8, 5, 0.65) 100%),
+    url('/mines/cave-bg.png') center / cover no-repeat;
 }
 
-.caveBg::after {
+.caveBg::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(100, 180, 255, 0.15) 2px, transparent 3px),
-    radial-gradient(circle at 70% 60%, rgba(120, 200, 255, 0.12) 3px, transparent 4px),
-    radial-gradient(circle at 40% 80%, rgba(80, 140, 200, 0.1) 2px, transparent 3px);
-  opacity: 0.8;
+  background: url('/mines/wood-planks.png') repeat;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
 }
 
-/* ── Top bar ── */
+/* ── Top wood bar ── */
 .topBar {
   position: relative;
   z-index: 10;
@@ -63,12 +58,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 52px;
-  padding: 0 10px;
+  height: 48px;
+  padding: 0 8px;
   background-color: var(--wood-dark);
   background-image: url('/mines/wood-dark.png');
-  border-bottom: 3px solid #1a0c06;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  border-bottom: 3px solid #1a0a04;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
 }
 
 .topLeft,
@@ -76,255 +71,243 @@
 .topRight {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .topCenter {
   flex: 1;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .backBtn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 2px solid #8b6914;
-  background: linear-gradient(180deg, #4a3020, #2a1808);
+  border: 2px solid #c9a020;
+  background: linear-gradient(180deg, #5c3a22 0%, #2a1608 100%);
   color: #ffd700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .backBtn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .promoBadge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 5px;
+  padding: 2px 8px 2px 2px;
   border-radius: 20px;
   border: 2px solid #c9a020;
-  background: linear-gradient(180deg, #3d2810, #2a1808);
-  font-size: 11px;
+  background: linear-gradient(180deg, #4a3020, #2a1808);
+  font-size: 10px;
+  font-weight: 700;
   color: #ffe8a0;
   white-space: nowrap;
 }
 
 .promoBadge strong {
   color: #ffd700;
-  font-size: 12px;
 }
 
 .promoIcon {
-  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 2px solid #c9a020;
-  background: #b6e3f4;
+  background: #f0d0a0;
   object-fit: cover;
 }
 
 .userMeta {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 
 .userName {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   color: #fff;
 }
 
 .userId {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.65);
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .balanceBox {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
-  border-radius: 20px;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 16px;
   background: linear-gradient(180deg, #3d2810, #1a0c06);
   border: 2px solid #5c3820;
-  font-size: 14px;
-  font-weight: 700;
-  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .balanceChip {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
 .addBtn {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 4px;
+  padding: 2px 6px;
   border: none;
   background: none;
   cursor: pointer;
   color: #ffd700;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 .cartIcon {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 30px;
 }
 
 .menuBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
   border: 2px solid #5c3820;
   background: linear-gradient(180deg, #4a3020, #2a1808);
-  color: #c9a020;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  padding: 4px;
 }
 
 .menuBtn svg {
-  width: 14px;
-  height: 14px;
+  width: 100%;
+  height: 100%;
 }
 
-/* ── Body layout ── */
+/* ── Main play area on wood ── */
 .body {
   position: relative;
   z-index: 5;
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px 8px 8px;
+  background-color: var(--wood-mid);
+  background-image: url('/mines/wood-planks.png');
+  box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .gridSection {
-  flex: 1.15;
+  flex: 1.2;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
 }
 
 .woodFrame {
   width: 100%;
-  max-width: 100%;
-  padding: 10px;
-  border-radius: 12px;
-  background-color: var(--wood);
+  padding: 8px;
+  border-radius: 8px;
+  background-color: #3d2214;
   background-image: url('/mines/wood-dark.png');
-  border: 4px solid var(--wood-light);
+  border: 4px solid #5c3820;
   box-shadow:
-    inset 0 0 20px rgba(0, 0, 0, 0.5),
-    0 6px 16px rgba(0, 0, 0, 0.45);
+    inset 0 0 24px rgba(0, 0, 0, 0.6),
+    0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .woodFrameInner {
-  padding: 8px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #2a160c, #1a0c06);
-  border: 2px solid #1a0c06;
+  padding: 6px;
+  border-radius: 4px;
+  background: #1a0c06;
+  border: 3px solid #0d0604;
+  box-shadow: inset 0 4px 16px rgba(0, 0, 0, 0.8);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
-  aspect-ratio: 1;
+  gap: 4px;
   width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
 .cell {
   position: relative;
   aspect-ratio: 1;
   border: none;
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   padding: 0;
   overflow: hidden;
-  transition: transform 0.1s, filter 0.15s;
+  transition: transform 0.08s;
 }
 
 .cellHidden {
-  background: linear-gradient(
-    135deg,
-    var(--gold-tile-light) 0%,
-    var(--gold-tile) 25%,
-    var(--gold-tile-dark) 50%,
-    var(--gold-tile) 75%,
-    var(--gold-tile-light) 100%
-  );
-  background-size: 12px 12px;
+  background:
+    radial-gradient(ellipse at 30% 25%, #ffe878 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 75%, #c89818 0%, transparent 40%),
+    linear-gradient(145deg, var(--gold-tile-light) 0%, var(--gold-tile) 40%, var(--gold-tile-dark) 100%);
+  border: 2px solid #a07818;
   box-shadow:
-    inset 0 2px 4px rgba(255, 255, 255, 0.45),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
-    0 2px 4px rgba(0, 0, 0, 0.3);
-  border: 2px solid #a07820;
+    inset 0 3px 6px rgba(255, 255, 255, 0.5),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.3),
+    0 2px 3px rgba(0, 0, 0, 0.35);
 }
 
 .cellShine {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.25) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, transparent 45%);
   pointer-events: none;
 }
 
 .cellPlay:not(:disabled):hover {
-  transform: scale(1.04);
-  filter: brightness(1.08);
-}
-
-.cellPlay:not(:disabled):active {
-  transform: scale(0.96);
+  transform: scale(1.03);
+  filter: brightness(1.06);
 }
 
 .cellGem {
-  background: linear-gradient(180deg, #1a4060, #0d2840);
-  border: 2px solid #4fc3f7;
-  box-shadow: inset 0 0 12px rgba(79, 195, 247, 0.4);
+  background: linear-gradient(180deg, #1a5060, #0a2838);
+  border: 2px solid #4dd0e1;
 }
 
 .cellMine {
-  background: linear-gradient(180deg, #4a1010, #1a0505);
+  background: linear-gradient(180deg, #401010, #1a0505);
   border: 2px solid #ff5722;
-  box-shadow: inset 0 0 12px rgba(255, 87, 34, 0.5);
 }
 
-.cellGemDim {
-  background: #1a3040;
-  border: 2px solid #2a5060;
-  opacity: 0.7;
-}
-
+.cellGemDim,
 .cellMineDim {
-  background: #301010;
-  border: 2px solid #602020;
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .cellIcon {
-  width: 70%;
-  height: 70%;
+  width: 72%;
+  height: 72%;
   margin: auto;
   display: block;
 }
@@ -333,44 +316,44 @@
   cursor: default;
 }
 
-/* ── Control panel ── */
+/* ── Parchment control panel ── */
 .controlPanel {
-  flex: 0.85;
+  flex: 0.8;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
   background-color: var(--cream);
   background-image: url('/mines/paper.png');
-  border: 3px solid #c8b898;
+  border: 2px solid #c4b090;
   box-shadow:
-    inset 0 0 30px rgba(255, 255, 255, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.35);
+    4px 4px 14px rgba(0, 0, 0, 0.45),
+    inset 0 0 20px rgba(255, 255, 255, 0.6);
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .multRow {
   display: flex;
   justify-content: space-between;
-  gap: 4px;
-  padding: 4px 2px;
+  gap: 2px;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .multItem {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   flex: 1;
-  opacity: 0.75;
+  opacity: 0.7;
 }
 
 .multItemActive {
   opacity: 1;
-  transform: scale(1.08);
+  transform: scale(1.1);
 }
 
 .multItemDone {
@@ -378,27 +361,176 @@
 }
 
 .moneyBag {
-  width: 28px;
-  height: 34px;
+  width: 32px;
+  height: 38px;
 }
 
 .multValue {
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 9px;
+  font-weight: 900;
   color: var(--red-mult);
-  line-height: 1;
+  font-family: Arial, sans-serif;
 }
 
-/* Mines selector */
 .minesRow,
 .betRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  gap: 6px;
 }
 
-.minesCenter,
+.minesCenter {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  border: 1px solid #c8b898;
+}
+
+.minesBomb {
+  width: 36px;
+  height: 36px;
+}
+
+.minesLabel {
+  font-size: 13px;
+  font-weight: 800;
+  color: #e86a28;
+  font-family: Arial, sans-serif;
+}
+
+.minesLabel strong {
+  font-size: 15px;
+  color: #d45a18;
+}
+
+/* Grey minus / Orange plus — reference style */
+.stoneBtnMinus {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, #b8b8b8 0%, var(--stone-minus) 45%, var(--stone-minus-dark) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    0 3px 5px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.stoneBtnPlus {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ff9048 0%, var(--orange-plus) 45%, var(--orange-plus-dark) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.2),
+    0 3px 5px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+.stoneBtnMinus:active:not(:disabled),
+.stoneBtnPlus:active:not(:disabled) {
+  transform: translateY(2px);
+}
+
+.stoneBtnMinus:disabled,
+.stoneBtnPlus:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.winRow {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-height: 72px;
+}
+
+.winBox {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid #a89070;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.winBoxHead {
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  font-family: Arial, sans-serif;
+}
+
+.winBoxNext .winBoxHead {
+  background: linear-gradient(180deg, #6ec4f0, #3a98cc);
+}
+
+.winBoxCurrent .winBoxHead {
+  background: linear-gradient(180deg, #f0a848, #d07828);
+}
+
+.winBoxBody {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.chestIcon {
+  width: 44px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.winBoxStats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.05;
+}
+
+.winMult {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--red-mult);
+  font-family: Arial, sans-serif;
+}
+
+.winAmount {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--yellow-val);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
 .betCenter {
   flex: 1;
   display: flex;
@@ -406,191 +538,58 @@
   justify-content: center;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.55);
-  border: 2px solid #c8b898;
-}
-
-.minesBomb {
-  width: 32px;
-  height: 32px;
-}
-
-.minesLabel {
-  font-size: 14px;
-  font-weight: 700;
-  color: #e85a20;
-}
-
-.minesLabel strong {
-  font-size: 16px;
-}
-
-.stoneBtn {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border: none;
-  border-radius: 8px;
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
-  color: #fff;
-  cursor: pointer;
-  background: linear-gradient(180deg, var(--stone-light) 0%, var(--stone) 40%, var(--stone-dark) 100%);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
-    0 3px 6px rgba(0, 0, 0, 0.35);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.stoneBtn:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
-}
-
-.stoneBtn:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/* Win boxes */
-.winRow {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  min-height: 0;
-}
-
-.winBox {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid #b0a080;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-.winBoxHead {
-  padding: 4px 8px;
-  font-size: 11px;
-  font-weight: 800;
-  text-align: center;
-  color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
-}
-
-.winBoxNext .winBoxHead {
-  background: linear-gradient(180deg, #5eb8e8, #3a90c0);
-}
-
-.winBoxCurrent .winBoxHead {
-  background: linear-gradient(180deg, #f0a050, #d07030);
-}
-
-.winBoxBody {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 4px;
-  background: rgba(255, 255, 255, 0.65);
-}
-
-.chestIcon {
-  width: 48px;
-  height: 40px;
-}
-
-.winBoxStats {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.1;
-}
-
-.winMult {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--red-mult);
-}
-
-.winAmount {
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--yellow-val);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
-}
-
-/* Bet row */
-.betCenter {
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 8px;
+  background: linear-gradient(180deg, #6a6a6a, #4a4a4a);
+  border-radius: 6px;
+  border: 2px solid #3a3a3a;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .betLabel {
   font-size: 11px;
-  font-weight: 800;
-  color: #666;
-  background: linear-gradient(180deg, #aaa, #888);
+  font-weight: 900;
   color: #fff;
-  padding: 2px 12px;
-  border-radius: 4px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
+  font-family: Arial, sans-serif;
 }
 
 .betChip {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
 }
 
 .betValue {
-  font-size: 20px;
-  font-weight: 900;
-  color: var(--yellow-val);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-
-.betRow .betCenter {
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
-/* Start button */
-.startBtn {
-  width: 100%;
-  padding: 12px 16px;
-  border: none;
-  border-radius: 10px;
   font-size: 18px;
   font-weight: 900;
-  color: #fff;
-  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  background: linear-gradient(180deg, #ff8040 0%, var(--orange-btn) 40%, var(--orange-btn-dark) 100%);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -4px 0 rgba(0, 0, 0, 0.2),
-    0 4px 10px rgba(0, 0, 0, 0.35);
-  letter-spacing: 0.5px;
-  flex-shrink: 0;
+  color: var(--yellow-val);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-.startBtn:hover:not(:disabled) {
-  filter: brightness(1.05);
+.startBtn {
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 17px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, transparent 30%),
+    linear-gradient(180deg, #ff8840 0%, #e86a28 50%, #c44e10 100%);
+  border-bottom: 4px solid #8a3010;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+  font-family: Arial Black, Arial, sans-serif;
 }
 
 .startBtn:active:not(:disabled) {
   transform: translateY(2px);
-  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.35);
+  border-bottom-width: 2px;
 }
 
 .startBtn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
 }

@@ -1,77 +1,106 @@
-/** Classic mines UI illustrations — reference-style assets */
+/** Reference-style mines UI artwork — cartoon 3D look */
 
 export function SkullBombIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 48 48" fill="none" aria-hidden>
-      <circle cx="24" cy="26" r="16" fill="#1a1a1a" stroke="#333" strokeWidth="2" />
-      <ellipse cx="18" cy="22" rx="4" ry="3" fill="#444" />
-      <circle cx="16" cy="21" r="1.2" fill="#fff" />
-      <circle cx="20" cy="23" r="1" fill="#fff" />
-      <circle cx="28" cy="21" r="1.2" fill="#fff" />
-      <circle cx="32" cy="23" r="1" fill="#fff" />
-      <path d="M18 30 Q24 34 30 30" stroke="#ccc" strokeWidth="1.5" fill="none" />
-      <path d="M20 32h8" stroke="#fff" strokeWidth="1" />
-      <path d="M24 10v6" stroke="#666" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="24" cy="8" r="3" fill="#ff6600" />
-      <path d="M26 6c2-2 5-1 4 2" stroke="#ffaa00" strokeWidth="1.5" fill="none" />
+    <svg className={className} viewBox="0 0 56 56" fill="none" aria-hidden>
+      <ellipse cx="28" cy="34" rx="18" ry="16" fill="#1c1c1c" />
+      <ellipse cx="28" cy="32" rx="17" ry="15" fill="#2a2a2a" />
+      <ellipse cx="22" cy="28" rx="5" ry="6" fill="#f5f5f5" />
+      <ellipse cx="34" cy="28" rx="5" ry="6" fill="#f5f5f5" />
+      <circle cx="20" cy="26" r="2" fill="#111" />
+      <circle cx="32" cy="26" r="2" fill="#111" />
+      <circle cx="21" cy="25" r="0.8" fill="#fff" />
+      <circle cx="33" cy="25" r="0.8" fill="#fff" />
+      <path d="M22 38 Q28 42 34 38" stroke="#ddd" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <rect x="24" y="38" width="2" height="4" rx="0.5" fill="#eee" />
+      <rect x="27" y="38" width="2" height="4" rx="0.5" fill="#eee" />
+      <rect x="30" y="38" width="2" height="4" rx="0.5" fill="#eee" />
+      <path d="M28 16v8" stroke="#555" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="28" cy="13" r="4" fill="#ff8c00" />
+      <path d="M30 10c3-3 7-1 5 3" stroke="#ffcc00" strokeWidth="2" fill="none" strokeLinecap="round" />
+      <ellipse cx="28" cy="34" rx="18" ry="16" fill="none" stroke="#111" strokeWidth="1.5" />
     </svg>
   )
 }
 
 export function MoneyBagIcon({ n, className }: { n: number; className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 40 48" fill="none" aria-hidden>
-      <path
-        d="M8 18c0-6 5-10 12-10s12 4 12 10v4H8v-4z"
-        fill="#c9a227"
-        stroke="#8b6914"
-        strokeWidth="1.5"
-      />
-      <ellipse cx="20" cy="32" rx="14" ry="12" fill="#e8c040" stroke="#a07820" strokeWidth="1.5" />
-      <path d="M14 22c2-4 10-4 12 0" stroke="#a07820" strokeWidth="2" fill="none" />
-      <circle cx="20" cy="30" r="8" fill="#3d6cb5" stroke="#1e4080" strokeWidth="1.5" />
-      <text x="20" y="34" textAnchor="middle" fill="#fff" fontSize="11" fontWeight="bold" fontFamily="Arial,sans-serif">
+    <svg className={className} viewBox="0 0 44 52" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id={`bagG${n}`} x1="22" y1="8" x2="22" y2="48">
+          <stop offset="0%" stopColor="#ffe566" />
+          <stop offset="50%" stopColor="#e8b830" />
+          <stop offset="100%" stopColor="#c8941a" />
+        </linearGradient>
+      </defs>
+      <path d="M10 20c0-8 6-12 14-12s14 4 14 12v6H10v-6z" fill={`url(#bagG${n})`} stroke="#a07018" strokeWidth="1.2" />
+      <ellipse cx="22" cy="36" rx="16" ry="14" fill={`url(#bagG${n})`} stroke="#a07018" strokeWidth="1.2" />
+      <path d="M14 22c3-5 14-5 16 0" stroke="#8b6010" strokeWidth="2" fill="none" />
+      <path d="M18 18c2-3 8-3 8 0" stroke="#8b6010" strokeWidth="1.5" fill="none" />
+      <circle cx="22" cy="34" r="9" fill="#2e6db5" stroke="#1a4080" strokeWidth="1.5" />
+      <text x="22" y="38" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="900" fontFamily="Arial Black, Arial, sans-serif">
         {n}
       </text>
+      <ellipse cx="16" cy="30" rx="4" ry="3" fill="#fff" opacity="0.25" />
     </svg>
   )
 }
 
 export function TreasureChestIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 64 52" fill="none" aria-hidden>
-      <rect x="6" y="22" width="52" height="26" rx="3" fill="#5c3d1e" stroke="#3d2810" strokeWidth="2" />
-      <path d="M6 28h52" stroke="#3d2810" strokeWidth="2" />
-      <rect x="28" y="26" width="8" height="10" rx="1" fill="#ffd700" stroke="#b8860b" strokeWidth="1" />
-      <path d="M4 22 Q32 8 60 22" fill="#7a4f28" stroke="#3d2810" strokeWidth="2" />
-      <ellipse cx="20" cy="36" rx="6" ry="4" fill="#ffd700" />
-      <ellipse cx="32" cy="38" rx="7" ry="5" fill="#ffec8b" />
-      <ellipse cx="44" cy="36" rx="6" ry="4" fill="#ffd700" />
-      <circle cx="32" cy="34" r="3" fill="#fff8dc" opacity="0.6" />
+    <svg className={className} viewBox="0 0 72 56" fill="none" aria-hidden>
+      <rect x="8" y="28" width="56" height="24" rx="2" fill="#6b3f1a" stroke="#3d2210" strokeWidth="2" />
+      <path d="M8 34h56" stroke="#3d2210" strokeWidth="2" />
+      <rect x="32" y="32" width="8" height="12" rx="1" fill="#ffd700" stroke="#b8860b" strokeWidth="1" />
+      <path d="M6 28 Q36 10 66 28" fill="#8b5a2b" stroke="#3d2210" strokeWidth="2" />
+      <ellipse cx="22" cy="40" rx="7" ry="5" fill="#ffd700" />
+      <ellipse cx="36" cy="42" rx="9" ry="6" fill="#ffec8b" />
+      <ellipse cx="50" cy="40" rx="7" ry="5" fill="#ffd700" />
+      <circle cx="30" cy="36" r="4" fill="#ffe566" />
+      <circle cx="42" cy="38" r="3" fill="#ffe566" />
+      <circle cx="48" cy="35" r="3.5" fill="#ffd700" />
+      <ellipse cx="36" cy="36" rx="12" ry="4" fill="#fff8dc" opacity="0.35" />
     </svg>
   )
 }
 
 export function PokerChipIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden>
-      <circle cx="16" cy="16" r="14" fill="#c41e3a" stroke="#fff" strokeWidth="2" />
-      <circle cx="16" cy="16" r="10" fill="none" stroke="#fff" strokeWidth="1.5" strokeDasharray="3 2" />
-      <circle cx="16" cy="16" r="5" fill="#fff" opacity="0.9" />
-      <text x="16" y="19" textAnchor="middle" fill="#c41e3a" fontSize="7" fontWeight="bold" fontFamily="Arial">
-        PKR
-      </text>
+    <svg className={className} viewBox="0 0 36 36" fill="none" aria-hidden>
+      <circle cx="18" cy="18" r="16" fill="#d42030" stroke="#fff" strokeWidth="2.5" />
+      <circle cx="18" cy="18" r="12" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="4 3" />
+      <circle cx="18" cy="18" r="7" fill="#fff" />
+      <circle cx="18" cy="18" r="5" fill="#d42030" />
+      <circle cx="18" cy="18" r="3" fill="#fff" opacity="0.8" />
     </svg>
   )
 }
 
-export function CartIcon({ className }: { className?: string }) {
+export function CartWagonIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden>
-      <path d="M4 6h4l3 14h14l3-10H9" stroke="#ffd700" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <circle cx="13" cy="24" r="2" fill="#ffd700" />
-      <circle cx="23" cy="24" r="2" fill="#ffd700" />
-      <path d="M8 10h18" stroke="#ffec8b" strokeWidth="2" strokeLinecap="round" />
+    <svg className={className} viewBox="0 0 48 40" fill="none" aria-hidden>
+      <path d="M6 8h28l4 16H8L6 8z" fill="#e8b830" stroke="#a07018" strokeWidth="1.5" />
+      <path d="M10 12h20l2 8H12l-2-8z" fill="#ffd700" />
+      <rect x="4" y="6" width="6" height="4" rx="1" fill="#c8941a" />
+      <circle cx="14" cy="30" r="5" fill="#555" stroke="#333" strokeWidth="1.5" />
+      <circle cx="14" cy="30" r="2.5" fill="#888" />
+      <circle cx="32" cy="30" r="5" fill="#555" stroke="#333" strokeWidth="1.5" />
+      <circle cx="32" cy="30" r="2.5" fill="#888" />
+      <path d="M34 8h8l2 14h-6" fill="#e8b830" stroke="#a07018" strokeWidth="1" />
+      <ellipse cx="20" cy="14" rx="8" ry="4" fill="#fff" opacity="0.2" />
+    </svg>
+  )
+}
+
+export function PromoPinIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 40 40" fill="none" aria-hidden>
+      <circle cx="20" cy="22" r="12" fill="#e8b830" stroke="#a07018" strokeWidth="1.5" />
+      <text x="20" y="26" textAnchor="middle" fill="#5c3d10" fontSize="10" fontWeight="900" fontFamily="Arial">
+        Rs
+      </text>
+      <path d="M26 10 L32 4 L30 14 Z" fill="#2196f3" stroke="#1565c0" strokeWidth="1" />
+      <circle cx="28" cy="8" r="3" fill="#42a5f5" />
     </svg>
   )
 }
@@ -79,10 +108,9 @@ export function CartIcon({ className }: { className?: string }) {
 export function GemRevealIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 48 48" fill="none" aria-hidden>
-      <path d="M24 6 L40 18 L24 42 L8 18 Z" fill="#4fc3f7" stroke="#0277bd" strokeWidth="1.5" />
-      <path d="M24 6 L40 18 L24 24 L8 18 Z" fill="#81d4fa" />
-      <path d="M24 24 L40 18 L24 42 Z" fill="#29b6f6" />
-      <path d="M16 14 L24 8 L32 14 L24 20 Z" fill="#fff" opacity="0.45" />
+      <path d="M24 8 L38 20 L24 40 L10 20 Z" fill="#4dd0e1" stroke="#00838f" strokeWidth="1.5" />
+      <path d="M24 8 L38 20 L24 26 L10 20 Z" fill="#80deea" />
+      <path d="M16 16 L24 10 L32 16 L24 22 Z" fill="#fff" opacity="0.5" />
     </svg>
   )
 }
@@ -90,12 +118,14 @@ export function GemRevealIcon({ className }: { className?: string }) {
 export function MineRevealIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 48 48" fill="none" aria-hidden>
-      <circle cx="24" cy="28" r="14" fill="#222" stroke="#111" strokeWidth="2" />
-      <path d="M24 12v6" stroke="#888" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="24" cy="10" r="3" fill="#ff5722" />
-      <text x="24" y="32" textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">
-        ☠
-      </text>
+      <circle cx="24" cy="28" r="14" fill="#222" />
+      <ellipse cx="18" cy="24" rx="4" ry="5" fill="#fff" />
+      <ellipse cx="30" cy="24" rx="4" ry="5" fill="#fff" />
+      <circle cx="17" cy="23" r="1.5" fill="#111" />
+      <circle cx="29" cy="23" r="1.5" fill="#111" />
+      <path d="M20 32h8" stroke="#ccc" strokeWidth="2" strokeLinecap="round" />
+      <path d="M24 12v6" stroke="#666" strokeWidth="2" />
+      <circle cx="24" cy="10" r="3" fill="#ff6600" />
     </svg>
   )
 }
@@ -103,18 +133,18 @@ export function MineRevealIcon({ className }: { className?: string }) {
 export function BackChevronIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M14 6 L8 12 L14 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M15 5 L9 12 L15 19" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
 export function MenuDiamondsIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <rect x="2" y="2" width="8" height="8" rx="1.5" fill="#ffd700" stroke="#c9a020" strokeWidth="1" />
+      <rect x="14" y="2" width="8" height="8" rx="1.5" fill="#ffd700" stroke="#c9a020" strokeWidth="1" />
+      <rect x="2" y="14" width="8" height="8" rx="1.5" fill="#ffd700" stroke="#c9a020" strokeWidth="1" />
+      <rect x="14" y="14" width="8" height="8" rx="1.5" fill="#ffd700" stroke="#c9a020" strokeWidth="1" />
     </svg>
   )
 }

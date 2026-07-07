@@ -12,12 +12,13 @@ import type { GameComponentProps } from '../types'
 import { getDesignCanvasStyle, useDesignScale } from '../hooks/useDesignScale'
 import {
   BackChevronIcon,
-  CartIcon,
+  CartWagonIcon,
   GemRevealIcon,
   MenuDiamondsIcon,
   MineRevealIcon,
   MoneyBagIcon,
   PokerChipIcon,
+  PromoPinIcon,
   SkullBombIcon,
   TreasureChestIcon,
 } from './minesClassicGfx'
@@ -127,7 +128,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               <BackChevronIcon />
             </button>
             <div className={styles.promoBadge}>
-              <span className={styles.promoIcon}>🎮</span>
+              <PromoPinIcon className={styles.promoIcon} />
               <span>Play Game</span>
               <strong>Rs{betAmount}</strong>
             </div>
@@ -136,7 +137,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
           <div className={styles.topCenter}>
             <img
               className={styles.avatar}
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Zee9Player&backgroundColor=b6e3f4"
+              src="https://api.dicebear.com/7.x/avataaars/svg?seed=P9751521&backgroundColor=f0d0a0&hairColor=e8b830"
               alt=""
             />
             <div className={styles.userMeta}>
@@ -152,7 +153,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
           <div className={styles.topRight}>
             <button type="button" className={styles.addBtn}>
               <span>ADD</span>
-              <CartIcon className={styles.cartIcon} />
+              <CartWagonIcon className={styles.cartIcon} />
             </button>
             <button type="button" className={styles.menuBtn} aria-label="Menu">
               <MenuDiamondsIcon />
@@ -207,7 +208,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
             <div className={styles.minesRow}>
               <button
                 type="button"
-                className={styles.stoneBtn}
+                className={styles.stoneBtnMinus}
                 disabled={playing || mineCount <= 1}
                 onClick={() => setMineCount((c) => Math.max(1, c - 1))}
                 aria-label="Fewer mines"
@@ -222,7 +223,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               </div>
               <button
                 type="button"
-                className={styles.stoneBtn}
+                className={styles.stoneBtnPlus}
                 disabled={playing || mineCount >= 24}
                 onClick={() => setMineCount((c) => Math.min(24, c + 1))}
                 aria-label="More mines"
@@ -257,7 +258,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
             <div className={styles.betRow}>
               <button
                 type="button"
-                className={styles.stoneBtn}
+                className={styles.stoneBtnMinus}
                 disabled={playing}
                 onClick={() => adjustBet(-1)}
                 aria-label="Decrease bet"
@@ -271,7 +272,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               </div>
               <button
                 type="button"
-                className={styles.stoneBtn}
+                className={styles.stoneBtnPlus}
                 disabled={playing}
                 onClick={() => adjustBet(1)}
                 aria-label="Increase bet"
