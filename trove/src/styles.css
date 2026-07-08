@@ -172,7 +172,12 @@ textarea.input{resize:vertical;min-height:90px;}
 .thread .t-time{font-size:10.5px;color:#9aa2b1;font-weight:500;}
 .thread-body{display:flex;flex-direction:column;padding:18px;}
 .thread-msgs{flex:1;overflow-y:auto;}
-@media(max-width:760px){.msgs-layout{grid-template-columns:1fr;}.thread-list{display:none;}}
+@media(max-width:760px){
+  .msgs-layout{grid-template-columns:1fr;}
+  .thread-list{display:flex;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);}
+  .thread{border-bottom:none;border-right:1px solid var(--line);flex-shrink:0;}
+  .thread .t-p,.thread .t-time{display:none;}
+}
 
 /* ---------- tables ---------- */
 .tbl{width:100%;border-collapse:collapse;font-size:13px;}
