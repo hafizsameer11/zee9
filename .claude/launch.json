@@ -14,6 +14,27 @@
       "runtimeArgs": ["run", "dev", "--", "--port", "5210", "--strictPort"],
       "port": 5210,
       "autoPort": false
+    },
+    {
+      "name": "c2c-panel",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "c2c-panel", "run", "dev"],
+      "port": 5300,
+      "autoPort": false
+    },
+    {
+      "name": "admin-panel",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "admin-panel", "run", "dev"],
+      "port": 5400,
+      "autoPort": false
+    },
+    {
+      "name": "trove",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "trove", "run", "dev"],
+      "port": 5500,
+      "autoPort": false
     }
   ]
 }
