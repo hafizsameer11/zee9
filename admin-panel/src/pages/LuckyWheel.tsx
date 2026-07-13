@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PageHead, Toggle } from '../components/ui'
+import { PageHead } from '../components/ui'
 import { Icons } from '../components/icons'
 import { useAdmin } from '../data/store'
 
@@ -14,11 +14,15 @@ function slice(cx: number, cy: number, r: number, start: number, end: number) {
   return `M ${cx} ${cy} L ${s.x} ${s.y} A ${r} ${r} 0 ${large} 0 ${e.x} ${e.y} Z`
 }
 
+function isNoneLabel(label: string) {
+  const l = label.trim().toLowerCase()
+  return l === 'none' || l === 'no win' || l.includes('try again')
+}
+
 export default function LuckyWheel() {
-  const { wheel, updateWheel } = useAdmin()
-  const [depositWheel, setDepositWheel] = useState(true)
+  const { wheel, updateWheel, addWheelPrize, addNonePrize, deleteWheelPrize } = useAdmin()
   const total = wheel.reduce((s, p) => s + p.weight, 0)
-  const seg = 360 / wheel.length
+  const seg = wheel.length > 0 ? 360 / wheel.length : 360
   const R = 150
   const C = 160
 
@@ -26,8 +30,13 @@ export default function LuckyWheel() {
     <>
       <PageHead
         title="Lucky Wheel"
-        subtitle="Configure spin prizes, colours and win probabilities"
-        actions={<button className="btn btn-primary">{Icons.plus} Add prize</button>}
+        subtitle="Set prize labels, colours and win % (weight). Weight 0 = never wins. If all weights are 0, every spin lands on None."
+        actions={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={addNonePrize}>{Icons.plus} Add None</button>
+            <button className="btn btn-primary" onClick={addWheelPrize}>{Icons.plus} Add prize</button>
+          </div>
+        }
       />
 
       <div className="grid grid-2" style={{ gridTemplateColumns: '360px 1fr', alignItems: 'start' }}>
@@ -63,31 +72,34 @@ export default function LuckyWheel() {
               <polygon points={`${C - 12},${C - R - 6} ${C + 12},${C - R - 6} ${C},${C - R + 16}`} fill="var(--gold)" stroke="#fff" strokeWidth="1.5" />
             </svg>
           </div>
-          <div className="field-row">
-            <div className="fr-info">
-              <b>Deposit wheel 🎡</b>
-              <span>Extra spin unlocked on deposit</span>
-            </div>
-            <div className="fr-control"><Toggle on={depositWheel} onChange={() => setDepositWheel(!depositWheel)} /></div>
-          </div>
         </div>
 
         <div className="card">
           <div className="card-head">
             <h3>Prize segments</h3>
-            <span className="muted" style={{ fontSize: 12.5 }}>Probability = weight ÷ total ({total})</span>
+            <span className="muted" style={{ fontSize: 12.5 }}>
+              Win % = weight ÷ total ({total || 0}). Set weight to 0 to disable a segment.
+            </span>
           </div>
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {wheel.map((p) => (
               <div className="wheel-seg-row" key={p.id}>
                 <input type="color" value={p.color} onChange={(e) => updateWheel(p.id, { color: e.target.value })} style={{ width: 28, height: 28, border: 'none', background: 'none', padding: 0 }} />
                 <input value={p.label} onChange={(e) => updateWheel(p.id, { label: e.target.value })} />
-                {p.isPhysical && <span className="pill gold" style={{ flex: 'none' }}>Prize</span>}
+                {isNoneLabel(p.label) && <span className="pill" style={{ flex: 'none' }}>None</span>}
+                {p.isPhysical && <span className="pill gold" style={{ flex: 'none' }}>Physical</span>}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--muted)' }}>
+                  <input type="checkbox" checked={!!p.isPhysical} onChange={(e) => updateWheel(p.id, { isPhysical: e.target.checked })} />
+                  Physical
+                </label>
                 <div className="wt">
                   <span>weight</span>
-                  <input type="number" value={p.weight} onChange={(e) => updateWheel(p.id, { weight: Math.max(0, Number(e.target.value)) })} />
+                  <input type="number" min={0} value={p.weight} onChange={(e) => updateWheel(p.id, { weight: Math.max(0, Number(e.target.value)) })} />
                 </div>
-                <b style={{ width: 52, textAlign: 'right', color: 'var(--brand)' }}>{((p.weight / total) * 100).toFixed(1)}%</b>
+                <b style={{ width: 52, textAlign: 'right', color: 'var(--brand)' }}>
+                  {total > 0 ? ((p.weight / total) * 100).toFixed(1) : '0.0'}%
+                </b>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => deleteWheelPrize(p.id)} title="Remove prize">✕</button>
               </div>
             ))}
           </div>

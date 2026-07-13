@@ -1,5 +1,7 @@
 import { useWallet } from '../../context/WalletContext'
-import { DEMO_PLAYER, formatS9Amount } from '../../data/s9Games'
+import { usePlayerAuth } from '../../api/auth'
+import { useConfig } from '../../api/hooks'
+import { formatS9Amount } from '../../data/s9Games'
 import { IconMail, IconSettings } from './S9Icons'
 import S9AssetIcon from './S9AssetIcon'
 import styles from './S9Header.module.css'
@@ -12,6 +14,8 @@ type Props = {
   onSettings: () => void
   mailUnread?: boolean
 }
+
+const VIP_THRESHOLDS = [0, 3000, 10000, 30000, 75000, 150000, 300000, 600000]
 
 function formatNum(n: number) {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 0 })
@@ -26,7 +30,22 @@ export default function S9Header({
   mailUnread = true,
 }: Props) {
   const { balance } = useWallet()
-  const vipPct = Math.min(100, (DEMO_PLAYER.vipProgress / DEMO_PLAYER.vipTarget) * 100)
+  const { player } = usePlayerAuth()
+  const config = useConfig()
+
+  const waDigits = config?.whatsapp?.replace(/\D/g, '') ?? ''
+  const openWhatsApp = () => {
+    if (!waDigits) return
+    window.open(`https://wa.me/${waDigits}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const vipLevel = player?.vipLevel ?? 1
+  const deposited = player?.totalDeposited ?? 0
+  const prev = VIP_THRESHOLDS[Math.max(0, vipLevel - 1)] ?? 0
+  const next = VIP_THRESHOLDS[vipLevel] ?? VIP_THRESHOLDS[VIP_THRESHOLDS.length - 1]
+  const vipProgress = Math.max(0, deposited - prev)
+  const vipTarget = Math.max(1, next - prev)
+  const vipPct = Math.min(100, (vipProgress / vipTarget) * 100)
 
   return (
     <header className={styles.header}>
@@ -34,16 +53,16 @@ export default function S9Header({
         <div className={styles.avatar}>
           <span className={styles.avatarRing} aria-hidden />
           <img src="/logo.png" alt="Profile" className={styles.logo} />
-          <span className={styles.level}>{DEMO_PLAYER.vipLevel}</span>
+          <span className={styles.level}>{vipLevel}</span>
         </div>
         <div className={styles.playerMeta}>
-          <span className={styles.playerName}>{DEMO_PLAYER.name}</span>
-          <span className={styles.vipBadge}>VIP {DEMO_PLAYER.vipLevel}</span>
+          <span className={styles.playerName}>{player?.name ?? 'Guest'}</span>
+          <span className={styles.vipBadge}>VIP {vipLevel}</span>
           <div className={styles.vipBar}>
             <div className={styles.vipFill} style={{ width: `${vipPct}%` }} />
           </div>
           <span className={styles.vipText}>
-            {formatNum(DEMO_PLAYER.vipProgress)}/{formatNum(DEMO_PLAYER.vipTarget)}
+            {formatNum(vipProgress)}/{formatNum(vipTarget)}
           </span>
         </div>
       </button>
@@ -63,6 +82,13 @@ export default function S9Header({
       </button>
 
       <div className={styles.right}>
+        {config?.whatsapp && (
+          <button type="button" className={styles.actionBtn} onClick={openWhatsApp} title="Customer Service">
+            <span className={styles.actionCircle} style={{ background: '#25D366', color: '#fff' }}>
+              WA
+            </span>
+          </button>
+        )}
         <button type="button" className={styles.actionBtn} onClick={onMail}>
           <span className={styles.actionCircle}>
             <IconMail size={15} />

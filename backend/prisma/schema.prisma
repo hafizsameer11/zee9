@@ -1,0 +1,546 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// Identity & access
+// ------------------------------------------------------------------
+enum Role {
+  PLAYER
+  AGENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  PENDING
+}
+
+model User {
+  id           String     @id @default(cuid())
+  phone        String     @unique
+  passwordHash String
+  role         Role       @default(PLAYER)
+  status       UserStatus @default(ACTIVE)
+  displayName  String
+  vipLevel     Int        @default(1)
+  referralCode String     @unique
+  referredById String?
+  referredBy   User?      @relation("Referrals", fields: [referredById], references: [id])
+  referrals    User[]     @relation("Referrals")
+
+  agentActive   Boolean @default(false)
+  walletsFilled Int     @default(0)
+
+  // Sub-admin permission scopes. Empty for a full/super admin.
+  adminScopes String[] @default([])
+
+  // Marketing channel the user joined through, and the code that bound them.
+  channelCode String?
+  bindCode    String?
+  ownedChannels Channel[] @relation("ChannelOwner")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts          LedgerAccount[]
+  sessions          Session[]
+  deposits          Deposit[]
+  withdrawals       Withdrawal[]
+  bonuses           Bonus[]
+  agentAccounts     AgentAccount[]
+  media             Media[]
+  wheelSpins        WheelSpin[]
+  ancestorEdges     ReferralEdge[]  @relation("Ancestor")
+  descendantEdges   ReferralEdge[]  @relation("Descendant")
+  commissionsEarned Commission[]    @relation("CommissionAgent")
+  commissionsSource Commission[]    @relation("CommissionSource")
+  ordersAsPlayer    CollectionOrder[] @relation("OrderPlayer")
+  ordersAsAgent     CollectionOrder[] @relation("OrderAgent")
+  gameRounds        GameRound[]
+  notifications     Notification[]
+
+  @@index([role])
+  @@index([referredById])
+}
+
+model Session {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String   @unique
+  device           String?
+  ip               String?
+  userAgent        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------
+// Ledger (double-entry) — all money moves through here
+// ------------------------------------------------------------------
+enum Bucket {
+  MAIN
+  BONUS
+  FROZEN
+  COMMISSION
+}
+
+enum SystemAccount {
+  HOUSE
+  BONUS_POOL
+  GATEWAY_CLEARING
+  AGENT_FLOAT
+}
+
+model LedgerAccount {
+  id        String         @id @default(cuid())
+  ownerId   String?
+  owner     User?          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bucket    Bucket?
+  system    SystemAccount?
+  currency  String         @default("PKR")
+  balance   BigInt         @default(0)
+  updatedAt DateTime       @updatedAt
+  createdAt DateTime       @default(now())
+
+  entries LedgerEntry[]
+
+  @@unique([ownerId, bucket, currency])
+  @@unique([system, currency])
+  @@index([ownerId])
+}
+
+enum LedgerTxType {
+  DEPOSIT
+  WITHDRAWAL_FREEZE
+  WITHDRAWAL_PAID
+  WITHDRAWAL_UNFREEZE
+  DEPOSIT_BONUS
+  REGISTRATION_BONUS
+  DAILY_BONUS
+  COMMISSION
+  WHEEL_PRIZE
+  BONUS_RELEASE
+  ADMIN_ADJUST
+}
+
+enum LedgerTxStatus {
+  POSTED
+  VOID
+}
+
+model LedgerTransaction {
+  id             String         @id @default(cuid())
+  type           LedgerTxType
+  status         LedgerTxStatus @default(POSTED)
+  idempotencyKey String?        @unique
+  referenceType  String?
+  referenceId    String?
+  createdById    String?
+  meta           Json?
+  createdAt      DateTime       @default(now())
+
+  entries LedgerEntry[]
+
+  @@index([referenceType, referenceId])
+}
+
+enum EntryDirection {
+  DEBIT
+  CREDIT
+}
+
+model LedgerEntry {
+  id            String            @id @default(cuid())
+  transactionId String
+  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       LedgerAccount     @relation(fields: [accountId], references: [id])
+  direction     EntryDirection
+  amount        BigInt
+  createdAt     DateTime          @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([transactionId])
+}
+
+// ------------------------------------------------------------------
+// Payments (manual) — channels, deposits, withdrawals, media
+// ------------------------------------------------------------------
+enum PaymentMethod {
+  JAZZCASH
+  EASYPAISA
+  BANK
+  WEGARS
+}
+
+model PaymentChannel {
+  id            String        @id @default(cuid())
+  method        PaymentMethod
+  accountNumber String
+  accountTitle  String
+  bankName      String?
+  instructions  String?
+  enabled       Boolean       @default(true)
+  minAmount     BigInt        @default(0)
+  maxAmount     BigInt        @default(0)
+  priority      Int           @default(0)
+  createdAt     DateTime      @default(now())
+
+  deposits Deposit[]
+}
+
+enum TxnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+model Deposit {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  amount         BigInt
+  method         PaymentMethod
+  channelId      String?
+  channel        PaymentChannel? @relation(fields: [channelId], references: [id])
+  senderAccount  String?
+  trxId          String?
+  receiptUrl     String?
+  status         TxnStatus      @default(PENDING)
+  agentId        String?
+  rejectReason   String?
+  idempotencyKey String?        @unique
+  createdAt      DateTime       @default(now())
+  processedById  String?
+  processedAt    DateTime?
+
+  commissions Commission[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Withdrawal {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  amount         BigInt
+  method         PaymentMethod
+  accountDetails Json
+  status         TxnStatus     @default(PENDING)
+  agentId        String?
+  trxId          String?
+  payoutProofUrl String?
+  wagerOk        Boolean       @default(false)
+  rejectReason   String?
+  createdAt      DateTime      @default(now())
+  processedById  String?
+  processedAt    DateTime?
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum MediaKind {
+  DEPOSIT_RECEIPT
+  PAYOUT_PROOF
+}
+
+model Media {
+  id        String    @id @default(cuid())
+  ownerId   String?
+  owner     User?     @relation(fields: [ownerId], references: [id])
+  kind      MediaKind
+  url       String
+  mime      String
+  size      Int
+  createdAt DateTime  @default(now())
+}
+
+// ------------------------------------------------------------------
+// Agent / C2C
+// ------------------------------------------------------------------
+model AgentAccount {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  method        PaymentMethod
+  number        String
+  holder        String
+  enabled       Boolean       @default(false)
+  awaitingReview Boolean      @default(true)
+  createdAt     DateTime      @default(now())
+
+  @@index([userId])
+}
+
+enum OrderType {
+  DEPOSIT
+  WITHDRAW
+}
+
+enum OrderStatus {
+  PENDING
+  CHECKING
+  PROCESSING
+  SUCCESS
+  FAIL
+}
+
+model CollectionOrder {
+  id                String        @id @default(cuid())
+  orderNo           String        @unique
+  type              OrderType
+  amount            BigInt
+  reward            BigInt        @default(0)
+  playerId          String?
+  player            User?         @relation("OrderPlayer", fields: [playerId], references: [id])
+  agentId           String?
+  agent             User?         @relation("OrderAgent", fields: [agentId], references: [id])
+  walletAccount     String?
+  collectionAccount String?
+  method            PaymentMethod?
+  status            OrderStatus   @default(PENDING)
+  frozenAmount      BigInt        @default(0)
+  createdAt         DateTime      @default(now())
+  resolvedAt        DateTime?
+
+  // Pay-on-behalf (WITHDRAW orders): link to the withdrawal + payee snapshot + agent proof
+  withdrawalId  String?
+  payeeName     String?
+  payeeBank     String?
+  senderAccount String?
+  trxId         String?
+
+  @@index([agentId])
+  @@index([status])
+}
+
+// ------------------------------------------------------------------
+// Referral & commission
+// ------------------------------------------------------------------
+model ReferralEdge {
+  id           String @id @default(cuid())
+  ancestorId   String
+  ancestor     User   @relation("Ancestor", fields: [ancestorId], references: [id], onDelete: Cascade)
+  descendantId String
+  descendant   User   @relation("Descendant", fields: [descendantId], references: [id], onDelete: Cascade)
+  level        Int
+
+  @@unique([ancestorId, descendantId])
+  @@index([descendantId])
+  @@index([ancestorId])
+}
+
+enum CommissionStatus {
+  ACCRUED
+  PAID
+  VOID
+}
+
+model Commission {
+  id           String           @id @default(cuid())
+  agentId      String
+  agent        User             @relation("CommissionAgent", fields: [agentId], references: [id])
+  sourceUserId String
+  sourceUser   User             @relation("CommissionSource", fields: [sourceUserId], references: [id])
+  depositId    String?
+  deposit      Deposit?         @relation(fields: [depositId], references: [id])
+  level        Int
+  rateBps      Int
+  amount       BigInt
+  status       CommissionStatus @default(ACCRUED)
+  createdAt    DateTime         @default(now())
+
+  @@index([agentId])
+}
+
+// ------------------------------------------------------------------
+// Bonuses & engagement
+// ------------------------------------------------------------------
+enum BonusType {
+  REGISTRATION
+  DAILY_OPEN
+  DEPOSIT_1
+  DEPOSIT_2
+  DEPOSIT_3
+  DAILY_DEPOSIT
+  REBET
+  CASHBACK
+  WHEEL
+}
+
+enum BonusStatus {
+  LOCKED
+  ACTIVE
+  RELEASED
+  EXPIRED
+}
+
+model Bonus {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  type          BonusType
+  amount        BigInt
+  wagerRequired BigInt      @default(0)
+  wagerProgress BigInt      @default(0)
+  status        BonusStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([userId])
+}
+
+model WheelPrize {
+  id         String  @id @default(cuid())
+  label      String
+  color      String
+  weight     Int
+  isPhysical Boolean @default(false)
+  wheel      String  @default("SPIN")
+  order      Int     @default(0)
+
+  spins WheelSpin[]
+}
+
+model WheelSpin {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  prizeId   String
+  prize     WheelPrize @relation(fields: [prizeId], references: [id])
+  amount    BigInt     @default(0)
+  wheel     String     @default("SPIN")
+  createdAt DateTime   @default(now())
+
+  @@index([userId])
+}
+
+model CashbackTier {
+  id      String  @id @default(cuid())
+  name    String
+  minLoss BigInt
+  pct     Int
+  maxClaim BigInt
+  enabled Boolean @default(true)
+  order   Int     @default(0)
+}
+
+enum OfferType {
+  Deposit
+  Cashback
+  Festival
+  Referral
+}
+
+model Offer {
+  id      String    @id @default(cuid())
+  title   String
+  desc    String
+  type    OfferType
+  reward  String
+  enabled Boolean   @default(true)
+}
+
+model Game {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  title    String
+  emoji    String
+  color    String
+  category String
+  enabled  Boolean @default(true)
+  winPct   Int     @default(90)
+  tag      String?
+  plays    Int     @default(0)
+  ggr      BigInt  @default(0)
+  order    Int     @default(0)
+}
+
+enum RoundState {
+  ACTIVE
+  CASHED_OUT
+  BUST
+}
+
+model GameRound {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id])
+  gameSlug      String
+  bet           BigInt
+  gridSize      Int        @default(25)
+  minesCount    Int
+  minePositions Int[]
+  revealed      Int[]
+  multiplier    Float      @default(0)
+  state         RoundState @default(ACTIVE)
+  payout        BigInt     @default(0)
+  createdAt     DateTime   @default(now())
+  endedAt       DateTime?
+
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------
+// Settings & audit
+// ------------------------------------------------------------------
+// A marketing channel/line owned by a mentor. Members share links under this channel.
+model Channel {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  ownerId   String
+  owner     User     @relation("ChannelOwner", fields: [ownerId], references: [id])
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String?
+  entityId   String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+}

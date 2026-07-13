@@ -236,7 +236,7 @@ export function IconChip({ size = 18, className }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 24 24" className={className}>
       <circle cx="12" cy="12" r="10" fill="#c0392b" stroke="#f5c842" strokeWidth="2" />
       <circle cx="12" cy="12" r="6" fill="none" stroke="#f5c842" strokeWidth="1" strokeDasharray="2 2" />
-      <text x="12" y="15" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="bold">₹</text>
+      <text x="12" y="15" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="bold">Rs </text>
     </svg>
   )
 }

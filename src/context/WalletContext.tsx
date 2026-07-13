@@ -1,10 +1,11 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
-
-const STORAGE_KEY = 'zee9-demo-balance'
-const DEFAULT_BALANCE = 3150
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { api, getAccess } from '../api/client'
+import { usePlayerAuth } from '../api/auth'
 
 type WalletContextValue = {
   balance: number
+  bonus: number
+  refresh: () => Promise<void>
   debit: (amount: number) => boolean
   credit: (amount: number) => void
   canAfford: (amount: number) => boolean
@@ -13,58 +14,51 @@ type WalletContextValue = {
 
 const WalletContext = createContext<WalletContextValue | null>(null)
 
-function readStoredBalance(): number {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw == null) return DEFAULT_BALANCE
-    const n = Number(raw)
-    return Number.isFinite(n) ? n : DEFAULT_BALANCE
-  } catch {
-    return DEFAULT_BALANCE
-  }
-}
-
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [balance, setBalanceState] = useState(readStoredBalance)
+  const { player } = usePlayerAuth()
+  const [balance, setBalanceState] = useState(0)
+  const [bonus, setBonus] = useState(0)
 
-  const persist = useCallback((next: number) => {
-    setBalanceState(next)
+  const refresh = useCallback(async () => {
+    if (!getAccess()) return
     try {
-      localStorage.setItem(STORAGE_KEY, String(next))
+      const w = await api.get('/me/wallet')
+      setBalanceState(Number(w.MAIN ?? 0) / 100)
+      setBonus(Number(w.BONUS ?? 0) / 100)
     } catch {
       /* ignore */
     }
   }, [])
 
+  // Re-sync whenever the signed-in player changes (login/logout/refresh).
+  useEffect(() => {
+    if (player) refresh()
+    else {
+      setBalanceState(0)
+      setBonus(0)
+    }
+  }, [player, refresh])
+
   const canAfford = useCallback((amount: number) => amount > 0 && balance >= amount, [balance])
 
+  // Local optimistic helpers (real settlement happens server-side; call refresh() after).
   const debit = useCallback(
     (amount: number) => {
       if (!canAfford(amount)) return false
-      persist(Math.round((balance - amount) * 100) / 100)
+      setBalanceState((b) => Math.round((b - amount) * 100) / 100)
       return true
     },
-    [balance, canAfford, persist],
+    [canAfford],
   )
-
-  const credit = useCallback(
-    (amount: number) => {
-      if (amount <= 0) return
-      persist(Math.round((balance + amount) * 100) / 100)
-    },
-    [balance, persist],
-  )
-
-  const setBalance = useCallback(
-    (amount: number) => {
-      persist(Math.max(0, Math.round(amount * 100) / 100))
-    },
-    [persist],
-  )
+  const credit = useCallback((amount: number) => {
+    if (amount <= 0) return
+    setBalanceState((b) => Math.round((b + amount) * 100) / 100)
+  }, [])
+  const setBalance = useCallback((amount: number) => setBalanceState(Math.max(0, Math.round(amount * 100) / 100)), [])
 
   const value = useMemo(
-    () => ({ balance, debit, credit, canAfford, setBalance }),
-    [balance, debit, credit, canAfford, setBalance],
+    () => ({ balance, bonus, refresh, debit, credit, canAfford, setBalance }),
+    [balance, bonus, refresh, debit, credit, canAfford, setBalance],
   )
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>

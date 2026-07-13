@@ -1,9 +1,8 @@
 import { Shell, StatusBar, TopBar, fmt } from '../components/ui'
 import { useStore } from '../data/store'
-import { DEPOSIT_HISTORY } from '../data/mock'
 
 export default function Balance() {
-  const { balance, freeze, showToast } = useStore()
+  const { balance, freeze, transactions, showToast } = useStore()
   return (
     <Shell>
       <StatusBar />
@@ -27,13 +26,18 @@ export default function Balance() {
             <div className="c-amt">Amount</div>
             <div className="c-time">Time</div>
           </div>
-          {DEPOSIT_HISTORY.map((t) => (
+          {transactions.map((t) => (
             <div className="trow" key={t.id}>
               <div>{t.type}</div>
               <div className="c-amt">{fmt(t.amount)}</div>
               <div className="c-time">{t.time}</div>
             </div>
           ))}
+          {transactions.length === 0 && (
+            <div className="trow">
+              <div className="muted" style={{ textAlign: 'center', width: '100%' }}>No records</div>
+            </div>
+          )}
         </div>
         <div style={{ height: 24 }} />
       </div>

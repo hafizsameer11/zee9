@@ -22,7 +22,19 @@ export interface Agent {
   active: boolean
   referrals: number
   commission: number
+  commissionBalance: number
   joined: string
+}
+
+export interface AgentAccountReview {
+  id: string
+  agentId: string
+  agentName: string
+  agentPhone: string
+  method: string
+  number: string
+  holder: string
+  createdAt: string
 }
 
 export interface Player {
@@ -85,6 +97,7 @@ export interface Settings {
   panelLink: string
   csUpperRight: boolean
   wheelsLowerTop: boolean
+  tickerText: string
   // bonuses
   registrationBonus: number
   dailyOpenBonus: number
@@ -109,10 +122,12 @@ export interface Settings {
   // wager
   bonusWager: number
   depositWager: number
+  wheelDepositPerSpin: number
   // methods
   methodJazzcash: boolean
   methodEasypaisa: boolean
   methodBank: boolean
+  methodWegars: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -120,17 +135,18 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: 'PKR',
   whatsapp: '+92 300 1234567',
   whatsappEnabled: true,
-  shareLink: 'https://lp.s9.game/m/share?channel=35',
-  panelLink: 'https://lp.s9.game/m/share?channel=35',
+  shareLink: 'http://localhost:5174/',
+  panelLink: 'http://localhost:5300/',
   csUpperRight: true,
   wheelsLowerTop: true,
+  tickerText: '',
   registrationBonus: 150,
-  dailyOpenBonus: 15,
+  dailyOpenBonus: 5,
   dailyOpenNeedsDeposit: true,
-  depositBonus1: 20,
-  depositBonus2: 15,
-  depositBonus3: 10,
-  dailyDepositBonus: 10,
+  depositBonus1: 10,
+  depositBonus2: 7,
+  depositBonus3: 5,
+  dailyDepositBonus: 7,
   rebetBonus: true,
   extraBonus: true,
   commissionL1: 30,
@@ -144,9 +160,11 @@ export const DEFAULT_SETTINGS: Settings = {
   maxDeposit: 100000,
   bonusWager: 5,
   depositWager: 1,
+  wheelDepositPerSpin: 1000,
   methodJazzcash: true,
   methodEasypaisa: true,
   methodBank: true,
+  methodWegars: true,
 }
 
 // ---------- Games ----------
@@ -168,12 +186,12 @@ export const GAMES: GameRow[] = [
 const A = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
 export const AGENTS: Agent[] = [
-  { id: 'AG1001', name: 'Adnan Ali', phone: '0319-4426446', level: 1, walletsFilled: 5, active: true, referrals: 128, commission: 184500, joined: A(210) },
-  { id: 'AG1002', name: 'Bilal Ahmed', phone: '0300-7781122', level: 1, walletsFilled: 5, active: true, referrals: 94, commission: 132000, joined: A(180) },
-  { id: 'AG1003', name: 'Zeeshan Khan', phone: '0321-5566778', level: 2, walletsFilled: 3, active: false, referrals: 41, commission: 38900, joined: A(90) },
-  { id: 'AG1004', name: 'Usman Tariq', phone: '0333-2233445', level: 1, walletsFilled: 5, active: true, referrals: 76, commission: 98700, joined: A(150) },
-  { id: 'AG1005', name: 'Amir Sohail', phone: '0345-9988776', level: 3, walletsFilled: 2, active: false, referrals: 12, commission: 8400, joined: A(30) },
-  { id: 'AG1006', name: 'Hamza Raza', phone: '0312-4455667', level: 2, walletsFilled: 4, active: true, referrals: 55, commission: 61200, joined: A(120) },
+  { id: 'AG1001', name: 'Adnan Ali', phone: '0319-4426446', level: 1, walletsFilled: 5, active: true, referrals: 128, commission: 184500, commissionBalance: 0, joined: A(210) },
+  { id: 'AG1002', name: 'Bilal Ahmed', phone: '0300-7781122', level: 1, walletsFilled: 5, active: true, referrals: 94, commission: 132000, commissionBalance: 0, joined: A(180) },
+  { id: 'AG1003', name: 'Zeeshan Khan', phone: '0321-5566778', level: 2, walletsFilled: 3, active: false, referrals: 41, commission: 38900, commissionBalance: 0, joined: A(90) },
+  { id: 'AG1004', name: 'Usman Tariq', phone: '0333-2233445', level: 1, walletsFilled: 5, active: true, referrals: 76, commission: 98700, commissionBalance: 0, joined: A(150) },
+  { id: 'AG1005', name: 'Amir Sohail', phone: '0345-9988776', level: 3, walletsFilled: 2, active: false, referrals: 12, commission: 8400, commissionBalance: 0, joined: A(30) },
+  { id: 'AG1006', name: 'Hamza Raza', phone: '0312-4455667', level: 2, walletsFilled: 4, active: true, referrals: 55, commission: 61200, commissionBalance: 0, joined: A(120) },
 ]
 
 export const PLAYERS: Player[] = [
@@ -219,14 +237,14 @@ export const CASHBACK_TIERS: CashbackTier[] = [
 
 export const WHEEL_PRIZES: WheelPrize[] = [
   { id: 'w1', label: 'Laptop', color: '#6d5efc', weight: 1, isPhysical: true },
-  { id: 'w2', label: '₹10,000', color: '#f5b301', weight: 2 },
+  { id: 'w2', label: 'Rs 10,000', color: '#f5b301', weight: 2 },
   { id: 'w3', label: 'Mobile', color: '#17b877', weight: 2, isPhysical: true },
-  { id: 'w4', label: '₹5,000', color: '#ef4a44', weight: 4 },
+  { id: 'w4', label: 'Rs 5,000', color: '#ef4a44', weight: 4 },
   { id: 'w5', label: 'Bike', color: '#3b9df0', weight: 1, isPhysical: true },
-  { id: 'w6', label: '₹1,000', color: '#9b59b6', weight: 8 },
-  { id: 'w7', label: '₹100', color: '#e67e22', weight: 20 },
-  { id: 'w8', label: '₹50', color: '#16a085', weight: 25 },
-  { id: 'w9', label: '₹20', color: '#c0392b', weight: 25 },
+  { id: 'w6', label: 'Rs 1,000', color: '#9b59b6', weight: 8 },
+  { id: 'w7', label: 'Rs 100', color: '#e67e22', weight: 20 },
+  { id: 'w8', label: 'Rs 50', color: '#16a085', weight: 25 },
+  { id: 'w9', label: 'Rs 20', color: '#c0392b', weight: 25 },
   { id: 'w10', label: 'Try Again', color: '#7f8c8d', weight: 12 },
 ]
 

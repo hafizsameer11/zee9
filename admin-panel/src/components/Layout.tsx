@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { Icons, type IconKey } from './icons'
 import { useAdmin } from '../data/store'
+import { useAuth } from '../api/auth'
 
 interface NavDef {
   group: string
@@ -10,6 +11,7 @@ interface NavDef {
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { withdrawals, deposits, toast, settings } = useAdmin()
+  const { admin, logout } = useAuth()
   const pendingW = withdrawals.filter((w) => w.status === 'pending').length
   const pendingD = deposits.filter((d) => d.status === 'pending').length
   const loc = useLocation()
@@ -23,12 +25,14 @@ export default function Layout({ children }: { children: ReactNode }) {
         { to: '/players', label: 'Players', icon: 'players' },
         { to: '/agents', label: 'Agents', icon: 'agents' },
         { to: '/referrals', label: 'Referrals & Commission', icon: 'referrals' },
+        { to: '/channels', label: 'Channels & Mentors', icon: 'agents' },
       ],
     },
     {
       group: 'Finance',
       items: [
         { to: '/deposits', label: 'Deposits', icon: 'deposit', badge: () => pendingD || undefined },
+        { to: '/payment-channels', label: 'Payment Channels', icon: 'deposit' },
         { to: '/withdrawals', label: 'Withdrawals', icon: 'withdraw', badge: () => pendingW || undefined },
       ],
     },
@@ -89,11 +93,14 @@ export default function Layout({ children }: { children: ReactNode }) {
             {(pendingW || pendingD) > 0 && <span className="dot" />}
           </button>
           <div className="topbar-user">
-            <div className="ava">AD</div>
+            <div className="ava">{(admin?.name ?? 'AD').slice(0, 2).toUpperCase()}</div>
             <div className="who">
-              <b>Super Admin</b>
-              <span>admin@zee9</span>
+              <b>{admin?.name ?? 'Admin'}</b>
+              <span>{admin?.role ?? 'ADMIN'}</span>
             </div>
+            <button className="topbar-btn" title="Log out" onClick={logout} style={{ marginLeft: 6 }}>
+              {Icons.logout}
+            </button>
           </div>
         </header>
         <main className="content">{children}</main>

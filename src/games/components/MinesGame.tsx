@@ -1,13 +1,8 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
-import {
-  GRID_SIZE,
-  createMinesRound,
-  minesMultiplier,
-  revealTile,
-  type MinesRound,
-} from '../engines/mines'
+import { api } from '../../api/client'
+import { GRID_SIZE } from '../engines/mines'
 import type { GameComponentProps } from '../types'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import {
@@ -31,34 +26,63 @@ const MULT_STEPS = 6
 function formatAmount(n: number) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
-
 function formatCompact(n: number) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+type Round = {
+  roundId: string
+  mineCount: number
+  bet: number
+  active: boolean
+  gems: Set<number>
+  mines: Set<number>
+  bomb: number | null
+  multiplier: number
 }
 
 export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef)
-  const { balance, debit, credit, canAfford } = useWallet()
+  const { balance, refresh, canAfford } = useWallet()
 
   const [betAmount, setBetAmount] = useState(defaultBet || 10)
   const [mineCount, setMineCount] = useState(2)
-  const [round, setRound] = useState<MinesRound | null>(null)
+  const [round, setRound] = useState<Round | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [winPct, setWinPct] = useState(91)
+
+  // Admin-controlled win % (RTP) drives all displayed multipliers.
+  useEffect(() => {
+    api.get('/games/mines').then((g) => setWinPct(g.winPct)).catch(() => {})
+  }, [])
+
+  const rtp = winPct / 100
+  const mult = useCallback(
+    (revealed: number, mines: number) => {
+      if (revealed <= 0) return 0
+      let m = 1
+      const safe = GRID_SIZE - mines
+      for (let i = 0; i < revealed; i++) m *= (GRID_SIZE - i) / (safe - i)
+      return m * rtp
+    },
+    [rtp],
+  )
 
   const playing = round?.active === true
   const ended = round != null && !round.active
   const showAll = ended
 
-  const gemsFound = round?.revealed.size ?? 0
-  const mult = round ? minesMultiplier(gemsFound, round.mineCount) : 0
-  const nextMult = minesMultiplier(Math.max(1, gemsFound + 1), mineCount)
-  const currentWin = playing || ended ? Math.round(betAmount * mult * 100) / 100 : 0
+  const gemsFound = round?.gems.size ?? 0
+  const currentMult = round?.multiplier ?? 0
+  const nextMult = mult(Math.max(1, gemsFound + 1), round?.mineCount ?? mineCount)
+  const currentWin = round ? Math.round(round.bet * currentMult * 100) / 100 : 0
   const nextWin = Math.round(betAmount * nextMult * 100) / 100
 
-  const stepMultipliers = Array.from({ length: MULT_STEPS }, (_, i) =>
-    minesMultiplier(i + 1, mineCount),
-  )
+  const stepMultipliers = Array.from({ length: MULT_STEPS }, (_, i) => mult(i + 1, mineCount))
+
+  const isRevealed = (i: number) => !!round && (round.gems.has(i) || round.bomb === i)
 
   const adjustBet = (delta: number) => {
     setBetAmount((b) => {
@@ -69,45 +93,73 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
     })
   }
 
-  const startRound = useCallback(() => {
-    if (betAmount <= 0) {
-      onMessage?.('Set a bet amount first')
-      return
+  const startRound = useCallback(async () => {
+    if (busy) return
+    if (betAmount <= 0) return onMessage?.('Set a bet amount first')
+    if (!canAfford(betAmount)) return onMessage?.('Insufficient balance')
+    setBusy(true)
+    try {
+      const res = await api.post('/games/mines/start', { bet: betAmount, mines: mineCount })
+      setRound({ roundId: res.roundId, mineCount, bet: betAmount, active: true, gems: new Set(), mines: new Set(), bomb: null, multiplier: 0 })
+      onMessage?.(null)
+      refresh()
+    } catch (e: any) {
+      onMessage?.(e?.message || 'Could not place bet')
+    } finally {
+      setBusy(false)
     }
-    if (!canAfford(betAmount)) {
-      onMessage?.('Insufficient balance')
-      return
-    }
-    if (!debit(betAmount)) {
-      onMessage?.('Could not place bet')
-      return
-    }
-    setRound(createMinesRound(mineCount, betAmount))
-    onMessage?.(null)
-  }, [betAmount, canAfford, debit, mineCount, onMessage])
+  }, [betAmount, busy, canAfford, mineCount, onMessage, refresh])
 
-  const cashOut = useCallback(() => {
-    if (!round?.active || round.revealed.size === 0) return
-    const win = Math.round(betAmount * mult * 100) / 100
-    credit(win)
-    onMessage?.(`Won PKR ${formatCompact(win)}`)
-    setRound({ ...round, active: false })
-  }, [betAmount, credit, mult, onMessage, round])
+  const handleCell = useCallback(
+    async (index: number) => {
+      if (!round?.active || busy || isRevealed(index)) return
+      setBusy(true)
+      try {
+        const res = await api.post(`/games/mines/${round.roundId}/reveal`, { tile: index })
+        if (res.safe === false) {
+          // Busted
+          setRound((r) => (r ? { ...r, active: false, bomb: index, mines: new Set(res.mines), multiplier: 0 } : r))
+          onMessage?.('Hit a mine!')
+          refresh()
+        } else if (res.state === 'CASHED_OUT') {
+          // Whole board cleared → auto cash-out
+          setRound((r) => (r ? { ...r, active: false, gems: new Set([...r.gems, index]), mines: new Set(res.mines), multiplier: res.multiplier } : r))
+          onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
+          refresh()
+        } else {
+          setRound((r) => (r ? { ...r, gems: new Set([...r.gems, index]), multiplier: res.multiplier } : r))
+        }
+      } catch (e: any) {
+        onMessage?.(e?.message || 'Reveal failed')
+      } finally {
+        setBusy(false)
+      }
+    },
+    [busy, onMessage, refresh, round],
+  )
+
+  const cashOut = useCallback(async () => {
+    if (!round?.active || round.gems.size === 0 || busy) return
+    setBusy(true)
+    try {
+      const res = await api.post(`/games/mines/${round.roundId}/cashout`)
+      setRound((r) => (r ? { ...r, active: false, mines: new Set(res.mines), multiplier: res.multiplier } : r))
+      onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
+      refresh()
+    } catch (e: any) {
+      onMessage?.(e?.message || 'Cash out failed')
+    } finally {
+      setBusy(false)
+    }
+  }, [busy, onMessage, refresh, round])
 
   const reset = useCallback(() => {
     setRound(null)
     onMessage?.(null)
   }, [onMessage])
 
-  const handleCell = (index: number) => {
-    if (!round?.active) return
-    const { hit, round: next } = revealTile(round, index)
-    setRound(next)
-    if (hit) onMessage?.('Hit a mine!')
-  }
-
   const cellClass = (index: number) => {
-    const revealed = round?.revealed.has(index)
+    const revealed = isRevealed(index)
     const isMine = round?.mines.has(index)
     if (showAll && !revealed) return isMine ? styles.cellMineDim : styles.cellGemDim
     if (revealed && isMine) return styles.cellMine
@@ -169,7 +221,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               <div className={styles.woodFrameInner}>
                 <div className={styles.grid}>
                   {Array.from({ length: GRID_SIZE }, (_, i) => {
-                    const revealed = round?.revealed.has(i)
+                    const revealed = isRevealed(i)
                     const isMine = round?.mines.has(i)
                     const isHidden = !revealed && !(showAll && !revealed)
 
@@ -179,7 +231,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                         type="button"
                         className={`${styles.cell} ${cellClass(i)}`}
                         onClick={() => handleCell(i)}
-                        disabled={!playing || revealed || showAll}
+                        disabled={!playing || revealed || showAll || busy}
                       >
                         {revealed && isMine && <MineRevealIcon className={styles.cellIcon} />}
                         {revealed && !isMine && <GemRevealIcon className={styles.cellIcon} />}
@@ -250,7 +302,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                 <div className={styles.winBoxBody}>
                   <TreasureChestIcon className={styles.chestIcon} />
                   <div className={styles.winBoxStats}>
-                    <span className={styles.winMult}>{mult > 0 ? `${mult.toFixed(2)}X` : '0X'}</span>
+                    <span className={styles.winMult}>{currentMult > 0 ? `${currentMult.toFixed(2)}X` : '0X'}</span>
                     <span className={styles.winAmount}>{formatAmount(currentWin)}</span>
                   </div>
                 </div>
@@ -289,7 +341,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                   <button
                     type="button"
                     className={styles.startBtn}
-                    disabled={gemsFound === 0}
+                    disabled={gemsFound === 0 || busy}
                     onClick={cashOut}
                   >
                     Cash Out · {formatAmount(currentWin)}
@@ -299,8 +351,8 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               {!playing && !ended && (
                 <div className={styles.startBtnWrap}>
                   <span className={styles.startBtnGlow} aria-hidden />
-                  <button type="button" className={styles.startBtn} onClick={startRound}>
-                    Start Game
+                  <button type="button" className={styles.startBtn} onClick={startRound} disabled={busy}>
+                    {busy ? 'Starting…' : 'Start Game'}
                   </button>
                   <GuideHandIcon className={styles.guideHand} aria-hidden />
                 </div>

@@ -1,21 +1,28 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Shell, StatusBar, TopBar, fmt } from '../components/ui'
 import { useStore } from '../data/store'
 
-const STEPS = [
-  { label: 'Already ordered', time: '06-27 09:32' },
-  { label: 'Already paid', time: '06-27 09:34' },
-  { label: 'On Hold', time: '06-27 09:50' },
-  { label: 'success', time: '06-27 09:35' },
-]
-
 export default function OrderPayment() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { orders, resolveOrder, showToast } = useStore()
+  const { orders, resolveOrder, acceptOrder, showToast } = useStore()
   const order = orders.find((o) => o.id === id)
   const [trx, setTrx] = useState('')
+  const [accepted, setAccepted] = useState(false)
+
+  useEffect(() => {
+    if (id && order?.status === 'pending' && !accepted) {
+      acceptOrder(id).then(() => setAccepted(true)).catch(() => {})
+    }
+  }, [id, order?.status, accepted, acceptOrder])
+
+  const steps = order ? [
+    { label: 'Ordered', time: order.time },
+    { label: accepted ? 'Processing' : 'Pending', time: order.time },
+    { label: 'Confirm payment', time: '—' },
+    { label: 'Complete', time: '—' },
+  ] : []
 
   if (!order) {
     return (
@@ -42,7 +49,7 @@ export default function OrderPayment() {
       showToast('Please enter TRX ID')
       return
     }
-    resolveOrder(order!.id, 'success')
+    resolveOrder(order!.id, 'success', trx.trim())
     nav('/collections')
   }
 
@@ -52,7 +59,7 @@ export default function OrderPayment() {
       <TopBar title="Payment" />
       <div className="scroll pad">
         <div className="stepper">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <div className="step" key={s.label}>
               <div className={'bar' + (i >= 2 ? ' pending' : '')} />
               <div className={'dot' + (i >= 3 ? ' pending' : '')} />

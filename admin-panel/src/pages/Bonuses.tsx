@@ -1,7 +1,7 @@
 import { PageHead, Toggle, money } from '../components/ui'
 import { useAdmin } from '../data/store'
 
-function NumField({ label, value, onChange, suffix = '₹', hint }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string }) {
+function NumField({ label, value, onChange, suffix = 'Rs ', hint }: { label: string; value: number; onChange: (v: number) => void; suffix?: string; hint?: string }) {
   return (
     <div className="fld">
       <label>{label} {hint && <span className="hint">— {hint}</span>}</label>

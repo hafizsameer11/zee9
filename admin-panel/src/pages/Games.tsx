@@ -7,7 +7,7 @@ import type { GameRow } from '../data/mock'
 const EMOJIS = ['💎', '✈️', '🎯', '🚀', '💣', '🐂', '🎲', '🃏', '🐉', '🎴', '⚡', '🎰', '🍀', '👑', '🔥', '⭐']
 
 export default function Games() {
-  const { games, updateGame, showToast } = useAdmin()
+  const { games, updateGame, addGame, showToast } = useAdmin()
   const [edit, setEdit] = useState<GameRow | null>(null)
   const sorted = [...games].sort((a, b) => a.order - b.order)
   const live = games.filter((g) => g.enabled).length
@@ -17,7 +17,7 @@ export default function Games() {
       <PageHead
         title="Games"
         subtitle={`${live} of ${games.length} games live · control titles, icons, win % and visibility`}
-        actions={<button className="btn btn-primary">{Icons.plus} Add game</button>}
+        actions={<button className="btn btn-primary" onClick={addGame}>{Icons.plus} Add game</button>}
       />
 
       <div className="card">

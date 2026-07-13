@@ -1,13 +1,24 @@
 import { useState } from 'react'
 import { PageHead, Pill, Avatar, money } from '../components/ui'
 import { useAdmin } from '../data/store'
+import type { AgentCreds } from '../data/store'
+import { CredsModal } from '../components/CredsModal'
 
 const STATUS_TONE: Record<string, string> = { active: 'green', banned: 'red', new: 'blue' }
 
 export default function Players() {
-  const { players, updatePlayer, showToast } = useAdmin()
+  const { players, updatePlayer, makeAgent, showToast } = useAdmin()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'banned' | 'new'>('all')
+  const [creds, setCreds] = useState<AgentCreds | null>(null)
+
+  async function promote(id: string) {
+    try {
+      setCreds(await makeAgent(id))
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to promote')
+    }
+  }
 
   const rows = players.filter(
     (p) =>
@@ -75,9 +86,14 @@ export default function Players() {
                         Unban
                       </button>
                     ) : (
-                      <button className="btn btn-danger btn-sm" onClick={() => { updatePlayer(p.id, { status: 'banned' }); showToast('Player banned') }}>
-                        Ban
-                      </button>
+                      <div className="flex gap8" style={{ justifyContent: 'flex-end' }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => promote(p.id)} title="Generate C2C agent login">
+                          Make agent
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => { updatePlayer(p.id, { status: 'banned' }); showToast('Player banned') }}>
+                          Ban
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -86,6 +102,8 @@ export default function Players() {
           </table>
         </div>
       </div>
+
+      {creds && <CredsModal creds={creds} onClose={() => setCreds(null)} />}
     </>
   )
 }

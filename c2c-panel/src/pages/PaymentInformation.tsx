@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Shell, StatusBar, TopBar, Sheet, fmt } from '../components/ui'
-import { TRANSACTIONS, TXN_TYPES } from '../data/mock'
+import { useStore } from '../data/store'
 
 export default function PaymentInformation() {
+  const { transactions } = useStore()
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<string>('')
 
-  const rows = TRANSACTIONS.filter((t) => !type || t.type === type)
+  const txnTypes = useMemo(() => Array.from(new Set(transactions.map((t) => t.type))), [transactions])
+  const rows = transactions.filter((t) => !type || t.type === type)
 
   return (
     <Shell>
@@ -52,7 +54,7 @@ export default function PaymentInformation() {
             >
               All
             </button>
-            {TXN_TYPES.map((t) => (
+            {txnTypes.map((t) => (
               <button
                 key={t}
                 className={'sheet-opt' + (type === t ? ' active' : '')}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Shell, StatusBar, TopBar, Sheet, fmt } from '../components/ui'
-import { HISTORY_ORDERS, type CollectionOrder, type OrderStatus } from '../data/mock'
+import { useStore } from '../data/store'
+import type { CollectionOrder, OrderStatus } from '../data/mock'
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   pending: 'Pending',
@@ -13,17 +14,18 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 type SheetKind = 'account' | 'type' | 'filter' | null
 
 export default function OrderList() {
+  const { orders } = useStore()
   const [sheet, setSheet] = useState<SheetKind>(null)
   const [account, setAccount] = useState<string>('')
   const [status, setStatus] = useState<OrderStatus | ''>('')
   const [detail, setDetail] = useState<CollectionOrder | null>(null)
 
   const accounts = useMemo(
-    () => Array.from(new Set(HISTORY_ORDERS.map((o) => o.account))),
-    [],
+    () => Array.from(new Set(orders.map((o) => o.account).filter(Boolean))),
+    [orders],
   )
 
-  const filtered = HISTORY_ORDERS.filter(
+  const filtered = orders.filter(
     (o) => (!account || o.account === account) && (!status || o.status === status),
   )
 

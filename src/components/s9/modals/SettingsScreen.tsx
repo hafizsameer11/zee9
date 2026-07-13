@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { usePlayerAuth } from '../../../api/auth'
 import S9ModalShell from './S9ModalShell'
 import styles from './SettingsScreen.module.css'
 
@@ -21,11 +22,13 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function SettingsScreen({ onClose }: Props) {
   const navigate = useNavigate()
+  const { logout } = usePlayerAuth()
   const [gameMusic, setGameMusic] = useState(true)
   const [effectSound, setEffectSound] = useState(true)
   const [vibrate, setVibrate] = useState(true)
 
-  const logout = () => {
+  const doLogout = () => {
+    logout()
     onClose()
     navigate('/login')
   }
@@ -66,7 +69,7 @@ export default function SettingsScreen({ onClose }: Props) {
         </div>
       </div>
 
-      <button type="button" className={styles.logout} onClick={logout}>Logout</button>
+      <button type="button" className={styles.logout} onClick={doLogout}>Logout</button>
     </S9ModalShell>
   )
 }

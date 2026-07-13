@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { Shell, StatusBar, TopBar } from '../components/ui'
-import { USER } from '../data/mock'
+import { useAuth } from '../api/auth'
 
 export default function Profile() {
   const nav = useNavigate()
+  const { agent, logout } = useAuth()
   return (
     <Shell>
       <StatusBar />
@@ -11,17 +12,17 @@ export default function Profile() {
       <div className="scroll">
         <div className="profile-head">
           <div className="pf-ava">&#128100;</div>
-          <div className="pf-name">{USER.name}</div>
+          <div className="pf-name">{agent?.name ?? 'Agent'}</div>
         </div>
 
         <div className="card menu-card">
           <div className="menu-item">
-            <span className="mi-k">User ID</span>
-            <span className="mi-v">{USER.userId}</span>
+            <span className="mi-k">Agent ID</span>
+            <span className="mi-v">{agent?.id.slice(-6).toUpperCase()}</span>
           </div>
           <div className="menu-item">
             <span className="mi-k">Phone Number</span>
-            <span className="mi-v">{USER.phone}</span>
+            <span className="mi-v">{agent?.phone}</span>
           </div>
           <div className="menu-item" onClick={() => nav('/login-password')}>
             <span className="mi-k">Login Password</span>
@@ -33,12 +34,12 @@ export default function Profile() {
           </div>
           <div className="menu-item">
             <span className="mi-k">Version</span>
-            <span className="mi-v">{USER.version}</span>
+            <span className="mi-v">v1.1.0</span>
           </div>
         </div>
 
         <div className="logout-wrap">
-          <button className="btn btn-gold btn-block" onClick={() => nav('/')}>
+          <button className="btn btn-gold btn-block" onClick={logout}>
             Log Out
           </button>
         </div>

@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shell, StatusBar, fmt } from '../components/ui'
 import { useStore } from '../data/store'
-import { ACCOUNT_DETAILS, STATS } from '../data/mock'
 
 type TabKey = 'today' | 'week' | 'month'
 
 export default function Home() {
   const nav = useNavigate()
-  const { balance, freeze, orders } = useStore()
+  const { balance, freeze, orders, payouts, stats, transactions } = useStore()
   const [tab, setTab] = useState<TabKey>('today')
-  const s = STATS[tab]
+  const s = stats[tab]
+  const openOrders = orders.filter((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'checking')
+  const details = transactions.slice(0, 6)
 
   return (
     <Shell>
@@ -88,7 +89,7 @@ export default function Home() {
           <button className="action-btn gold" onClick={() => nav('/collections')}>
             <span className="ab-icon">&#8646;</span>
             <span className="ab-label">Collections</span>
-            {orders.length > 0 && <span className="badge">{orders.length}</span>}
+            {openOrders.length > 0 && <span className="badge">{openOrders.length}</span>}
           </button>
           <button className="action-btn orange" onClick={() => nav('/pay-on-behalf')}>
             <span className="ab-icon">&#8631;</span>
@@ -97,6 +98,7 @@ export default function Home() {
               <br />
               On Behalf
             </span>
+            {payouts.length > 0 && <span className="badge">{payouts.length}</span>}
           </button>
         </div>
 
@@ -113,13 +115,18 @@ export default function Home() {
             <div className="c-amt">Amount</div>
             <div className="c-time">Time</div>
           </div>
-          {ACCOUNT_DETAILS.map((t) => (
+          {details.map((t) => (
             <div className="trow" key={t.id}>
               <div>{t.type}</div>
               <div className="c-amt">{fmt(t.amount)}</div>
               <div className="c-time">{t.time.replace(' ', '\n')}</div>
             </div>
           ))}
+          {details.length === 0 && (
+            <div className="trow">
+              <div className="muted" style={{ textAlign: 'center', width: '100%' }}>No transactions yet</div>
+            </div>
+          )}
         </div>
         <div style={{ height: 24 }} />
       </div>

@@ -116,8 +116,8 @@ export function IconPrizeCoins({ size = 40, className }: IconProps) {
       <ellipse cx="26" cy="50" rx="16" ry="5" fill="rgba(0,0,0,0.25)" />
       <circle cx="24" cy="38" r="14" fill="#ffb300" stroke="#fff8e1" strokeWidth="2" />
       <circle cx="40" cy="30" r="14" fill="#ffa000" stroke="#fff8e1" strokeWidth="2" />
-      <text x="24" y="43" textAnchor="middle" fontSize="14" fill="#5d4037" fontWeight="bold">₹</text>
-      <text x="40" y="35" textAnchor="middle" fontSize="14" fill="#5d4037" fontWeight="bold">₹</text>
+      <text x="24" y="43" textAnchor="middle" fontSize="14" fill="#5d4037" fontWeight="bold">Rs </text>
+      <text x="40" y="35" textAnchor="middle" fontSize="14" fill="#5d4037" fontWeight="bold">Rs </text>
     </svg>
   )
 }
@@ -162,7 +162,7 @@ export function IconPrizeChip({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} aria-hidden>
       <circle cx="12" cy="12" r="10" fill="#c62828" stroke="#ffd54f" strokeWidth="2" />
-      <text x="12" y="16" textAnchor="middle" fontSize="9" fill="#fff" fontWeight="bold">₹</text>
+      <text x="12" y="16" textAnchor="middle" fontSize="9" fill="#fff" fontWeight="bold">Rs </text>
     </svg>
   )
 }

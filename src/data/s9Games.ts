@@ -2,7 +2,7 @@ import { isDevelopedGame } from '../games/developedGames'
 
 export const DEMO_BALANCE = 3150
 
-export const S9_CURRENCY_SYMBOL = '₹'
+export const S9_CURRENCY_SYMBOL = 'Rs '
 
 export function formatS9Amount(n: number) {
   return `${S9_CURRENCY_SYMBOL}${n.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -169,21 +169,14 @@ export function getDevelopedSidebarCategories(): typeof SIDEBAR_ITEMS {
 }
 
 export const LOBBY_FEATURED_GAME_IDS = [
-  'fortune-gems',
-  'fortune-ox',
-  'wingo-lottery',
-  'aviator',
-  'crash',
   'mines',
-  '7up-down',
-  'wingo',
 ] as const
 
 export const REGISTER_BONUS_TIERS = [
-  { deposit: '₹100', cashback: '₹50', maxClaim: '₹50' },
-  { deposit: '₹500', cashback: '₹300', maxClaim: '₹300' },
-  { deposit: '₹1000', cashback: '₹700', maxClaim: '₹700' },
-  { deposit: '₹5000', cashback: '₹4000', maxClaim: '₹4000' },
+  { deposit: 'Rs 100', cashback: 'Rs 50', maxClaim: 'Rs 50' },
+  { deposit: 'Rs 500', cashback: 'Rs 300', maxClaim: 'Rs 300' },
+  { deposit: 'Rs 1000', cashback: 'Rs 700', maxClaim: 'Rs 700' },
+  { deposit: 'Rs 5000', cashback: 'Rs 4000', maxClaim: 'Rs 4000' },
 ]
 
 export const DEMO_PLAYER = {

@@ -3,7 +3,7 @@ import { Icons } from '../components/icons'
 import { useAdmin } from '../data/store'
 
 export default function Cashback() {
-  const { cashback, updateCashback, addCashback } = useAdmin()
+  const { cashback, updateCashback, addCashback, deleteCashback } = useAdmin()
 
   return (
     <>
@@ -23,7 +23,10 @@ export default function Cashback() {
                 value={t.name}
                 onChange={(e) => updateCashback(t.id, { name: e.target.value })}
               />
-              <Toggle on={t.enabled} onChange={() => updateCashback(t.id, { enabled: !t.enabled })} />
+              <div className="flex gap8">
+                <Toggle on={t.enabled} onChange={() => updateCashback(t.id, { enabled: !t.enabled })} />
+                <button className="btn btn-outline btn-icon" onClick={() => deleteCashback(t.id)} title="Delete tier">{Icons.x}</button>
+              </div>
             </div>
 
             <div className="fld" style={{ marginBottom: 14 }}>
@@ -34,11 +37,11 @@ export default function Cashback() {
             <div className="form-grid">
               <div className="fld">
                 <label>Min weekly loss</label>
-                <div className="inp-group"><span className="addon">₹</span><input type="number" value={t.minLoss} onChange={(e) => updateCashback(t.id, { minLoss: Number(e.target.value) })} /></div>
+                <div className="inp-group"><span className="addon">Rs </span><input type="number" value={t.minLoss} onChange={(e) => updateCashback(t.id, { minLoss: Number(e.target.value) })} /></div>
               </div>
               <div className="fld">
                 <label>Max claim</label>
-                <div className="inp-group"><span className="addon">₹</span><input type="number" value={t.maxClaim} onChange={(e) => updateCashback(t.id, { maxClaim: Number(e.target.value) })} /></div>
+                <div className="inp-group"><span className="addon">Rs </span><input type="number" value={t.maxClaim} onChange={(e) => updateCashback(t.id, { maxClaim: Number(e.target.value) })} /></div>
               </div>
             </div>
 

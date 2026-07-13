@@ -49,7 +49,7 @@ export default function Referrals() {
             <div className="fld">
               <label>Min deposit per wallet</label>
               <div className="inp-group">
-                <span className="addon">₹</span>
+                <span className="addon">Rs </span>
                 <input type="number" value={s.minPerWallet} onChange={(e) => patchSettings({ minPerWallet: Number(e.target.value) })} />
               </div>
               <div className="hint" style={{ marginTop: 6 }}>Each wallet must deposit this to count</div>

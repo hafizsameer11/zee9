@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { getAccess } from '../api/client'
 import styles from './Splash.module.css'
 
 export default function Splash() {
@@ -11,7 +12,7 @@ export default function Splash() {
       setProgress((p) => {
         if (p >= 100) {
           clearInterval(t)
-          setTimeout(() => navigate('/home'), 300)
+          setTimeout(() => navigate(getAccess() ? '/home' : '/login'), 300)
           return 100
         }
         return p + 5
@@ -26,7 +27,7 @@ export default function Splash() {
       <h1 className={styles.brand}>Zee9</h1>
       <p className={styles.sub}>Play · Win · Earn</p>
       <div className={styles.loader}><div style={{ width: `${progress}%` }} /></div>
-      <button type="button" className={styles.btn} onClick={() => navigate('/home')}>Enter Game</button>
+      <button type="button" className={styles.btn} onClick={() => navigate(getAccess() ? '/home' : '/login')}>Enter Game</button>
     </div>
   )
 }

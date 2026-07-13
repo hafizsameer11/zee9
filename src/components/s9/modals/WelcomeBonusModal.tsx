@@ -1,25 +1,27 @@
 import S9ModalShell from './S9ModalShell'
+import { useConfig } from '../../../api/hooks'
 import styles from './WelcomeBonusModal.module.css'
 
 type Props = { onClose: () => void; onClaim?: () => void }
 
 export default function WelcomeBonusModal({ onClose, onClaim }: Props) {
+  const config = useConfig()
+  const amount = config?.bonuses.dailyOpen ?? 15
+  const wager = config?.wager.bonus ?? 5
+
   return (
-    <S9ModalShell title="Welcome Bonus" onClose={onClose} hideSupport>
+    <S9ModalShell title="Daily Bonus" onClose={onClose} hideSupport>
       <div className={styles.body}>
         <div className={styles.banner}>
           <span className={styles.gift}>🎁</span>
-          <h3>100% First Deposit Bonus</h3>
-          <p>Deposit now and get up to Rs 10,000 bonus!</p>
-        </div>
-        <div className={styles.timer}>
-          <span>⏱ Expires in</span>
-          <strong>2d 23h 45m</strong>
+          <h3>Daily Login Bonus</h3>
+          <p>Claim Rs {amount} free bonus once per day!</p>
         </div>
         <ul className={styles.rules}>
-          <li>Minimum deposit: Rs 100</li>
-          <li>Maximum bonus: Rs 10,000</li>
-          <li>Wagering requirement: 5x</li>
+          <li>Available once every 24 hours</li>
+          {config?.bonuses.dailyOpen ? null : <li>Bonus amount set by admin</li>}
+          <li>Wagering requirement: {wager}x bonus amount</li>
+          <li>Bonus is credited to your bonus wallet until wager is met</li>
         </ul>
         <button
           type="button"

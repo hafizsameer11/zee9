@@ -1,0 +1,43 @@
+.strip {
+  display: flex;
+  gap: 8px;
+  padding: 8px 10px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  flex: 0 0 auto;
+  min-width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 213, 79, 0.35);
+  background: linear-gradient(180deg, rgba(58, 26, 0, 0.85), rgba(26, 12, 0, 0.9));
+  color: #ffd54f;
+  cursor: pointer;
+}
+
+.card:active {
+  transform: scale(0.97);
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.2;
+  color: #e8d0a0;
+}
+
+.emoji {
+  font-size: 28px;
+  line-height: 1;
+}

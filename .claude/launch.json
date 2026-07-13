@@ -32,7 +32,7 @@
     {
       "name": "trove",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "trove", "run", "dev"],
+      "runtimeArgs": ["--prefix", "D:/projects/trove", "run", "dev"],
       "port": 5500,
       "autoPort": false
     }

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../../../api/client'
 import styles from './ReferEarnScreen.module.css'
 import ReferListsModal from './ReferListsModal'
 import {
@@ -18,15 +19,26 @@ const LEVELS = [
   { lv: 7, referrals: 200, cashback: '2%' },
 ]
 
-const RANKING = [
-  { medal: '🥇', name: 'K*****N', amount: '1283.79' },
-  { medal: '🥈', name: 'P*****3', amount: '1118.1' },
-  { medal: '🥉', name: 'P*****5', amount: '569.8' },
+const RANKING_DEFAULT = [
+  { medal: '🥇', name: '—', amount: '0' },
+  { medal: '🥈', name: '—', amount: '0' },
+  { medal: '🥉', name: '—', amount: '0' },
 ]
 
 type Props = {
   onClose: () => void
   onWithdraw?: () => void
+}
+
+type RefData = {
+  referralCode: string
+  channelCode: string
+  shareUrl: string
+  counts: { level1: number; level2: number; level3: number }
+  commissionRates: { l1: number; l2: number; l3: number }
+  totalCommission: number
+  direct: { name: string; phone: string; joined: string }[]
+  todayEarnings?: number
 }
 
 export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
@@ -35,6 +47,33 @@ export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
   const [showGuide, setShowGuide] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [showShare, setShowShare] = useState(false)
+  const [ref, setRef] = useState<RefData | null>(null)
+  const [ranking, setRanking] = useState(RANKING_DEFAULT)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/referrals'),
+      api.get('/referrals/earnings').catch(() => ({ todayEarnings: 0 })),
+      api.get('/referrals/ranking').catch(() => []),
+    ]).then(([refData, earnings, ranking]) => {
+      setRef({ ...refData, todayEarnings: earnings.todayEarnings })
+      if (ranking.length > 0) {
+        setRanking(ranking.slice(0, 3).map((r: any) => ({
+          medal: r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : '🥉',
+          name: r.name,
+          amount: String(r.amount),
+        })))
+      }
+    }).catch(() => {})
+  }, [])
+
+  const copyLink = () => {
+    if (!ref) return
+    navigator.clipboard?.writeText(ref.shareUrl).catch(() => {})
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
 
   return (
     <div className={styles.overlay}>
@@ -55,6 +94,25 @@ export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
         </header>
 
         <div className={styles.content}>
+          {/* Your invite link (real) */}
+          {ref && (
+            <section style={{ background: 'linear-gradient(180deg,#3a1a00,#1a0c00)', border: '1px solid #8b6914', borderRadius: 12, padding: 12, margin: '0 0 12px' }}>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
+                <div><div style={{ color: '#c9a24a', fontSize: 10 }}>Your code</div><b style={{ color: '#ffd54f', fontSize: 16 }}>{ref.referralCode}</b></div>
+                {ref.channelCode && <div><div style={{ color: '#c9a24a', fontSize: 10 }}>Channel</div><b style={{ color: '#fff', fontSize: 16 }}>{ref.channelCode}</b></div>}
+                <div style={{ marginLeft: 'auto', textAlign: 'right' }}><div style={{ color: '#c9a24a', fontSize: 10 }}>Commission earned</div><b style={{ color: '#8bd98b', fontSize: 16 }}>Rs {(ref.totalCommission / 100).toLocaleString('en-PK')}</b></div>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input readOnly value={ref.shareUrl} style={{ flex: 1, minWidth: 0, background: '#1a0505', border: '1px solid #8b6914', borderRadius: 8, color: '#e8d0a0', fontSize: 11, padding: '8px 10px' }} />
+                <button type="button" onClick={copyLink} style={{ background: 'linear-gradient(180deg,#ffb300,#e65100)', border: '1px solid #ffe082', color: '#fff', fontWeight: 800, borderRadius: 8, padding: '0 16px', fontSize: 12 }}>{copied ? 'Copied!' : 'Copy'}</button>
+              </div>
+              <div style={{ display: 'flex', gap: 14, marginTop: 8, color: '#e8d0a0', fontSize: 11 }}>
+                <span>L1 <b style={{ color: '#fff' }}>{ref.counts.level1}</b> ({ref.commissionRates.l1}%)</span>
+                <span>L2 <b style={{ color: '#fff' }}>{ref.counts.level2}</b> ({ref.commissionRates.l2}%)</span>
+                <span>L3 <b style={{ color: '#fff' }}>{ref.counts.level3}</b> ({ref.commissionRates.l3}%)</span>
+              </div>
+            </section>
+          )}
           {/* Level & Cashback */}
           <section className={styles.levelPanel}>
             <div className={styles.levelLeft}>
@@ -98,12 +156,12 @@ export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
               <div className={styles.teamBoxes}>
                 <div className={styles.teamBox}>
                   <span className={styles.teamIcon}>👤</span>
-                  <strong>0</strong>
+                  <strong>{ref?.counts.level1 ?? 0}</strong>
                   <small>All Referrals</small>
                 </div>
                 <div className={styles.teamBox}>
                   <span className={styles.teamIcon}>👥</span>
-                  <strong>0</strong>
+                  <strong>{ref?.counts.level1 ?? 0}</strong>
                   <small>Valid Referral(s)</small>
                 </div>
               </div>
@@ -117,15 +175,15 @@ export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
               </div>
               <div className={styles.earningsRow}>
                 <div className={styles.earnBox}>
-                  <strong>0</strong>
+                  <strong>{ref?.counts.level1 ?? 0}</strong>
                   <small>Today&apos;s Referrals</small>
                 </div>
                 <div className={styles.earnBox}>
-                  <strong>0</strong>
+                  <strong>Rs {(ref?.todayEarnings ?? 0).toLocaleString('en-PK')}</strong>
                   <small>Today&apos;s Reward</small>
                 </div>
                 <div className={styles.earnBox}>
-                  <strong>0</strong>
+                  <strong>Rs {((ref?.totalCommission ?? 0) / 100).toLocaleString('en-PK')}</strong>
                   <small>Available</small>
                 </div>
                 <button type="button" className={styles.withdrawBtn} onClick={onWithdraw}>WITHDRAW</button>
@@ -149,7 +207,7 @@ export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {RANKING.map((r) => (
+                  {ranking.map((r) => (
                     <tr key={r.name}>
                       <td>{r.medal}</td>
                       <td>{r.name}</td>
@@ -183,11 +241,11 @@ export default function ReferEarnScreen({ onClose, onWithdraw }: Props) {
           </div>
         </aside>
 
-        {showLists && <ReferListsModal onClose={() => setShowLists(false)} />}
+        {showLists && <ReferListsModal onClose={() => setShowLists(false)} referrals={ref?.direct ?? []} totalCommission={ref?.totalCommission ?? 0} />}
         {showRanking && <ReferRankingModal onClose={() => setShowRanking(false)} />}
         {showGuide && <ReferGuideModal onClose={() => setShowGuide(false)} />}
         {showDetails && <ReferDetailsModal onClose={() => setShowDetails(false)} />}
-        {showShare && <ShareLinkModal onClose={() => setShowShare(false)} />}
+        {showShare && ref && <ShareLinkModal onClose={() => setShowShare(false)} shareUrl={ref.shareUrl} />}
       </div>
     </div>
   )

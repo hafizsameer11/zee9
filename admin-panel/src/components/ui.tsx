@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Icons } from './icons'
 
-export function money(n: number, currency = '₹'): string {
+export function money(n: number, currency = 'Rs '): string {
   return currency + n.toLocaleString('en-IN')
 }
 export function compact(n: number): string {

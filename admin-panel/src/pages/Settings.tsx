@@ -56,6 +56,20 @@ export default function Settings() {
         </div>
 
         <div className="card card-pad">
+          <h3 className="section-title">Lobby ticker headline</h3>
+          <p className="section-sub">The scrolling headline shown at the top of the player lobby.</p>
+          <div className="fld">
+            <label>Ticker text</label>
+            <textarea
+              rows={3}
+              value={s.tickerText}
+              onChange={(e) => patchSettings({ tickerText: e.target.value })}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+        </div>
+
+        <div className="card card-pad">
           <h3 className="section-title">Links</h3>
           <p className="section-sub">Share link doubles as the panel-activation link — the panel activates from the same link without opening a game.</p>
           <div className="fld" style={{ marginBottom: 14 }}>
@@ -65,6 +79,20 @@ export default function Settings() {
           <div className="fld">
             <label>Panel link <span className="hint">— activates panel from the same link</span></label>
             <input value={s.panelLink} onChange={(e) => patchSettings({ panelLink: e.target.value })} />
+          </div>
+        </div>
+
+        <div className="card card-pad">
+          <h3 className="section-title">Lucky wheel</h3>
+          <p className="section-sub">How much deposit earns one wheel spin ticket.</p>
+          <div className="fld">
+            <label>Deposit per spin (Rs)</label>
+            <input
+              type="number"
+              min={0}
+              value={s.wheelDepositPerSpin ?? 1000}
+              onChange={(e) => patchSettings({ wheelDepositPerSpin: Math.max(0, Number(e.target.value)) })}
+            />
           </div>
         </div>
 

@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shell, StatusBar, TopBar, Toggle, Modal, fmt } from '../components/ui'
 import { useStore } from '../data/store'
-import { WALLET_ACCOUNT } from '../data/mock'
 
 export default function Collections() {
   const nav = useNavigate()
-  const { balance, freeze, collectionsOn, setCollectionsOn, orders } = useStore()
+  const { balance, freeze, walletAccount, collectionsOn, setCollectionsOn, orders: allOrders } = useStore()
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  // Only show actionable orders in the collections queue.
+  const orders = allOrders.filter((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'checking')
 
   return (
     <Shell>
@@ -32,7 +33,7 @@ export default function Collections() {
 
         <div className="card wallet-row">
           <span className="wr-k">Wallet Account</span>
-          <span className="wr-v">{WALLET_ACCOUNT} &#8250;</span>
+          <span className="wr-v">{walletAccount} &#8250;</span>
         </div>
 
         <div className="order-list-title">ORDER LIST</div>

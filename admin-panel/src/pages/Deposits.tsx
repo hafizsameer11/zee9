@@ -18,11 +18,11 @@ export default function Deposits() {
         <div className="form-grid">
           <div className="fld">
             <label>Minimum deposit</label>
-            <div className="inp-group"><span className="addon">₹</span><input type="number" value={s.minDeposit} onChange={(e) => patchSettings({ minDeposit: Number(e.target.value) })} /></div>
+            <div className="inp-group"><span className="addon">Rs </span><input type="number" value={s.minDeposit} onChange={(e) => patchSettings({ minDeposit: Number(e.target.value) })} /></div>
           </div>
           <div className="fld">
             <label>Maximum deposit</label>
-            <div className="inp-group"><span className="addon">₹</span><input type="number" value={s.maxDeposit} onChange={(e) => patchSettings({ maxDeposit: Number(e.target.value) })} /></div>
+            <div className="inp-group"><span className="addon">Rs </span><input type="number" value={s.maxDeposit} onChange={(e) => patchSettings({ maxDeposit: Number(e.target.value) })} /></div>
           </div>
         </div>
       </div>
