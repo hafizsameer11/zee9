@@ -170,6 +170,13 @@ export function getDevelopedSidebarCategories(): typeof SIDEBAR_ITEMS {
 
 export const LOBBY_FEATURED_GAME_IDS = [
   'mines',
+  'aviator',
+  'crash',
+  'wingo-lottery',
+  'wingo',
+  '7up-down',
+  'fortune-ox',
+  'fortune-gems',
 ] as const
 
 export const REGISTER_BONUS_TIERS = [

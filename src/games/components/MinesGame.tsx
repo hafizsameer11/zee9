@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
+import { useSound } from '../../lib/sound'
 import { api } from '../../api/client'
 import { GRID_SIZE } from '../engines/mines'
 import type { GameComponentProps } from '../types'
@@ -46,29 +47,21 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef)
   const { balance, refresh, canAfford } = useWallet()
+  const { play } = useSound()
 
   const [betAmount, setBetAmount] = useState(defaultBet || 10)
   const [mineCount, setMineCount] = useState(2)
   const [round, setRound] = useState<Round | null>(null)
   const [busy, setBusy] = useState(false)
-  const [winPct, setWinPct] = useState(91)
 
-  // Admin-controlled win % (RTP) drives all displayed multipliers.
-  useEffect(() => {
-    api.get('/games/mines').then((g) => setWinPct(g.winPct)).catch(() => {})
+  // Fair multipliers only — house edge is applied server-side via mine outcomes.
+  const mult = useCallback((revealed: number, mines: number) => {
+    if (revealed <= 0) return 0
+    let m = 1
+    const safe = GRID_SIZE - mines
+    for (let i = 0; i < revealed; i++) m *= (GRID_SIZE - i) / (safe - i)
+    return m
   }, [])
-
-  const rtp = winPct / 100
-  const mult = useCallback(
-    (revealed: number, mines: number) => {
-      if (revealed <= 0) return 0
-      let m = 1
-      const safe = GRID_SIZE - mines
-      for (let i = 0; i < revealed; i++) m *= (GRID_SIZE - i) / (safe - i)
-      return m * rtp
-    },
-    [rtp],
-  )
 
   const playing = round?.active === true
   const ended = round != null && !round.active
@@ -85,6 +78,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
   const isRevealed = (i: number) => !!round && (round.gems.has(i) || round.bomb === i)
 
   const adjustBet = (delta: number) => {
+    play('chip', { volume: 0.5 })
     setBetAmount((b) => {
       const idx = BET_STEPS.findIndex((s) => s >= b)
       const i = idx === -1 ? BET_STEPS.length - 1 : idx
@@ -96,46 +90,56 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
   const startRound = useCallback(async () => {
     if (busy) return
     if (betAmount <= 0) return onMessage?.('Set a bet amount first')
-    if (!canAfford(betAmount)) return onMessage?.('Insufficient balance')
+    if (!canAfford(betAmount)) {
+      play('error')
+      return onMessage?.('Insufficient balance')
+    }
     setBusy(true)
     try {
       const res = await api.post('/games/mines/start', { bet: betAmount, mines: mineCount })
+      play('bet')
       setRound({ roundId: res.roundId, mineCount, bet: betAmount, active: true, gems: new Set(), mines: new Set(), bomb: null, multiplier: 0 })
       onMessage?.(null)
       refresh()
     } catch (e: any) {
+      play('error')
       onMessage?.(e?.message || 'Could not place bet')
     } finally {
       setBusy(false)
     }
-  }, [betAmount, busy, canAfford, mineCount, onMessage, refresh])
+  }, [betAmount, busy, canAfford, mineCount, onMessage, play, refresh])
 
   const handleCell = useCallback(
     async (index: number) => {
       if (!round?.active || busy || isRevealed(index)) return
       setBusy(true)
+      play('reveal', { volume: 0.55 })
       try {
         const res = await api.post(`/games/mines/${round.roundId}/reveal`, { tile: index })
         if (res.safe === false) {
-          // Busted
+          play('boom')
+          setTimeout(() => play('lose', { volume: 0.7 }), 180)
           setRound((r) => (r ? { ...r, active: false, bomb: index, mines: new Set(res.mines), multiplier: 0 } : r))
           onMessage?.('Hit a mine!')
           refresh()
         } else if (res.state === 'CASHED_OUT') {
-          // Whole board cleared → auto cash-out
+          play('gem')
+          setTimeout(() => play('win'), 200)
           setRound((r) => (r ? { ...r, active: false, gems: new Set([...r.gems, index]), mines: new Set(res.mines), multiplier: res.multiplier } : r))
           onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
           refresh()
         } else {
+          play('gem')
           setRound((r) => (r ? { ...r, gems: new Set([...r.gems, index]), multiplier: res.multiplier } : r))
         }
       } catch (e: any) {
+        play('error')
         onMessage?.(e?.message || 'Reveal failed')
       } finally {
         setBusy(false)
       }
     },
-    [busy, onMessage, refresh, round],
+    [busy, onMessage, play, refresh, round],
   )
 
   const cashOut = useCallback(async () => {
@@ -143,20 +147,24 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
     setBusy(true)
     try {
       const res = await api.post(`/games/mines/${round.roundId}/cashout`)
+      play('cashout')
+      setTimeout(() => play('coin'), 220)
       setRound((r) => (r ? { ...r, active: false, mines: new Set(res.mines), multiplier: res.multiplier } : r))
       onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
       refresh()
     } catch (e: any) {
+      play('error')
       onMessage?.(e?.message || 'Cash out failed')
     } finally {
       setBusy(false)
     }
-  }, [busy, onMessage, refresh, round])
+  }, [busy, onMessage, play, refresh, round])
 
   const reset = useCallback(() => {
+    play('whoosh', { volume: 0.5 })
     setRound(null)
     onMessage?.(null)
-  }, [onMessage])
+  }, [onMessage, play])
 
   const cellClass = (index: number) => {
     const revealed = isRevealed(index)
@@ -232,12 +240,18 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                         className={`${styles.cell} ${cellClass(i)}`}
                         onClick={() => handleCell(i)}
                         disabled={!playing || revealed || showAll || busy}
+                        data-sfx={playing && !revealed ? 'tap' : undefined}
                       >
                         {revealed && isMine && <MineRevealIcon className={styles.cellIcon} />}
                         {revealed && !isMine && <GemRevealIcon className={styles.cellIcon} />}
                         {showAll && !revealed && isMine && <MineRevealIcon className={styles.cellIcon} />}
                         {showAll && !revealed && !isMine && <GemRevealIcon className={styles.cellIcon} />}
-                        {isHidden && playing && <span className={styles.cellShine} />}
+                        {isHidden && (
+                          <>
+                            <span className={styles.cellEmboss} aria-hidden />
+                            <span className={styles.cellShine} aria-hidden />
+                          </>
+                        )}
                       </button>
                     )
                   })}
@@ -266,6 +280,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                 disabled={playing || mineCount <= 1}
                 onClick={() => setMineCount((c) => Math.max(1, c - 1))}
                 aria-label="Fewer mines"
+                data-sfx="chip"
               >
                 −
               </button>
@@ -281,6 +296,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                 disabled={playing || mineCount >= 24}
                 onClick={() => setMineCount((c) => Math.min(24, c + 1))}
                 aria-label="More mines"
+                data-sfx="chip"
               >
                 +
               </button>
@@ -317,6 +333,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                   disabled={playing}
                   onClick={() => adjustBet(-1)}
                   aria-label="Decrease bet"
+                  data-sfx="chip"
                 >
                   −
                 </button>
@@ -331,6 +348,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                   disabled={playing}
                   onClick={() => adjustBet(1)}
                   aria-label="Increase bet"
+                  data-sfx="chip"
                 >
                   +
                 </button>
@@ -343,6 +361,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
                     className={styles.startBtn}
                     disabled={gemsFound === 0 || busy}
                     onClick={cashOut}
+                    data-sfx="cashout"
                   >
                     Cash Out · {formatAmount(currentWin)}
                   </button>
@@ -351,7 +370,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               {!playing && !ended && (
                 <div className={styles.startBtnWrap}>
                   <span className={styles.startBtnGlow} aria-hidden />
-                  <button type="button" className={styles.startBtn} onClick={startRound} disabled={busy}>
+                  <button type="button" className={styles.startBtn} onClick={startRound} disabled={busy} data-sfx="bet">
                     {busy ? 'Starting…' : 'Start Game'}
                   </button>
                   <GuideHandIcon className={styles.guideHand} aria-hidden />
@@ -359,7 +378,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
               )}
               {ended && (
                 <div className={styles.startBtnWrap}>
-                  <button type="button" className={styles.startBtn} onClick={reset}>
+                  <button type="button" className={styles.startBtn} onClick={reset} data-sfx="select">
                     Play Again
                   </button>
                 </div>

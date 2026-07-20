@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
+import { sound } from '../../lib/sound'
 import { rollTwoDice, upDownPayout, type UpDownChoice } from '../engines/dice'
 import type { GameComponentProps } from '../types'
 import { useDesignScale } from '../hooks/useDesignScale'
@@ -192,9 +193,11 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       if (phase !== 'betting') return false
       if (isSelf) {
         if (!canAfford(amount) || !debit(amount)) {
+          sound.play('error')
           onMessage?.('Insufficient balance')
           return false
         }
+        sound.play('chip')
         setMyBets((prev) => ({ ...prev, [zone]: prev[zone] + amount }))
       } else {
         setAiBalances((prev) => ({
@@ -257,6 +260,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       setLastBets({ ...myBets })
 
       if (won) {
+        sound.play('win')
         onMessage?.(`Won ${totalWin.toLocaleString()} chips!`)
         const floatId = nextChipId()
         setWinFloats((prev) => [
@@ -267,6 +271,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
           setWinFloats((prev) => prev.filter((f) => f.id !== floatId))
         }, 1300)
       } else {
+        sound.play('lose', { volume: 0.5 })
         onMessage?.(`Sum ${sum} — try again`)
       }
 

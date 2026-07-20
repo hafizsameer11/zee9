@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
+import { sound } from '../../lib/sound'
 import styles from './gameShell.module.css'
 
 type Props = {
@@ -16,7 +17,15 @@ export default function GameShell({ title, children, sidebar, message }: Props) 
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <button type="button" className={styles.back} onClick={() => navigate('/home')}>
+        <button
+          type="button"
+          className={styles.back}
+          data-sfx="whoosh"
+          onClick={() => {
+            sound.play('whoosh')
+            navigate('/home')
+          }}
+        >
           ← Lobby
         </button>
         <h1>{title}</h1>

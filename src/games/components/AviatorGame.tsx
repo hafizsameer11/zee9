@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
-import { generateCrashPoint, multiplierAtElapsed } from '../engines/crash'
+import { usePlayerAuth } from '../../api/auth'
+import { api } from '../../api/client'
+import { sound } from '../../lib/sound'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import AviatorArena from './AviatorArena'
+import { connectAviatorSocket } from '../lib/aviatorSocket'
 import {
   BackChevronIcon,
   CartWagonIcon,
@@ -15,7 +18,7 @@ import {
 } from './aviatorClassicGfx'
 import styles from './aviatorGame.module.css'
 
-type GlobalPhase = 'idle' | 'flying' | 'crashed'
+type ServerPhase = 'waiting' | 'flying' | 'crashed'
 type SlotPhase = 'idle' | 'active' | 'cashed' | 'lost'
 type SidebarTab = 'all' | 'my' | 'top'
 type PanelTab = 'bet' | 'auto'
@@ -26,27 +29,19 @@ type BetSlot = {
   autoAt: number
   phase: SlotPhase
   wager: number
+  betId: string | null
 }
 
 type LiveBet = {
+  id: string
   name: string
   bet: number
   cashout: number | null
+  cashoutAt: number | null
   avatarSeed: string
+  state: string
+  isMe?: boolean
 }
-
-const ALL_BETS: LiveBet[] = [
-  { name: 'P***4', bet: 5000, cashout: null, avatarSeed: 'a1' },
-  { name: 'P***1', bet: 2000, cashout: null, avatarSeed: 'a2' },
-  { name: 'P***7', bet: 1000, cashout: null, avatarSeed: 'a3' },
-  { name: 'P***2', bet: 500, cashout: null, avatarSeed: 'a4' },
-  { name: 'P***9', bet: 300, cashout: null, avatarSeed: 'a5' },
-  { name: 'P***3', bet: 200, cashout: null, avatarSeed: 'a6' },
-  { name: 'P***8', bet: 150, cashout: null, avatarSeed: 'a7' },
-  { name: 'P***5', bet: 100, cashout: null, avatarSeed: 'a8' },
-  { name: 'P***6', bet: 80, cashout: null, avatarSeed: 'a9' },
-  { name: 'P***0', bet: 50, cashout: null, avatarSeed: 'a10' },
-]
 
 const QUICK_AMOUNTS = [100, 200, 500, 1000]
 
@@ -72,109 +67,206 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef)
-  const { balance, debit, credit, canAfford } = useWallet()
+  const { balance, refresh, canAfford } = useWallet()
+  const { player } = usePlayerAuth()
 
-  const [globalPhase, setGlobalPhase] = useState<GlobalPhase>('idle')
+  const [phase, setPhase] = useState<ServerPhase | 'idle'>('idle')
   const [mult, setMult] = useState(1)
   const [elapsedSec, setElapsedSec] = useState(0)
-  const [history, setHistory] = useState<number[]>([
-    1.1, 1.98, 2.38, 1.24, 4.71, 15.9, 1.06, 2.51, 1.02, 3.7, 1.21, 13.66, 1.1, 1.32, 1.7,
-  ])
+  const [waitingMsLeft, setWaitingMsLeft] = useState(0)
+  const [history, setHistory] = useState<number[]>([])
+  const [liveBets, setLiveBets] = useState<LiveBet[]>([])
+  const [betCount, setBetCount] = useState(0)
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('all')
+  const [flightStartPerf, setFlightStartPerf] = useState<number | null>(null)
+  const [crashCap, setCrashCap] = useState<number | null>(null)
   const [slots, setSlots] = useState<BetSlot[]>([
-    { bet: defaultBet || 10, autoEnabled: false, autoAt: 2.0, phase: 'idle', wager: 0 },
-    { bet: defaultBet || 10, autoEnabled: false, autoAt: 2.0, phase: 'idle', wager: 0 },
+    { bet: defaultBet || 100, autoEnabled: false, autoAt: 2.0, phase: 'idle', wager: 0, betId: null },
+    { bet: defaultBet || 100, autoEnabled: false, autoAt: 2.0, phase: 'idle', wager: 0, betId: null },
   ])
 
-  const crashPoint = useRef(1)
-  const startTime = useRef(0)
-  const raf = useRef(0)
-  const slotsRef = useRef(slots)
-  slotsRef.current = slots
+  const prevPhase = useRef<string>('idle')
+  const busyRef = useRef(false)
+  const flightStartPerfRef = useRef<number | null>(null)
 
-  const stopLoop = useCallback(() => {
-    if (raf.current) cancelAnimationFrame(raf.current)
+  const alignFlightStart = useCallback((startedAtIso: string | null, serverTimeIso: string | null) => {
+    const serverNow = serverTimeIso ? Date.parse(serverTimeIso) : Date.now()
+    const clockOffset = Date.now() - serverNow
+    const startWall = startedAtIso ? Date.parse(startedAtIso) : Date.now()
+    const elapsedAlready = Math.max(0, Date.now() - clockOffset - startWall)
+    const perfStart = performance.now() - elapsedAlready
+    flightStartPerfRef.current = perfStart
+    setFlightStartPerf(perfStart)
+    setCrashCap(null)
   }, [])
 
-  const resetSlots = useCallback(() => {
-    setSlots((s) => s.map((slot) => ({ ...slot, phase: 'idle', wager: 0 })))
-    setGlobalPhase('idle')
-    setMult(1)
-    setElapsedSec(0)
+  const onFlightMult = useCallback((m: number, elapsed: number) => {
+    setMult(m)
+    setElapsedSec(elapsed)
   }, [])
 
-  const endCrash = useCallback(() => {
-    stopLoop()
-    setGlobalPhase('crashed')
-    setMult(crashPoint.current)
-    setHistory((h) => [crashPoint.current, ...h].slice(0, 20))
-    setSlots((s) => s.map((slot) => (slot.phase === 'active' ? { ...slot, phase: 'lost' } : slot)))
-    onMessage?.('💥 Crashed!')
-    setTimeout(resetSlots, 2200)
-  }, [onMessage, resetSlots, stopLoop])
+  const applyState = useCallback(
+    (state: any) => {
+      const nextPhase = state.phase as ServerPhase
+      setPhase(nextPhase)
+      setWaitingMsLeft(state.waitingMsLeft ?? 0)
+      setHistory(state.history ?? [])
+      setLiveBets(state.liveBets ?? [])
+      setBetCount(state.betCount ?? 0)
 
-  const cashOutSlot = useCallback(
-    (index: number, atMult: number) => {
-      const slot = slotsRef.current[index]
-      if (slot.phase !== 'active') return
-      const win = Math.round(slot.wager * atMult * 100) / 100
-      credit(win)
+      if (Array.isArray(state.myBets)) {
+        setSlots((prev) =>
+          prev.map((slot, i) => {
+            const mine = state.myBets.find((b: any) => b.slot === i)
+            if (!mine) {
+              if (state.phase === 'waiting' && slot.phase !== 'active') {
+                return { ...slot, phase: 'idle' as const, wager: 0, betId: null }
+              }
+              if (state.phase === 'waiting' && prevPhase.current !== 'waiting') {
+                return { ...slot, phase: 'idle' as const, wager: 0, betId: null }
+              }
+              return slot
+            }
+            const phaseMap: Record<string, SlotPhase> = {
+              ACTIVE: 'active',
+              CASHED_OUT: 'cashed',
+              BUST: 'lost',
+            }
+            return {
+              ...slot,
+              betId: mine.id,
+              wager: mine.bet,
+              phase: phaseMap[mine.state] ?? slot.phase,
+              autoAt: mine.autoAt ?? slot.autoAt,
+              autoEnabled: mine.autoAt != null ? true : slot.autoEnabled,
+            }
+          }),
+        )
+      }
+
+      if (nextPhase === 'flying') {
+        if (prevPhase.current !== 'flying' || flightStartPerfRef.current == null) {
+          alignFlightStart(state.startedAt, state.serverTime)
+        }
+      } else if (nextPhase === 'crashed') {
+        const crash = state.crashPoint ?? state.multiplier ?? 1
+        flightStartPerfRef.current = null
+        setFlightStartPerf(null)
+        setCrashCap(crash)
+        setMult(crash)
+        setElapsedSec((state.elapsedMs ?? 0) / 1000)
+      } else {
+        flightStartPerfRef.current = null
+        setFlightStartPerf(null)
+        setCrashCap(null)
+        setMult(1)
+        setElapsedSec(0)
+      }
+
+      if (prevPhase.current !== nextPhase) {
+        if (nextPhase === 'flying' && prevPhase.current === 'waiting') {
+          sound.play('whoosh', { volume: 0.55 })
+        }
+        if (nextPhase === 'crashed' && prevPhase.current === 'flying') {
+          sound.play('crash')
+          onMessage?.('💥 Crashed!')
+          void refresh()
+        }
+        if (nextPhase === 'waiting' && prevPhase.current === 'crashed') {
+          onMessage?.(null)
+          setSlots((s) => s.map((slot) => ({ ...slot, phase: 'idle', wager: 0, betId: null })))
+          void refresh()
+        }
+        prevPhase.current = nextPhase
+      }
+    },
+    [alignFlightStart, onMessage, refresh],
+  )
+
+  const socketRef = useRef<ReturnType<typeof connectAviatorSocket> | null>(null)
+
+  useEffect(() => {
+    const sock = connectAviatorSocket({
+      onState: applyState,
+      onError: (message) => onMessage?.(message),
+    })
+    socketRef.current = sock
+    return () => {
+      sock.close()
+      socketRef.current = null
+    }
+  }, [applyState, onMessage])
+
+  // Smooth waiting countdown locally between pushes
+  useEffect(() => {
+    if (phase !== 'waiting') return
+    const id = setInterval(() => {
+      setWaitingMsLeft((ms) => Math.max(0, ms - 100))
+    }, 100)
+    return () => clearInterval(id)
+  }, [phase])
+
+  const placeBet = async (index: number) => {
+    if (busyRef.current) return
+    if (phase !== 'waiting') {
+      sound.play('error')
+      return onMessage?.('Wait for next round to bet')
+    }
+    const slot = slots[index]
+    if (slot.phase !== 'idle' || slot.betId) return
+    if (!canAfford(slot.bet)) {
+      sound.play('error')
+      return onMessage?.('Insufficient balance')
+    }
+    busyRef.current = true
+    try {
+      sound.play('bet')
+      const res = await api.post('/games/aviator/bet', {
+        amount: slot.bet,
+        slot: index,
+        autoAt: slot.autoEnabled ? slot.autoAt : null,
+      })
+      setSlots((s) => {
+        const next = [...s]
+        next[index] = { ...next[index], phase: 'active', wager: slot.bet, betId: res.betId }
+        return next
+      })
+      onMessage?.(null)
+      void refresh()
+      socketRef.current?.refresh()
+    } catch (e: any) {
+      sound.play('error')
+      onMessage?.(e?.message || 'Bet failed')
+    } finally {
+      busyRef.current = false
+    }
+  }
+
+  const manualCashOut = async (index: number) => {
+    if (busyRef.current) return
+    if (phase !== 'flying') return
+    const slot = slots[index]
+    if (slot.phase !== 'active' || !slot.betId) return
+    busyRef.current = true
+    try {
+      const res = await api.post('/games/aviator/cashout', { betId: slot.betId })
+      sound.play('cashout')
+      sound.play('coin', { volume: 0.6 })
       setSlots((s) => {
         const next = [...s]
         next[index] = { ...next[index], phase: 'cashed' }
         return next
       })
-      onMessage?.(`🎉 Cashed ${formatCompact(win)}`)
-    },
-    [credit, onMessage],
-  )
-
-  const tick = useCallback(() => {
-    const elapsed = Date.now() - startTime.current
-    const m = multiplierAtElapsed(elapsed)
-    setMult(m)
-    setElapsedSec(elapsed / 1000)
-    slotsRef.current.forEach((slot, i) => {
-      if (slot.phase === 'active' && slot.autoEnabled && slot.autoAt > 0 && m >= slot.autoAt) {
-        cashOutSlot(i, m)
-      }
-    })
-    if (m >= crashPoint.current) {
-      endCrash()
-      return
+      onMessage?.(`🎉 Cashed ${formatCompact(res.payout)} @ ${res.cashoutAt.toFixed(2)}x`)
+      void refresh()
+      socketRef.current?.refresh()
+    } catch (e: any) {
+      sound.play('error')
+      onMessage?.(e?.message || 'Cash out failed')
+      socketRef.current?.refresh()
+    } finally {
+      busyRef.current = false
     }
-    raf.current = requestAnimationFrame(tick)
-  }, [cashOutSlot, endCrash])
-
-  const startRound = useCallback(() => {
-    crashPoint.current = generateCrashPoint()
-    startTime.current = Date.now()
-    setMult(1)
-    setGlobalPhase('flying')
-    onMessage?.(null)
-    raf.current = requestAnimationFrame(tick)
-  }, [onMessage, tick])
-
-  const placeBet = (index: number) => {
-    if (globalPhase === 'flying' || globalPhase === 'crashed') return
-    const slot = slots[index]
-    if (slot.phase !== 'idle') return
-    if (!canAfford(slot.bet)) {
-      onMessage?.('Insufficient balance')
-      return
-    }
-    if (!debit(slot.bet)) return
-    setSlots((s) => {
-      const next = [...s]
-      next[index] = { ...next[index], phase: 'active', wager: slot.bet }
-      return next
-    })
-    if (globalPhase === 'idle') startRound()
-  }
-
-  const manualCashOut = (index: number) => {
-    if (globalPhase !== 'flying') return
-    cashOutSlot(index, mult)
   }
 
   const updateSlot = (index: number, patch: Partial<BetSlot>) => {
@@ -185,153 +277,160 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
     })
   }
 
-  useEffect(() => () => stopLoop(), [stopLoop])
+  const flying = phase === 'flying'
+  const waiting = phase === 'waiting'
 
-  const flying = globalPhase === 'flying'
-  const crashed = globalPhase === 'crashed'
-
-  const sidebarBets =
-    sidebarTab === 'top'
-      ? [...ALL_BETS].sort((a, b) => b.bet - a.bet)
-      : sidebarTab === 'my'
-        ? ALL_BETS.slice(0, 2)
-        : ALL_BETS
+  const sidebarBets = (() => {
+    if (sidebarTab === 'top') return [...liveBets].sort((a, b) => b.bet - a.bet)
+    if (sidebarTab === 'my') return liveBets.filter((b) => b.isMe)
+    return liveBets
+  })()
 
   return (
     <div className={styles.root} ref={viewportRef}>
       <div style={getDesignScaleShellStyle(layout)}>
         <div className={styles.canvas} style={getDesignCanvasStyle(layout)}>
-        <header className={styles.topBar}>
-          <div className={styles.topLeft}>
-            <button
-              type="button"
-              className={styles.backBtn}
-              onClick={() => navigate('/home')}
-              aria-label="Back"
-            >
-              <BackChevronIcon />
-            </button>
-            <div className={styles.promoBadge}>
-              <PromoPinIcon className={styles.promoIcon} />
-              <span>Play Game</span>
-              <strong>Rs{slots[0].bet}</strong>
-            </div>
-          </div>
-
-          <div className={styles.topCenter}>
-            <img
-              className={styles.avatar}
-              src={avatarUrl('P9751521')}
-              alt=""
-            />
-            <div className={styles.userMeta}>
-              <span className={styles.userName}>P9751521</span>
-              <span className={styles.userId}>ID:9751521</span>
-            </div>
-            <div className={styles.balanceBox}>
-              <span>{formatCompact(balance)}</span>
-            </div>
-          </div>
-
-          <div className={styles.topRight}>
-            <button type="button" className={styles.addBtn}>
-              <span>ADD</span>
-              <CartWagonIcon className={styles.cartIcon} />
-            </button>
-            <button type="button" className={styles.menuBtn} aria-label="Menu">
-              <MenuDiamondsIcon />
-            </button>
-          </div>
-        </header>
-
-        <div className={styles.body}>
-          <aside className={styles.sidebar}>
-            <div className={styles.sidebarTabs}>
-              {(['all', 'my', 'top'] as SidebarTab[]).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={sidebarTab === tab ? styles.sidebarTabActive : styles.sidebarTab}
-                  onClick={() => setSidebarTab(tab)}
-                >
-                  {tab === 'all' ? 'All Bets' : tab === 'my' ? 'My Bets' : 'Top'}
-                </button>
-              ))}
-            </div>
-
-            <div className={styles.sidebarHead}>
-              <div className={styles.sidebarTitle}>
-                <strong>ALL BETS</strong>
-                <span>{sidebarBets.length}</span>
+          <header className={styles.topBar}>
+            <div className={styles.topLeft}>
+              <button
+                type="button"
+                className={styles.backBtn}
+                onClick={() => navigate('/home')}
+                aria-label="Back"
+                data-sfx="whoosh"
+              >
+                <BackChevronIcon />
+              </button>
+              <div className={styles.promoBadge}>
+                <PromoPinIcon className={styles.promoIcon} />
+                <span>Play Game</span>
+                <strong>Rs{slots[0].bet}</strong>
               </div>
-              <button type="button" className={styles.prevHandBtn}>
-                <ClockRewindIcon />
-                Previous hand
+            </div>
+
+            <div className={styles.topCenter}>
+              <img
+                className={styles.avatar}
+                src={avatarUrl(player?.id?.slice(-6) || 'zee9')}
+                alt=""
+              />
+              <div className={styles.userMeta}>
+                <span className={styles.userName}>{player?.name || 'Player'}</span>
+                <span className={styles.userId}>ID:{(player?.id || '').slice(-8).toUpperCase()}</span>
+              </div>
+              <div className={styles.balanceBox}>
+                <span>{formatCompact(balance)}</span>
+              </div>
+            </div>
+
+            <div className={styles.topRight}>
+              <button type="button" className={styles.addBtn} data-sfx="tap">
+                <span>ADD</span>
+                <CartWagonIcon className={styles.cartIcon} />
+              </button>
+              <button type="button" className={styles.menuBtn} aria-label="Menu" data-sfx="tap">
+                <MenuDiamondsIcon />
               </button>
             </div>
+          </header>
 
-            <div className={styles.betTableHead}>
-              <span>User</span>
-              <span>Bet&X</span>
-              <span>Cash Out</span>
-            </div>
-
-            <div className={styles.betList}>
-              {sidebarBets.map((row) => (
-                <div key={row.name} className={styles.betRow}>
-                  <div className={styles.betUser}>
-                    <img
-                      className={styles.betAvatar}
-                      src={avatarUrl(row.avatarSeed)}
-                      alt=""
-                    />
-                    <span className={styles.betName}>{row.name}</span>
-                  </div>
-                  <span className={styles.betAmount}>{formatCompact(row.bet)}</span>
-                  <span
-                    className={`${styles.betCashout} ${row.cashout ? styles.betCashoutWin : ''}`}
+          <div className={styles.body}>
+            <aside className={styles.sidebar}>
+              <div className={styles.sidebarTabs}>
+                {(['all', 'my', 'top'] as SidebarTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={sidebarTab === tab ? styles.sidebarTabActive : styles.sidebarTab}
+                    onClick={() => setSidebarTab(tab)}
+                    data-sfx="select"
                   >
-                    {row.cashout ? formatAmount(row.cashout) : '0.00'}
-                  </span>
+                    {tab === 'all' ? 'All Bets' : tab === 'my' ? 'My Bets' : 'Top'}
+                  </button>
+                ))}
+              </div>
+
+              <div className={styles.sidebarHead}>
+                <div className={styles.sidebarTitle}>
+                  <strong>ALL BETS</strong>
+                  <span>{betCount}</span>
                 </div>
-              ))}
-            </div>
+                <button type="button" className={styles.prevHandBtn} data-sfx="tap">
+                  <ClockRewindIcon />
+                  Live round
+                </button>
+              </div>
 
-            <div className={styles.provablyFair}>
-              <span>This game is</span>
-              <ShieldFairIcon />
-              <span>Provably Fair</span>
-            </div>
-          </aside>
+              <div className={styles.betTableHead}>
+                <span>User</span>
+                <span>Bet&X</span>
+                <span>Cash Out</span>
+              </div>
 
-          <div className={styles.gameCol}>
-            <div className={styles.historyStrip}>
-              {history.map((h, idx) => (
-                <span
-                  key={`${h}-${idx}`}
-                  className={`${styles.historyChip} ${historyChipClass(h)}`}
-                >
-                  {h.toFixed(2)}x
-                </span>
-              ))}
-            </div>
+              <div className={styles.betList}>
+                {sidebarBets.length === 0 && (
+                  <div className={styles.betEmpty}>Waiting for players…</div>
+                )}
+                {sidebarBets.map((row) => (
+                  <div
+                    key={row.id}
+                    className={`${styles.betRow} ${row.isMe ? styles.betRowMe : ''} ${row.state === 'CASHED_OUT' ? styles.betRowWin : ''}`}
+                  >
+                    <div className={styles.betUser}>
+                      <img className={styles.betAvatar} src={avatarUrl(row.avatarSeed)} alt="" />
+                      <span className={styles.betName}>{row.name}</span>
+                    </div>
+                    <span className={styles.betAmount}>
+                      {formatCompact(row.bet)}
+                      {row.cashoutAt ? (
+                        <em className={styles.betX}> {row.cashoutAt.toFixed(2)}x</em>
+                      ) : null}
+                    </span>
+                    <span
+                      className={`${styles.betCashout} ${row.cashout ? styles.betCashoutWin : ''}`}
+                    >
+                      {row.cashout ? formatAmount(row.cashout) : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
 
-            <AviatorArena
-              mult={mult}
-              phase={globalPhase}
-              elapsedSec={crashed ? elapsedSec : flying ? elapsedSec : 0}
-            />
+              <div className={styles.provablyFair}>
+                <span>This game is</span>
+                <ShieldFairIcon />
+                <span>Provably Fair</span>
+              </div>
+            </aside>
 
-            <div className={styles.betPanels}>
-              {slots.map((slot, i) => (
-                <BetPanel
-                  key={i}
-                  slot={slot}
+            <div className={styles.gameCol}>
+              <div className={styles.historyStrip}>
+                {history.map((h, idx) => (
+                  <span key={`${h}-${idx}`} className={`${styles.historyChip} ${historyChipClass(h)}`}>
+                    {h.toFixed(2)}x
+                  </span>
+                ))}
+              </div>
+
+              <AviatorArena
+                mult={mult}
+                phase={phase === 'idle' ? 'waiting' : phase}
+                elapsedSec={elapsedSec}
+                waitingMsLeft={waitingMsLeft}
+                flightStartPerf={flightStartPerf}
+                crashCap={crashCap}
+                onFlightMult={onFlightMult}
+              />
+
+              <div className={styles.betPanels}>
+                {slots.map((slot, i) => (
+                  <BetPanel
+                    key={i}
+                    slot={slot}
                   mult={mult}
                   flying={flying}
-                  crashed={crashed}
-                  onPlaceBet={() => placeBet(i)}
-                  onCashOut={() => manualCashOut(i)}
+                  waiting={waiting}
+                  onPlaceBet={() => void placeBet(i)}
+                  onCashOut={() => void manualCashOut(i)}
                   onUpdate={(patch) => updateSlot(i, patch)}
                 />
               ))}
@@ -348,7 +447,7 @@ function BetPanel({
   slot,
   mult,
   flying,
-  crashed,
+  waiting,
   onPlaceBet,
   onCashOut,
   onUpdate,
@@ -356,17 +455,18 @@ function BetPanel({
   slot: BetSlot
   mult: number
   flying: boolean
-  crashed: boolean
+  waiting: boolean
   onPlaceBet: () => void
   onCashOut: () => void
   onUpdate: (patch: Partial<BetSlot>) => void
 }) {
   const [panelTab, setPanelTab] = useState<PanelTab>('bet')
-  const locked = flying || crashed
+  const locked = !waiting || slot.phase === 'active'
   const active = slot.phase === 'active'
   const done = slot.phase === 'cashed' || slot.phase === 'lost'
 
   const adjustBet = (delta: number) => {
+    sound.play('chip', { volume: 0.45 })
     const idx = QUICK_AMOUNTS.findIndex((a) => a >= slot.bet)
     const i = idx === -1 ? QUICK_AMOUNTS.length - 1 : idx
     if (delta > 0) {
@@ -383,6 +483,7 @@ function BetPanel({
           type="button"
           className={panelTab === 'bet' ? styles.panelTabActive : styles.panelTab}
           onClick={() => setPanelTab('bet')}
+          data-sfx="select"
         >
           Bet
         </button>
@@ -390,6 +491,7 @@ function BetPanel({
           type="button"
           className={panelTab === 'auto' ? styles.panelTabActive : styles.panelTab}
           onClick={() => setPanelTab('auto')}
+          data-sfx="select"
         >
           Auto
         </button>
@@ -425,7 +527,10 @@ function BetPanel({
                     type="button"
                     className={styles.quickBtn}
                     disabled={locked || active}
-                    onClick={() => onUpdate({ bet: amt })}
+                    onClick={() => {
+                      sound.play('chip', { volume: 0.4 })
+                      onUpdate({ bet: amt })
+                    }}
                   >
                     {formatAmount(amt)}
                   </button>
@@ -443,6 +548,7 @@ function BetPanel({
                   className={`${styles.switch} ${slot.autoEnabled ? styles.switchOn : ''}`}
                   disabled={locked || active}
                   onClick={() => onUpdate({ autoEnabled: !slot.autoEnabled })}
+                  data-sfx="tap"
                 />
               </div>
               <div className={styles.autoRow}>
@@ -462,14 +568,19 @@ function BetPanel({
           )}
         </div>
 
-        {active && flying ? (
+        {active && flying && mult >= 1.01 ? (
           <button
             type="button"
             className={`${styles.betActionBtn} ${styles.cashoutBtn}`}
             onClick={onCashOut}
+            data-sfx="cashout"
           >
             <span className={styles.betActionLabel}>CASH OUT</span>
             <span className={styles.betActionAmount}>{mult.toFixed(2)}x</span>
+          </button>
+        ) : active && flying ? (
+          <button type="button" className={`${styles.betActionBtn} ${styles.doneBtn}`} disabled>
+            <span className={styles.betActionLabel}>FLYING…</span>
           </button>
         ) : done ? (
           <button type="button" className={`${styles.betActionBtn} ${styles.doneBtn}`} disabled>
@@ -482,7 +593,8 @@ function BetPanel({
             type="button"
             className={styles.betActionBtn}
             onClick={onPlaceBet}
-            disabled={locked}
+            disabled={!waiting || active}
+            data-sfx="bet"
           >
             <span className={styles.betActionLabel}>BET</span>
             <span className={styles.betActionAmount}>{slot.bet}</span>

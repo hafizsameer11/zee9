@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
+import { sound } from '../../lib/sound'
 import {
   evaluateGemsGrid,
   INTRO_STORAGE_KEY,
@@ -70,15 +71,18 @@ export default function FortuneGemsGame({ bet: defaultBet, onMessage }: GameComp
   const spin = useCallback(() => {
     if (spinning) return
     if (!canAfford(betAmount)) {
+      sound.play('error')
       onMessage?.('Low balance — add cash or lower your bet')
       return
     }
     if (!debit(betAmount)) {
+      sound.play('error')
       onMessage?.('Could not place bet — try again')
       return
     }
 
     clearSpinTimer()
+    sound.play('spin', { volume: 0.55 })
     setSpinning(true)
     setBigWin(null)
     setWinCells(new Set())
@@ -109,14 +113,17 @@ export default function FortuneGemsGame({ bet: defaultBet, onMessage }: GameComp
           if (result.fullBoard) {
             for (let i = 0; i < 9; i++) cells.add(i)
             setBigWin(`FULL BOARD! PKR ${result.payout.toLocaleString()}`)
+            sound.play('levelUp')
             onMessage?.(`🎉 Full board · PKR ${result.payout.toLocaleString()}!`)
           } else {
             result.lines.forEach((line) => line.cells.forEach((c) => cells.add(c)))
             setBigWin(`WIN PKR ${result.payout.toLocaleString()}`)
+            sound.play('win')
             onMessage?.(`🎉 Win · PKR ${result.payout.toLocaleString()} (${finalMult}x)`)
           }
           setWinCells(cells)
         } else {
+          sound.play('lose', { volume: 0.45 })
           onMessage?.('No win — spin again')
         }
       }

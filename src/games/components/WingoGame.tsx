@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
+import { sound } from '../../lib/sound'
 import {
   formatPeriod,
   generateWingoResult,
@@ -95,8 +96,10 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
 
     if (roundedWin > 0) {
       credit(roundedWin)
+      sound.play('win')
       onMessage?.(`Won Rs ${Math.round(roundedWin).toLocaleString()}!`)
     } else if (bets.length) {
+      sound.play('lose', { volume: 0.55 })
       onMessage?.(`Result #${res.number}`)
     } else {
       onMessage?.(null)
@@ -132,13 +135,16 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
 
   const placeBet = (type: WingoBetType, value?: number) => {
     if (!canBet) {
+      sound.play('error', { volume: 0.4 })
       onMessage?.('Bets locked — wait for next round')
       return
     }
     if (!canAfford(betAmount) || !debit(betAmount)) {
+      sound.play('error')
       onMessage?.('Insufficient balance')
       return
     }
+    sound.play('chip')
     setPending((p) => [...p, { type, value, amount: betAmount, id: Date.now() }])
     setLastBetKey(betKey(type, value))
     onMessage?.(null)

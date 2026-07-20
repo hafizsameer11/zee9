@@ -7,6 +7,8 @@ import { authenticate } from '../../middleware/authenticate.js'
 import { validate } from '../../middleware/validate.js'
 import { notFound } from '../../core/errors.js'
 import * as mines from './mines.service.js'
+import * as aviator from './aviator.service.js'
+import { kickAviatorRealtime } from './aviator.realtime.js'
 
 export const gamesRoutes = Router()
 
@@ -23,13 +25,57 @@ gamesRoutes.get(
   }),
 )
 
-// Public: single game config (enabled + winPct) so the client can respect admin control.
+/* ---------------- Aviator (before /:slug so paths don't collide) ---------------- */
+const aviatorBetSchema = z.object({
+  amount: z.number().positive(),
+  slot: z.number().int().min(0).max(1).default(0),
+  autoAt: z.number().min(1.1).max(100).nullable().optional(),
+})
+const aviatorCashoutSchema = z.object({ betId: z.string().min(1) })
+
+gamesRoutes.get(
+  '/aviator/state',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    await aviator.processAutoCashouts(req.user!.id)
+    ok(res, await aviator.getState(req.user!.id))
+  }),
+)
+
+gamesRoutes.post(
+  '/aviator/bet',
+  authenticate,
+  validate({ body: aviatorBetSchema }),
+  asyncHandler(async (req, res) => {
+    const data = await aviator.placeBet(
+      req.user!.id,
+      req.body.amount,
+      req.body.slot ?? 0,
+      req.body.autoAt,
+    )
+    kickAviatorRealtime()
+    ok(res, data, 201)
+  }),
+)
+
+gamesRoutes.post(
+  '/aviator/cashout',
+  authenticate,
+  validate({ body: aviatorCashoutSchema }),
+  asyncHandler(async (req, res) => {
+    const data = await aviator.cashOut(req.user!.id, req.body.betId)
+    kickAviatorRealtime()
+    ok(res, data)
+  }),
+)
+
+// Public: single game config for the player UI (winPct is admin-only — never exposed).
 gamesRoutes.get(
   '/:slug',
   asyncHandler(async (req, res) => {
     const game = await prisma.game.findUnique({
       where: { slug: req.params.slug },
-      select: { slug: true, title: true, emoji: true, enabled: true, winPct: true },
+      select: { slug: true, title: true, emoji: true, enabled: true },
     })
     if (!game) throw notFound('Game not found')
     ok(res, game)

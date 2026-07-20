@@ -64,6 +64,7 @@ model User {
   ordersAsPlayer    CollectionOrder[] @relation("OrderPlayer")
   ordersAsAgent     CollectionOrder[] @relation("OrderAgent")
   gameRounds        GameRound[]
+  crashBets         CrashBet[]
   notifications     Notification[]
 
   @@index([role])
@@ -215,6 +216,8 @@ model Deposit {
   method         PaymentMethod
   channelId      String?
   channel        PaymentChannel? @relation(fields: [channelId], references: [id])
+  agentAccountId String?
+  agentAccount   AgentAccount?  @relation(fields: [agentAccountId], references: [id])
   senderAccount  String?
   trxId          String?
   receiptUrl     String?
@@ -227,9 +230,11 @@ model Deposit {
   processedAt    DateTime?
 
   commissions Commission[]
+  collectionOrder CollectionOrder?
 
   @@index([userId])
   @@index([status])
+  @@index([agentId])
 }
 
 model Withdrawal {
@@ -283,7 +288,10 @@ model AgentAccount {
   awaitingReview Boolean      @default(true)
   createdAt     DateTime      @default(now())
 
+  deposits Deposit[]
+
   @@index([userId])
+  @@index([number])
 }
 
 enum OrderType {
@@ -319,6 +327,8 @@ model CollectionOrder {
 
   // Pay-on-behalf (WITHDRAW orders): link to the withdrawal + payee snapshot + agent proof
   withdrawalId  String?
+  depositId     String?       @unique
+  deposit       Deposit?      @relation(fields: [depositId], references: [id])
   payeeName     String?
   payeeBank     String?
   senderAccount String?
@@ -493,6 +503,50 @@ model GameRound {
   endedAt       DateTime?
 
   @@index([userId])
+  @@index([gameSlug])
+  @@index([gameSlug, state])
+}
+
+enum CrashPhase {
+  WAITING
+  FLYING
+  CRASHED
+}
+
+// Shared multiplayer Aviator/Crash round (server-authoritative).
+model CrashRound {
+  id            String     @id @default(cuid())
+  gameSlug      String     @default("aviator")
+  phase         CrashPhase @default(WAITING)
+  crashPoint    Float
+  waitingEndsAt DateTime
+  startedAt     DateTime?
+  crashedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  bets          CrashBet[]
+
+  @@index([gameSlug, phase])
+  @@index([createdAt])
+}
+
+model CrashBet {
+  id         String     @id @default(cuid())
+  roundId    String
+  round      CrashRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  slot       Int        @default(0)
+  bet        BigInt
+  autoAt     Float?
+  cashoutAt  Float?
+  payout     BigInt     @default(0)
+  state      RoundState @default(ACTIVE)
+  createdAt  DateTime   @default(now())
+  endedAt    DateTime?
+
+  @@unique([roundId, userId, slot])
+  @@index([userId])
+  @@index([roundId, state])
 }
 
 // ------------------------------------------------------------------

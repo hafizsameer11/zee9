@@ -69,9 +69,10 @@ export function useDesignScale(
     if (!el) return
 
     const update = () => {
-      const rect = el.getBoundingClientRect()
-      const cw = rect.width
-      const ch = rect.height
+      // Use layout size — getBoundingClientRect() is wrong inside the
+      // portrait→landscape CSS rotate wrapper (width/height swap in screen space).
+      const cw = el.clientWidth
+      const ch = el.clientHeight
       if (cw <= 0 || ch <= 0) return
 
       // Contain-fit: entire design canvas stays inside the viewport (896×414 frame).
@@ -91,11 +92,12 @@ export function useDesignScale(
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
-    window.addEventListener('orientationchange', update)
+    const onOrientation = () => requestAnimationFrame(update)
+    window.addEventListener('orientationchange', onOrientation)
     window.addEventListener('resize', update)
     return () => {
       ro.disconnect()
-      window.removeEventListener('orientationchange', update)
+      window.removeEventListener('orientationchange', onOrientation)
       window.removeEventListener('resize', update)
     }
   }, [containerRef, designW, baseDesignH])

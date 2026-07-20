@@ -304,11 +304,35 @@
 
 .betRow {
   display: grid;
-  grid-template-columns: 1fr 60px 52px;
+  grid-template-columns: 1fr 70px 52px;
   gap: 4px;
   align-items: center;
   padding: 5px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s ease;
+}
+
+.betRowMe {
+  background: rgba(40, 200, 64, 0.08);
+  box-shadow: inset 2px 0 0 #28c840;
+}
+
+.betRowWin {
+  background: rgba(40, 200, 64, 0.06);
+}
+
+.betEmpty {
+  padding: 18px 10px;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.betX {
+  font-style: normal;
+  font-size: 9px;
+  color: #28c840;
+  font-weight: 800;
 }
 
 .betUser {
@@ -493,12 +517,24 @@
 
 .planeWrap {
   position: absolute;
-  z-index: 4;
+  left: 0;
+  top: 0;
+  z-index: 6;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  transition: left 0.05s linear, top 0.05s linear;
+  width: 78px;
+  height: 40px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.55));
+  will-change: transform;
+}
+
+.planeImg {
+  width: 78px;
+  height: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .planeIcon {

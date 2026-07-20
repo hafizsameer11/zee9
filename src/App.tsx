@@ -4,6 +4,7 @@ import LandscapeApp from './components/landscape/LandscapeApp'
 import S9Lobby from './components/s9/S9Lobby'
 import { WalletProvider } from './context/WalletContext'
 import { AuthProvider, usePlayerAuth } from './api/auth'
+import { SoundProvider } from './lib/sound'
 import Splash from './pages/Splash'
 import Login from './pages/Login'
 import GamePlay from './pages/GamePlay'
@@ -18,17 +19,19 @@ function RequireAuth({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <WalletProvider>
-        <LandscapeApp>
-          <Routes>
-            <Route path="/" element={<Splash />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/home" element={<RequireAuth><S9Lobby /></RequireAuth>} />
-            <Route path="/play/:id" element={<RequireAuth><GamePlay /></RequireAuth>} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </LandscapeApp>
-      </WalletProvider>
+      <SoundProvider>
+        <WalletProvider>
+          <LandscapeApp>
+            <Routes>
+              <Route path="/" element={<Splash />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/home" element={<RequireAuth><S9Lobby /></RequireAuth>} />
+              <Route path="/play/:id" element={<RequireAuth><GamePlay /></RequireAuth>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </LandscapeApp>
+        </WalletProvider>
+      </SoundProvider>
     </AuthProvider>
   )
 }

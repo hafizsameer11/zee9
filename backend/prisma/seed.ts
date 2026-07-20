@@ -103,10 +103,16 @@ async function main() {
   }
 
   const games = [
-    { slug: 'mines', title: 'Mines', emoji: '💣', color: '#3a2a15', category: 'Mini', winPct: 91, tag: 'hot', plays: 39880, ggr: P(720000), order: 1 },
+    { slug: 'mines', title: 'Mines', emoji: '💣', color: '#3a2a15', category: 'Mini', winPct: 91, tag: 'hot', plays: 0, ggr: 0n, order: 1 },
+    { slug: 'aviator', title: 'Aviator', emoji: '✈️', color: '#1a1020', category: 'Crash', winPct: 97, tag: 'hot', plays: 0, ggr: 0n, order: 2 },
   ]
   for (const g of games) {
-    await prisma.game.upsert({ where: { slug: g.slug }, update: { enabled: true }, create: g as any })
+    await prisma.game.upsert({
+      where: { slug: g.slug },
+      // Clear any previously seeded fake plays/revenue on re-seed
+      update: { enabled: true, title: g.title, emoji: g.emoji, plays: 0, ggr: 0n },
+      create: g as any,
+    })
   }
 
   await seedWheel('SPIN')

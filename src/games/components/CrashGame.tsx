@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
+import { sound } from '../../lib/sound'
 import { generateCrashPoint, multiplierAtElapsed } from '../engines/crash'
 import { useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
@@ -71,7 +72,10 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
     setPhase('crashed')
     setMult(crashPoint.current)
     setHistory((h) => [{ roundId: flyingRoundRef.current, mult: crashPoint.current }, ...h].slice(0, 12))
-    if (!cashed.current) onMessage?.('💥 Crashed!')
+    if (!cashed.current) {
+      sound.play('crash')
+      onMessage?.('💥 Crashed!')
+    }
     setTimeout(resetWaiting, 2200)
   }, [onMessage, resetWaiting, stopLoop])
 
@@ -83,6 +87,8 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
       const win = Math.round(activeBet.current * atMult * 100) / 100
       credit(win)
       setPhase('cashed')
+      sound.play('cashout')
+      sound.play('coin', { volume: 0.7 })
       onMessage?.(`🎉 Cashed out PKR ${win.toLocaleString()}!`)
       setTimeout(resetWaiting, 2200)
     },
@@ -122,10 +128,12 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
   const placeBet = useCallback(() => {
     if (phaseRef.current !== 'waiting' || betPlaced) return
     if (!canAfford(betAmount)) {
+      sound.play('error')
       onMessage?.('Insufficient balance')
       return
     }
     if (!debit(betAmount)) return
+    sound.play('bet')
     activeBet.current = betAmount
     cashed.current = false
     setBetPlaced(true)
@@ -139,6 +147,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
 
   const adjustBet = (delta: number) => {
     if (phase === 'flying') return
+    sound.play('chip', { volume: 0.45 })
     setBetAmount((b) => {
       const idx = BET_STEPS.findIndex((s) => s >= b)
       const i = idx === -1 ? BET_STEPS.length - 1 : idx
