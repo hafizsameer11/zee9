@@ -11,6 +11,7 @@ export const DEVELOPED_GAME_IDS = new Set<string>([
   '7up-down',
   'fortune-ox',
   'fortune-gems',
+  'money-coming',
 ])
 
 export function isDevelopedGame(id: string): boolean {

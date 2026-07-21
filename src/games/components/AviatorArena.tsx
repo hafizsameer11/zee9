@@ -61,10 +61,19 @@ export default function AviatorArena({
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect()
-      if (r.width > 0 && r.height > 0) setSize({ w: r.width, h: r.height })
-    })
+
+    const updateSize = () => {
+      // Layout size only — getBoundingClientRect() is wrong inside the
+      // portrait→landscape CSS rotate wrapper (width/height swap in screen space).
+      const w = el.clientWidth
+      const h = el.clientHeight
+      if (w > 0 && h > 0) {
+        setSize((prev) => (prev.w === w && prev.h === h ? prev : { w, h }))
+      }
+    }
+
+    updateSize()
+    const ro = new ResizeObserver(updateSize)
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -98,8 +107,9 @@ export default function AviatorArena({
     if (needResize) {
       canvas.width = Math.round(w * dpr)
       canvas.height = Math.round(h * dpr)
-      canvas.style.width = `${w}px`
-      canvas.style.height = `${h}px`
+      // Keep CSS fill of the arena; do not stamp post-transform pixel sizes.
+      canvas.style.width = '100%'
+      canvas.style.height = '100%'
     }
 
     const ctx = canvas.getContext('2d')
@@ -124,6 +134,13 @@ export default function AviatorArena({
       x: leftX + (Math.min(t, tMax) / tMax) * gw,
       y: bottomY - ((Math.min(m, mMax) - 1) / (mMax - 1)) * gh,
     })
+
+    // Waiting / idle: clean stage only (S9-style) — no axes clutter
+    if (!isActive) {
+      tipRef.current = null
+      if (planeRef.current) planeRef.current.style.display = 'none'
+      return
+    }
 
     ctx.strokeStyle = 'rgba(255,255,255,0.18)'
     ctx.lineWidth = 1
@@ -159,12 +176,6 @@ export default function AviatorArena({
       ctx.fillStyle = 'rgba(255,255,255,0.3)'
       ctx.arc(x, bottomY + 2, 1.5, 0, Math.PI * 2)
       ctx.fill()
-    }
-
-    if (!isActive) {
-      tipRef.current = null
-      if (planeRef.current) planeRef.current.style.display = 'none'
-      return
     }
 
     // Rebuild full curve from origin every frame — never drop the start of the path
@@ -286,11 +297,13 @@ export default function AviatorArena({
   }, [phase, mult, elapsedSec, size.w, size.h, flightStartPerf, active])
 
   const waitSec = Math.ceil(waitingMsLeft / 1000)
+  const waitProgress = Math.max(0, Math.min(1, 1 - waitingMsLeft / 5000))
+  const isWaiting = phase === 'waiting' || phase === 'idle'
 
   return (
     <div ref={wrapRef} className={`${styles.arena} ${bgClass(bgMult, phase)}`}>
-      <div className={styles.arenaSunburst} />
-      <div className={styles.arenaGlow} />
+      <div className={`${styles.arenaSunburst} ${isWaiting ? styles.arenaSunburstWait : ''}`} />
+      <div className={`${styles.arenaGlow} ${isWaiting ? styles.arenaGlowWait : ''}`} />
       <canvas ref={canvasRef} className={styles.arenaCanvas} />
 
       <div
@@ -301,25 +314,45 @@ export default function AviatorArena({
         <img className={styles.planeImg} src="/games/aviator/plane.png" alt="" draggable={false} />
       </div>
 
+      {isWaiting && (
+        <img
+          className={styles.waitPlaneMark}
+          src="/games/aviator/plane.png"
+          alt=""
+          draggable={false}
+          aria-hidden
+        />
+      )}
+
       {crashed && tip && (
         <div className={styles.crashBurst} style={{ left: tip.x, top: tip.y }} aria-hidden />
       )}
 
-      <div className={styles.multiplierBlock}>
-        <span
-          ref={multElRef}
-          className={`${styles.multiplier} ${flying ? styles.multiplierLive : ''} ${crashed ? styles.multiplierCrash : ''}`}
-        >
-          {mult.toFixed(2)}x
-        </span>
-        {flying && <span className={styles.multiplierSub}>FLYING</span>}
-        {crashed && <span className={styles.multiplierSub}>Crashed!</span>}
-        {(phase === 'waiting' || phase === 'idle') && (
-          <span className={styles.multiplierSub}>
-            {waitSec > 0 ? `Next round in ${waitSec}s` : 'Place your bet'}
+      {isWaiting ? (
+        <div className={styles.waitBlock}>
+          <div className={styles.waitProp} aria-hidden>
+            <span className={styles.waitPropBlade} />
+            <span className={styles.waitPropBlade} />
+            <span className={styles.waitPropHub} />
+          </div>
+          <div className={styles.waitTitle}>WAITING FOR NEXT ROUND</div>
+          <div className={styles.waitBarTrack}>
+            <div className={styles.waitBarFill} style={{ width: `${waitProgress * 100}%` }} />
+          </div>
+          {waitSec > 0 && <div className={styles.waitHint}>{waitSec}s</div>}
+        </div>
+      ) : (
+        <div className={styles.multiplierBlock}>
+          <span
+            ref={multElRef}
+            className={`${styles.multiplier} ${flying ? styles.multiplierLive : ''} ${crashed ? styles.multiplierCrash : ''}`}
+          >
+            {mult.toFixed(2)}x
           </span>
-        )}
-      </div>
+          {flying && <span className={styles.multiplierSub}>FLYING</span>}
+          {crashed && <span className={styles.multiplierSub}>Crashed!</span>}
+        </div>
+      )}
     </div>
   )
 }

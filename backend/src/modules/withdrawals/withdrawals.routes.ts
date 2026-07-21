@@ -16,6 +16,13 @@ const createSchema = z.object({
 
 withdrawalRoutes.use(authenticate)
 
+withdrawalRoutes.get(
+  '/eligibility',
+  asyncHandler(async (req, res) => {
+    ok(res, await service.eligibility(req.user!.id))
+  }),
+)
+
 withdrawalRoutes.post(
   '/',
   validate({ body: createSchema }),

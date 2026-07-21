@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../../api/client'
 import { useConfig } from '../../../api/hooks'
 import { useWallet } from '../../../context/WalletContext'
 import { METHOD_LABEL, maskAccountNumber, type PayoutAccount } from '../../../api/payoutAccount'
+import { sound } from '../../../lib/sound'
 import ps from '../../../styles/premiumScreen.module.css'
 import styles from './WithdrawScreen.module.css'
 
@@ -13,7 +14,23 @@ type Props = {
   onSuccess?: () => void
 }
 
-function parseAmount(label: string, custom: string, min: number, max: number): number | null {
+type Eligibility = {
+  canWithdraw: boolean
+  eligibleAmount: number
+  balance: number
+  minWithdraw: number
+  maxWithdraw: number
+  depositWager: number
+  hasDeposit: boolean
+  deposited: number
+  wagered: number
+  wagerRequired: number
+  wagerRemaining: number
+  wagerOk: boolean
+  reason: string | null
+}
+
+function parseAmount(label: string, custom: string, _min: number, _max: number): number | null {
   if (label === 'Other') {
     const n = Number(custom.replace(/,/g, ''))
     if (!Number.isFinite(n) || n <= 0) return null
@@ -23,12 +40,16 @@ function parseAmount(label: string, custom: string, min: number, max: number): n
   return Number.isFinite(n) ? n : null
 }
 
+const r = (paisa: number | bigint | undefined) => Number(paisa ?? 0) / 100
+
 export default function WithdrawScreen({ onClose, account, onChangeAccount, onSuccess }: Props) {
   const config = useConfig()
   const { balance, refresh } = useWallet()
   const minW = config?.limits.minWithdraw ?? 600
   const maxW = config?.limits.maxWithdraw ?? 50000
+  const methodOk = config?.methods?.[account.method] !== false
 
+  const [elig, setElig] = useState<Eligibility | null>(null)
   const chips = useMemo(() => {
     const base = ['300', '600', '1,000', '3,000', '5,000', '10,000', 'Other']
     return base.filter((a) => a === 'Other' || (parseAmount(a, '', minW, maxW) ?? 0) >= minW)
@@ -43,6 +64,14 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
   const [history, setHistory] = useState<any[]>([])
 
   const rupees = parseAmount(amount, custom, minW, maxW)
+  const eligibleRs = elig ? r(elig.eligibleAmount) : balance
+
+  useEffect(() => {
+    api
+      .get('/withdrawals/eligibility')
+      .then((d) => setElig(d))
+      .catch(() => setElig(null))
+  }, [])
 
   async function loadHistory() {
     try {
@@ -56,9 +85,12 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
 
   async function submit() {
     setErr(null)
+    if (!methodOk) return setErr(`${METHOD_LABEL[account.method]} withdrawals are disabled`)
     if (!rupees) return setErr('Enter a valid amount')
     if (rupees < minW) return setErr(`Minimum withdrawal is Rs ${minW}`)
     if (rupees > maxW) return setErr(`Maximum withdrawal is Rs ${maxW}`)
+    if (elig && !elig.canWithdraw) return setErr(elig.reason || 'Not eligible to withdraw yet')
+    if (rupees > eligibleRs) return setErr(`Max eligible is Rs ${eligibleRs.toLocaleString('en-PK')}`)
     if (rupees > balance) return setErr('Insufficient balance')
     setBusy(true)
     try {
@@ -71,11 +103,16 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
           ...(account.bank ? { bank: account.bank } : {}),
         },
       })
+      sound.play('success')
       await refresh()
       setDone(true)
       onSuccess?.()
     } catch (e: any) {
+      sound.play('error')
       setErr(e?.message || 'Withdrawal failed')
+      try {
+        setElig(await api.get('/withdrawals/eligibility'))
+      } catch { /* ignore */ }
     } finally {
       setBusy(false)
     }
@@ -92,7 +129,7 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
           <div style={{ padding: 40, textAlign: 'center', color: '#fff' }}>
             <div style={{ fontSize: 48 }}>✅</div>
             <h3 style={{ color: '#ffd54f' }}>Withdrawal submitted</h3>
-            <p style={{ color: '#e8d0a0', fontSize: 13 }}>Rs {rupees?.toLocaleString('en-PK')} is pending admin approval.</p>
+            <p style={{ color: '#e8d0a0', fontSize: 13 }}>Rs {rupees?.toLocaleString('en-PK')} is pending confirmation.</p>
             <button type="button" className={ps.goldBtn} style={{ marginTop: 20 }} onClick={onClose}>Done</button>
           </div>
         </div>
@@ -112,6 +149,16 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
         </header>
 
         {err && <div style={{ background: '#c62828', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 700 }}>{err}</div>}
+        {elig && !elig.canWithdraw && elig.reason && (
+          <div style={{ background: '#5c3d00', color: '#ffd54f', padding: '8px 14px', fontSize: 12, fontWeight: 600 }}>
+            {elig.reason}
+            {elig.depositWager > 0 && (
+              <div style={{ marginTop: 4, opacity: 0.9, fontWeight: 500 }}>
+                Played Rs {r(elig.wagered).toLocaleString('en-PK')} / need Rs {r(elig.wagerRequired).toLocaleString('en-PK')}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className={ps.balanceStrip}>
           <div className={ps.balItem}>
@@ -123,7 +170,7 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
           <div className={ps.balItem}>
             <span>Eligible Withdrawal</span>
             <div className={ps.balPill}>
-              <span className={ps.coin}>🪙</span> {balance.toLocaleString('en-PK')}
+              <span className={ps.coin}>🪙</span> {eligibleRs.toLocaleString('en-PK')}
               <span className={styles.info}>ⓘ</span>
             </div>
           </div>
@@ -170,7 +217,14 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
             )}
             <div className={styles.rightFooter}>
               <span className={styles.fee}>Min Rs {minW} · Max Rs {maxW.toLocaleString('en-PK')}</span>
-              <button type="button" className={ps.goldBtn} onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Withdraw'}</button>
+              <button
+                type="button"
+                className={ps.goldBtn}
+                onClick={submit}
+                disabled={busy || (elig != null && !elig.canWithdraw) || !methodOk}
+              >
+                {busy ? 'Submitting…' : 'Withdraw'}
+              </button>
             </div>
           </div>
         </div>

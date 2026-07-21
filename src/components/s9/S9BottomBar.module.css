@@ -1,28 +1,29 @@
 .bar {
   display: flex;
-  align-items: flex-end;
-  padding: 4px 8px 6px;
-  min-height: 58px;
+  align-items: center;
+  padding: 6px 10px 8px;
+  min-height: 68px;
   background: linear-gradient(0deg, #080604 0%, #14100c 55%, #1a1410 100%);
   border-top: 1px solid rgba(212, 175, 55, 0.4);
   flex-shrink: 0;
-  gap: 8px;
+  gap: 10px;
   box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.45), 0 -1px 0 rgba(255, 224, 130, 0.06) inset;
 }
 
 .refer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px 8px 10px;
+  gap: 5px;
+  padding: 9px 12px 9px 10px;
   border-radius: 22px;
   background: var(--zee-gold-btn);
   border: 1.5px solid rgba(255, 255, 255, 0.55);
   box-shadow: var(--zee-gold-glow-strong), 0 3px 10px rgba(0, 0, 0, 0.45);
   color: #1a1008;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
   position: relative;
   overflow: hidden;
   animation: s9GlowPulse 2.4s ease-in-out infinite;
@@ -45,25 +46,32 @@
 .features {
   display: flex;
   align-items: flex-end;
-  justify-content: space-evenly;
-  flex: 1;
-  width: 100%;
+  justify-content: space-between;
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 0 2px 2px;
+  gap: 4px;
+  padding: 0 4px 1px;
 }
 
 .feature {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  flex: 1;
+  justify-content: flex-end;
+  gap: 3px;
+  flex: 1 1 0;
   min-width: 0;
+  max-width: 72px;
+  margin: 0 auto;
 }
 
 .iconWrap {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
 }
 
@@ -71,6 +79,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 40px;
+  height: 40px;
   animation: s9FloatSlow 3s ease-in-out infinite;
 }
 
@@ -102,18 +112,22 @@
 .feature:nth-child(5) .featureArt { animation-delay: 0.6s; }
 
 .featureLabel {
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 700;
   color: var(--zee-gold-light);
   text-shadow: 0 0 4px rgba(240, 192, 64, 0.2);
   line-height: 1.1;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .featureDot {
   position: absolute;
-  top: 0;
-  right: -2px;
+  top: -2px;
+  right: -4px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -134,15 +148,16 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: 5px;
+  padding: 9px 12px;
   border-radius: 22px;
   background: var(--zee-gold-btn);
   border: 1.5px solid #fff;
   box-shadow: var(--zee-gold-glow-strong), 0 3px 10px rgba(0, 0, 0, 0.45);
   color: #1a1008;
   position: relative;
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  white-space: nowrap;
   overflow: hidden;
   animation: s9GlowPulse 2s ease-in-out infinite;
 }
@@ -162,15 +177,15 @@
 }
 
 .addPlus {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: linear-gradient(180deg, #fff, #ffe082);
   border: 1px solid #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 900;
   line-height: 1;
   color: #1a1008;
@@ -178,7 +193,7 @@
 }
 
 .addCashText {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -205,13 +220,14 @@
 
 @media (hover: none) and (pointer: coarse), (max-width: 920px) {
   .bar {
-    min-height: 64px;
-    padding: 5px 10px 7px;
+    min-height: 72px;
+    padding: 7px 12px 9px;
+    gap: 12px;
   }
 
   .refer {
-    font-size: 11px;
-    padding: 9px 16px 9px 12px;
+    font-size: 10px;
+    padding: 10px 14px 10px 12px;
   }
 
   .featureLabel {
@@ -219,6 +235,12 @@
   }
 
   .addCashText {
-    font-size: 11px;
+    font-size: 10px;
+  }
+
+  .iconWrap,
+  .featureArt {
+    width: 42px;
+    height: 42px;
   }
 }

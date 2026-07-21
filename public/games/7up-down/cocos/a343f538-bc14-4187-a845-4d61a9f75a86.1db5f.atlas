@@ -1,0 +1,62 @@
+
+lingd.png
+size: 780, 173
+format: RGBA8888
+filter: Linear, Linear
+repeat: none
+cd
+  rotate: true
+  xy: 605, 22
+  size: 149, 114
+  orig: 149, 116
+  offset: 0, 1
+  index: -1
+frame
+  rotate: false
+  xy: 2, 6
+  size: 416, 165
+  orig: 422, 169
+  offset: 3, 2
+  index: -1
+lindang
+  rotate: true
+  xy: 420, 8
+  size: 163, 183
+  orig: 165, 186
+  offset: 1, 2
+  index: -1
+lindang2
+  rotate: true
+  xy: 721, 67
+  size: 38, 28
+  orig: 40, 30
+  offset: 1, 1
+  index: -1
+shan1
+  rotate: true
+  xy: 721, 25
+  size: 40, 19
+  orig: 42, 21
+  offset: 1, 1
+  index: -1
+shan2
+  rotate: true
+  xy: 646, 2
+  size: 18, 12
+  orig: 20, 15
+  offset: 1, 1
+  index: -1
+shan3
+  rotate: true
+  xy: 721, 107
+  size: 64, 57
+  orig: 66, 59
+  offset: 1, 1
+  index: -1
+shan4
+  rotate: true
+  xy: 605, 2
+  size: 18, 39
+  orig: 21, 41
+  offset: 1, 1
+  index: -1

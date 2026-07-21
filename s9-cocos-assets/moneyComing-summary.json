@@ -1,0 +1,216 @@
+{
+  "exportedAt": "2026-07-20T22:09:42.805Z",
+  "sourceManifest": "cocos-complete-export-2026-07-20T22-09-42-805Z.json",
+  "downloadedAt": "2026-07-20T22:12:07.229Z",
+  "game": "moneyComing",
+  "ok": 49,
+  "fail": 0,
+  "bytes": 4006294,
+  "byExt": {
+    ".json": 25,
+    ".png": 19,
+    ".js": 1,
+    ".webp": 1,
+    ".mp3": 2,
+    ".ttf": 1
+  },
+  "files": [
+    {
+      "rel": "import/08/080101464.e1d1c.json",
+      "bytes": 1554
+    },
+    {
+      "rel": "import/02/02d2d87cf.464af.json",
+      "bytes": 1499
+    },
+    {
+      "rel": "import/0a/0aec6697-f145-421f-a821-3279321f1e04.f7c7e.json",
+      "bytes": 4900
+    },
+    {
+      "rel": "import/03/03ed7a15-5288-487b-9fe9-63b8d4f0b4e8.7c63f.json",
+      "bytes": 1145
+    },
+    {
+      "rel": "import/08/08be035da.26c66.json",
+      "bytes": 46784
+    },
+    {
+      "rel": "config.c1fc2.json",
+      "bytes": 14400
+    },
+    {
+      "rel": "import/0d/0d71e1b20.d7e69.json",
+      "bytes": 726
+    },
+    {
+      "rel": "import/09/09da6c80-cf21-4e0c-80a0-6352a70e69eb.a04aa.json",
+      "bytes": 90144
+    },
+    {
+      "rel": "import/09/09fd14a42.3997b.json",
+      "bytes": 176264
+    },
+    {
+      "rel": "import/0f/0f142a524.e15e5.json",
+      "bytes": 1390
+    },
+    {
+      "rel": "import/18/1884126e-164f-4bc4-989d-7d59413ec84a.e71b2.json",
+      "bytes": 7208
+    },
+    {
+      "rel": "import/1f/1f0c0566-fc46-49d3-a2cb-93de71f98d4b.5fe9a.json",
+      "bytes": 8881
+    },
+    {
+      "rel": "import/41/41d575d2-b5ec-498d-913f-8bbf5d049cf4.0cc23.json",
+      "bytes": 705
+    },
+    {
+      "rel": "import/77/77d70fa1-b9d6-4720-91a7-210fe2043456.2a188.json",
+      "bytes": 81
+    },
+    {
+      "rel": "import/7c/7cb5c741-a503-4405-bcac-c793c52d4766.acb7c.json",
+      "bytes": 1320
+    },
+    {
+      "rel": "import/3f/3f99d582-5e85-412a-84cd-e79d7f464697.0ecf3.json",
+      "bytes": 225498
+    },
+    {
+      "rel": "import/b4/b474865e-622d-4edb-91df-3b784005715a.c8d44.json",
+      "bytes": 1763
+    },
+    {
+      "rel": "import/c3/c3714811-643f-492f-b268-70263079afed.f0e8d.json",
+      "bytes": 84
+    },
+    {
+      "rel": "import/b8/b8f62533-877c-4795-89e4-30c6c700784d.328b5.json",
+      "bytes": 49403
+    },
+    {
+      "rel": "import/cb/cb5d0fa1-3270-4e40-8ff6-ff29ad4703c5.4c4d2.json",
+      "bytes": 36064
+    },
+    {
+      "rel": "import/b9/b91cd324-7ecf-4bc6-83f9-7fd3c45381ba.e8009.json",
+      "bytes": 46679
+    },
+    {
+      "rel": "import/fc/fcc7d4bf-1d4e-415b-b5f1-ffd2817f636d.c9416.json",
+      "bytes": 3313
+    },
+    {
+      "rel": "import/cd/cde3f335-e8ea-4c6e-9f1c-3b5aeaa6ecd9.51d86.json",
+      "bytes": 41818
+    },
+    {
+      "rel": "import/fd/fd1f075f-8946-45b9-b3a7-f871d077a44a.b7012.json",
+      "bytes": 1895
+    },
+    {
+      "rel": "import/9f/9f19ccf9-acbd-46d1-8de4-827f282907d9.c47de.json",
+      "bytes": 272893
+    },
+    {
+      "rel": "native/17/1726cfd0-ba28-46f1-a0c0-f5bd69b631b9.69531.png",
+      "bytes": 5432
+    },
+    {
+      "rel": "native/15/1528524f-1b25-427d-b58f-a91a4acca902.4de1b.png",
+      "bytes": 16999
+    },
+    {
+      "rel": "index.c1fc2.js",
+      "bytes": 244702
+    },
+    {
+      "rel": "native/23/23d3dc16-a8e1-4ed1-8ec5-2839c0c7ae12.934df.png",
+      "bytes": 7181
+    },
+    {
+      "rel": "native/1c/1cef62630.f498a.webp",
+      "bytes": 14264
+    },
+    {
+      "rel": "native/3a/3ad11b88-52fa-49f3-8b2b-bda2b591a5ed.e80ca.png",
+      "bytes": 58027
+    },
+    {
+      "rel": "native/14/147e9c1be.ae963.png",
+      "bytes": 149239
+    },
+    {
+      "rel": "native/54/54152a20-c8e7-41ee-87b2-a960ecd76b88.19c27.png",
+      "bytes": 28181
+    },
+    {
+      "rel": "native/6c/6c6dc8d3-2a62-49f0-94d4-7304b2f774a3.5114c.png",
+      "bytes": 45759
+    },
+    {
+      "rel": "native/53/53fca727-e956-4e32-b1ea-7e2abbf71bec.80b58.png",
+      "bytes": 106733
+    },
+    {
+      "rel": "native/92/9286e92e-a54e-4130-b6d8-96e0389dcb54.3184d.png",
+      "bytes": 4605
+    },
+    {
+      "rel": "native/bb/bb0d2664-384b-4a03-96ff-55d96c380129.3cffc.png",
+      "bytes": 743
+    },
+    {
+      "rel": "native/c0/c0f6cf1e-6529-4c04-b9f9-d630adcf8f2f.02f82.png",
+      "bytes": 3120
+    },
+    {
+      "rel": "native/1d/1d4088186.4bf77.png",
+      "bytes": 1014865
+    },
+    {
+      "rel": "native/c3/c3714811-643f-492f-b268-70263079afed.1688c.mp3",
+      "bytes": 24384
+    },
+    {
+      "rel": "native/cb/cb17dd1d-f8b7-4d7f-bf42-8caf4a76fd7e.1ae98.png",
+      "bytes": 1369
+    },
+    {
+      "rel": "native/ee/ee2e23ff-5749-4d95-bd4f-af897f3e226e.934df.png",
+      "bytes": 7181
+    },
+    {
+      "rel": "native/da/da483a85-c0fa-4c5a-8b03-e83058d17c0e.3781d.png",
+      "bytes": 20106
+    },
+    {
+      "rel": "native/d7/d787513c-8f91-4c37-91d3-b85c0a6e5c27.e207b.png",
+      "bytes": 355587
+    },
+    {
+      "rel": "native/ff/fffbb2bc-4f3f-40a8-b2b9-5079eed75624.29234.png",
+      "bytes": 117008
+    },
+    {
+      "rel": "native/6e/6e0bf2b9-6de8-4845-8795-672102b94e9c.92db1.png",
+      "bytes": 21098
+    },
+    {
+      "rel": "native/f6/f639c744-c196-4b02-ac59-45309895e9e2.93f83.png",
+      "bytes": 211376
+    },
+    {
+      "rel": "native/77/77d70fa1-b9d6-4720-91a7-210fe2043456.88957.mp3",
+      "bytes": 140544
+    },
+    {
+      "rel": "native/fc/fcd01711-3941-4831-b918-9763172d87a6.551f5/BahnschriftCondensed.ttf",
+      "bytes": 371380
+    }
+  ],
+  "errors": []
+}

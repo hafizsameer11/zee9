@@ -98,5 +98,9 @@ export async function authRequest(kind: 'login' | 'register', body: Record<strin
   })
   const json = await res.json()
   if (!res.ok || !json.ok) throw new ApiError(res.status, json.error?.code || 'ERROR', json.error?.message || 'Request failed')
-  return json.data as { user: { id: string; displayName: string; role: string; phone: string }; accessToken: string; refreshToken: string }
+  return json.data as {
+    user: { id: string; displayName: string; role: string; phone: string; referralCode?: string }
+    accessToken: string
+    refreshToken: string
+  }
 }

@@ -12,6 +12,12 @@
   overscroll-behavior-y: contain;
 }
 
+.wrapLobby,
+.wrapNoScroll {
+  overflow: hidden;
+  touch-action: none;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -29,14 +35,54 @@
   min-height: 0;
 }
 
+/* Lobby: 2-row frame so tiles stay within the pane (no scroll). */
 .gridFixed {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 8px;
   flex: 1;
   min-height: 0;
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Few lobby games — slightly larger landscape tiles, still inside the pane */
+.gridLobby {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 188px));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 10px;
+  align-content: stretch;
+  justify-content: start;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding-bottom: 2px;
+}
+
+.gridLobby .tile {
+  aspect-ratio: auto;
+  width: 100%;
+  height: min(158px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  align-self: start;
+}
+
+.gridFixed .tile {
+  aspect-ratio: auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.grid4 .tile {
+  aspect-ratio: auto;
+  min-height: 0;
 }
 
 .gridVertical {
@@ -131,10 +177,18 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center top;
+  object-position: center center;
   display: block;
   position: relative;
   z-index: 1;
+}
+
+.wrapLobby .thumbImg {
+  /* Landscape lobby art (e.g. Mines) — show the full icon, not a zoomed crop */
+  object-fit: contain;
+  object-position: center center;
+  transform: scale(1.08);
+  transform-origin: center center;
 }
 
 .thumbEmoji {

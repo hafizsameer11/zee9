@@ -8,25 +8,18 @@ import {
   formatS9Amount,
   type S9Category,
 } from '../../data/s9Games'
-import { useConfig } from '../../api/hooks'
 import { IconCrown } from './S9Icons'
 import S9GameGrid from './S9GameGrid'
-import S9EngagementStrip from './S9EngagementStrip'
 import styles from './S9CategoryScreen.module.css'
 
 type Props = {
   category: S9Category
   onPlay: (id: string) => void
   onClaimBonus: () => void
-  onWheel?: () => void
-  onDepositWheel?: () => void
-  onCashback?: () => void
-  onDailyBonus?: () => void
   gridRef?: RefObject<HTMLDivElement | null>
 }
 
-export default function S9CategoryScreen({ category, onPlay, onClaimBonus, onWheel, onDepositWheel, onCashback, onDailyBonus, gridRef }: Props) {
-  const config = useConfig()
+export default function S9CategoryScreen({ category, onPlay, onClaimBonus, gridRef }: Props) {
   const config = CATEGORY_CONFIG[category]
   const categoryGames = getDevelopedGamesForCategory(category)
   const featuredGames = getLobbyFeaturedGames()
@@ -82,21 +75,12 @@ export default function S9CategoryScreen({ category, onPlay, onClaimBonus, onWhe
       </aside>
 
       <div className={styles.main}>
-        {isLobby && config?.layout?.wheelsLowerTop !== false && onWheel && onDepositWheel && onCashback && onDailyBonus && (
-          <S9EngagementStrip
-            onWheel={onWheel}
-            onDepositWheel={onDepositWheel}
-            onCashback={onCashback}
-            onDailyBonus={onDailyBonus}
-          />
-        )}
         <S9GameGrid
           ref={gridRef}
           games={games}
           onPlay={onPlay}
-          columns={4}
+          lobby={isLobby}
           scrollable={!isLobby}
-          fixedRows={isLobby ? 2 : undefined}
         />
         {!isLobby && (
           <p className={styles.categoryHint}>{config.title}</p>

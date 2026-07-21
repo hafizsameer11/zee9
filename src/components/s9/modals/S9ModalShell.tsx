@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { sound } from '../../../lib/sound'
 import styles from './modal.module.css'
 
 type Props = {
@@ -27,10 +28,22 @@ export default function S9ModalShell({
           {hideSupport ? (
             <span className={styles.headerSpacer} aria-hidden />
           ) : (
-            <button type="button" className={styles.supportBtn} aria-label="Support">🎧</button>
+            <button type="button" className={styles.supportBtn} aria-label="Support" data-sfx="notify">
+              🎧
+            </button>
           )}
           <h2>{title}</h2>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close">✕</button>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={() => {
+              sound.play('close', { volume: 0.5 })
+              onClose()
+            }}
+            aria-label="Close"
+          >
+            ✕
+          </button>
         </header>
         <div className={`${styles.body} ${bodyClassName ?? ''}`}>{children}</div>
       </div>

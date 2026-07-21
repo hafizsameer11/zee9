@@ -51,6 +51,9 @@ export interface Settings {
   // pay-on-behalf reward (% of payout amount, credited to the agent)
   payoutReward: number
 
+  // how many days agent earnings stay locked before withdraw
+  agentEarnHoldDays: number
+
   // lucky wheel — 1 spin per this much in approved deposits (rupees)
   wheelDepositPerSpin: number
 
@@ -105,10 +108,11 @@ export const DEFAULT_SETTINGS: Settings = {
   bonusWager: 5,
   depositWager: 1,
   payoutReward: 2,
+  agentEarnHoldDays: 7,
   wheelDepositPerSpin: 1000,
   depositPresets: [300, 500, 1000, 2000, 4000, 5000, 10000, 20000, 50000],
-  maxAgentJazzcash: 3,
-  maxAgentEasypaisa: 3,
+  maxAgentJazzcash: 30,
+  maxAgentEasypaisa: 30,
   methodJazzcash: true,
   methodEasypaisa: true,
   methodBank: true,

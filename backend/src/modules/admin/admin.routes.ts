@@ -67,11 +67,25 @@ adminRoutes.get(
   requireScope('users'),
   asyncHandler(async (req, res) => {
     const p = pageParams(req)
-    const q = (req.query.q as string) || ''
+    const q = ((req.query.q as string) || '').trim()
     const role = req.query.role as string | undefined
-    const where = {
+    const where: any = {
       ...(role ? { role: role as any } : {}),
-      ...(q ? { OR: [{ displayName: { contains: q, mode: 'insensitive' as const } }, { phone: { contains: q } }] } : {}),
+    }
+    if (q) {
+      const ors: any[] = [
+        { displayName: { contains: q, mode: 'insensitive' as const } },
+        { phone: { contains: q } },
+        { referralCode: { contains: q, mode: 'insensitive' as const } },
+        { channelCode: { contains: q, mode: 'insensitive' as const } },
+        { bindCode: { contains: q, mode: 'insensitive' as const } },
+        { id: { contains: q } },
+      ]
+      // Game ID in player UI = last 8 chars of cuid
+      if (q.length >= 4 && q.length <= 12) {
+        ors.push({ id: { endsWith: q } })
+      }
+      where.OR = ors
     }
     const [items, total] = await Promise.all([
       prisma.user.findMany({
@@ -79,7 +93,10 @@ adminRoutes.get(
         orderBy: { createdAt: 'desc' },
         skip: p.skip,
         take: p.limit,
-        select: { id: true, phone: true, displayName: true, role: true, status: true, vipLevel: true, referralCode: true, referredById: true, agentActive: true, createdAt: true },
+        select: {
+          id: true, phone: true, displayName: true, role: true, status: true, vipLevel: true,
+          referralCode: true, referredById: true, agentActive: true, channelCode: true, bindCode: true, createdAt: true,
+        },
       }),
       prisma.user.count({ where }),
     ])
@@ -120,18 +137,143 @@ adminRoutes.get(
     const id = req.params.id
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, phone: true, displayName: true, role: true, status: true, vipLevel: true, referralCode: true, referredById: true, agentActive: true, walletsFilled: true, adminScopes: true, createdAt: true },
+      select: {
+        id: true, phone: true, displayName: true, role: true, status: true, vipLevel: true,
+        referralCode: true, referredById: true, agentActive: true, walletsFilled: true,
+        adminScopes: true, channelCode: true, bindCode: true, createdAt: true,
+      },
     })
     if (!user) throw notFound('User not found')
-    const [wallet, deps, wds, bonuses, directRefs, commission] = await Promise.all([
+    const [wallet, deps, wds, bonuses, directRefs, commission, accounts, channels, betAgg] = await Promise.all([
       balances(id),
-      prisma.deposit.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 10 }),
-      prisma.withdrawal.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 10 }),
-      prisma.bonus.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 10 }),
+      prisma.deposit.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      prisma.withdrawal.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      prisma.bonus.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
       prisma.referralEdge.count({ where: { ancestorId: id, level: 1 } }),
       prisma.commission.aggregate({ where: { agentId: id }, _sum: { amount: true } }),
+      prisma.agentAccount.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' } }),
+      prisma.channel.findMany({ where: { ownerId: id }, orderBy: { createdAt: 'desc' } }),
+      prisma.gameRound.aggregate({ where: { userId: id }, _sum: { bet: true }, _count: true }),
     ])
-    ok(res, { user, wallet, deposits: deps, withdrawals: wds, bonuses, directReferrals: directRefs, commissionEarned: commission._sum.amount ?? 0n })
+    ok(res, {
+      user: { ...user, gameId: user.id.slice(-8) },
+      wallet,
+      deposits: deps,
+      withdrawals: wds,
+      bonuses,
+      directReferrals: directRefs,
+      commissionEarned: commission._sum.amount ?? 0n,
+      accounts,
+      channels,
+      wagerSummary: {
+        totalBet: betAgg._sum.bet ?? 0n,
+        rounds: betAgg._count,
+      },
+    })
+  }),
+)
+
+/** Admin edits profile fields on any user (player / mentor / agent). */
+adminRoutes.patch(
+  '/users/:id',
+  requireScope('users'),
+  validate({
+    body: z.object({
+      displayName: z.string().min(1).max(80).optional(),
+      phone: z.string().min(10).max(20).optional(),
+      vipLevel: z.number().int().min(0).max(20).optional(),
+      channelCode: z.string().max(40).nullable().optional(),
+      bindCode: z.string().max(40).nullable().optional(),
+      agentActive: z.boolean().optional(),
+      status: z.enum(['ACTIVE', 'BANNED']).optional(),
+      role: z.enum(['PLAYER', 'AGENT', 'ADMIN']).optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    const id = req.params.id
+    const existing = await prisma.user.findUnique({ where: { id } })
+    if (!existing) throw notFound('User not found')
+    if (req.body.phone && req.body.phone !== existing.phone) {
+      const clash = await prisma.user.findFirst({ where: { phone: req.body.phone, id: { not: id } } })
+      if (clash) throw badRequest('Phone already in use')
+    }
+    const user = await prisma.user.update({ where: { id }, data: req.body })
+    await audit(req, 'user.patch', 'user', id, null, req.body)
+    ok(res, user)
+  }),
+)
+
+/**
+ * Manually adjust bonus wager on a player.
+ * - mode add: add Rs to wagerProgress (counts toward release)
+ * - mode set: set wagerProgress to absolute Rs
+ * - mode required: set wagerRequired to absolute Rs
+ * If bonusId omitted, applies to oldest ACTIVE bonus (or creates a zero-amount tracking bonus).
+ */
+adminRoutes.post(
+  '/users/:id/wager',
+  requireScope('finance'),
+  validate({
+    body: z.object({
+      mode: z.enum(['add', 'set', 'required']),
+      amount: z.number().min(0),
+      bonusId: z.string().optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    const userId = req.params.id
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+    if (!user) throw notFound('User not found')
+    const paisa = toPaisa(req.body.amount)
+
+    const result = await runMoneyTx(async (tx) => {
+      let bonus = req.body.bonusId
+        ? await tx.bonus.findFirst({ where: { id: req.body.bonusId, userId } })
+        : await tx.bonus.findFirst({ where: { userId, status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } })
+
+      if (!bonus) {
+        bonus = await tx.bonus.create({
+          data: {
+            userId,
+            type: 'REBET',
+            amount: 0n,
+            wagerRequired: req.body.mode === 'required' ? paisa : 0n,
+            wagerProgress: req.body.mode === 'required' ? 0n : paisa,
+            status: 'ACTIVE',
+          },
+        })
+      } else {
+        const data: { wagerProgress?: bigint; wagerRequired?: bigint; status?: 'ACTIVE' | 'RELEASED' } = {}
+        if (req.body.mode === 'add') data.wagerProgress = bonus.wagerProgress + paisa
+        else if (req.body.mode === 'set') data.wagerProgress = paisa
+        else data.wagerRequired = paisa
+
+        const nextProgress = data.wagerProgress ?? bonus.wagerProgress
+        const nextRequired = data.wagerRequired ?? bonus.wagerRequired
+        if (nextRequired > 0n && nextProgress >= nextRequired) {
+          data.status = 'RELEASED'
+          // Credit remaining bonus amount to MAIN if still in BONUS bucket
+          if (bonus.amount > 0n && bonus.status === 'ACTIVE') {
+            await post(tx, {
+              type: 'BONUS_RELEASE',
+              referenceType: 'bonus',
+              referenceId: bonus.id,
+              idempotencyKey: `admin-wager-release:${bonus.id}:${Date.now()}`,
+              assertNonNegative: [{ userId, bucket: 'BONUS' }],
+              legs: [
+                { account: { userId, bucket: 'BONUS' }, direction: 'DEBIT', amount: bonus.amount },
+                { account: { userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: bonus.amount },
+              ],
+            })
+          }
+        }
+        bonus = await tx.bonus.update({ where: { id: bonus.id }, data })
+      }
+      return bonus
+    })
+
+    await audit(req, 'user.wager', 'user', userId, null, req.body)
+    ok(res, result)
   }),
 )
 
@@ -242,6 +384,56 @@ adminRoutes.post(
     await prisma.agentAccount.delete({ where: { id: acc.id } })
     await audit(req, 'agentAccount.reject', 'agentAccount', req.params.id, null, { reason: req.body.reason, userId: acc.userId })
     ok(res, { deleted: true })
+  }),
+)
+
+/** Optional: admin can still add a number for an agent. Agent normally self-adds in C2C (max 30 each). */
+adminRoutes.post(
+  '/agents/:id/accounts',
+  requireScope('users'),
+  validate({
+    body: z.object({
+      method: z.enum(['JAZZCASH', 'EASYPAISA', 'BANK', 'WEGARS']),
+      number: z.string().min(3).max(40),
+      holder: z.string().min(2).max(80),
+      enabled: z.boolean().optional(),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    const agent = await prisma.user.findUnique({ where: { id: req.params.id } })
+    if (!agent || agent.role !== 'AGENT') throw notFound('Agent not found')
+    const s = await getSettings()
+    const method = req.body.method
+    const max = method === 'JAZZCASH' ? s.maxAgentJazzcash : method === 'EASYPAISA' ? s.maxAgentEasypaisa : 99
+    const count = await prisma.agentAccount.count({ where: { userId: agent.id, method } })
+    if (count >= max) throw badRequest(`Maximum ${max} ${method} accounts for this agent`)
+    const makeEnabled = req.body.enabled !== false
+    if (makeEnabled) {
+      await prisma.agentAccount.updateMany({
+        where: { userId: agent.id, method },
+        data: { enabled: false },
+      })
+    }
+    const acc = await prisma.agentAccount.create({
+      data: {
+        userId: agent.id,
+        method,
+        number: req.body.number,
+        holder: req.body.holder,
+        enabled: makeEnabled,
+        awaitingReview: false,
+      },
+    })
+    await audit(req, 'agentAccount.create', 'agentAccount', acc.id, null, { userId: agent.id })
+    ok(res, acc, 201)
+  }),
+)
+
+adminRoutes.get(
+  '/agents/:id/accounts',
+  requireScope('users'),
+  asyncHandler(async (req, res) => {
+    ok(res, await prisma.agentAccount.findMany({ where: { userId: req.params.id }, orderBy: { createdAt: 'desc' } }))
   }),
 )
 
@@ -398,17 +590,30 @@ const gameSchema = z.object({
   color: z.string().min(1),
   category: z.string().min(1),
   enabled: z.boolean().optional(),
-  winPct: z.number().min(50).max(99).optional(),
+  winPct: z.number().min(0).max(100).optional(),
   tag: z.string().nullish(),
   order: z.number().optional(),
 })
-adminRoutes.get('/games', requireScope('config'), asyncHandler(async (_req, res) => ok(res, await prisma.game.findMany({ orderBy: { order: 'asc' } }))))
+const gamePatchSchema = z.object({
+  title: z.string().min(1).optional(),
+  emoji: z.string().min(1).optional(),
+  color: z.string().min(1).optional(),
+  category: z.string().min(1).optional(),
+  enabled: z.boolean().optional(),
+  winPct: z.number().min(0).max(100).optional(),
+  tag: z.string().nullish(),
+  order: z.number().optional(),
+})
+adminRoutes.get('/games', requireScope('config'), asyncHandler(async (_req, res) => {
+  const { listGamesWithStats } = await import('./games.admin.service.js')
+  ok(res, await listGamesWithStats())
+}))
 adminRoutes.post('/games', requireScope('config'), validate({ body: gameSchema }), asyncHandler(async (req, res) => {
   const g = await prisma.game.create({ data: req.body })
   await audit(req, 'game.create', 'game', g.id)
   ok(res, g, 201)
 }))
-adminRoutes.patch('/games/:id', requireScope('config'), asyncHandler(async (req, res) => {
+adminRoutes.patch('/games/:id', requireScope('config'), validate({ body: gamePatchSchema }), asyncHandler(async (req, res) => {
   const g = await prisma.game.update({ where: { id: req.params.id }, data: req.body })
   await audit(req, 'game.update', 'game', g.id)
   ok(res, g)

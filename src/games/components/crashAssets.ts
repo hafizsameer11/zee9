@@ -8,6 +8,8 @@ export const CRASH_ASSETS = {
   historyBlue: `${BASE}/history-blue.png`,
   historyPurple: `${BASE}/history-purple.png`,
   guideCharacter: `${BASE}/guide-character.png`,
+  rocket: `${BASE}/rocket.png`,
+  bangCloud: `${BASE}/bang-cloud.png`,
 } as const
 
 export const UI_ATLAS_W = 1024

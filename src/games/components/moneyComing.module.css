@@ -1,0 +1,1132 @@
+@font-face {
+  font-family: 'McBahn';
+  src: url('/games/money-coming/BahnschriftCondensed.ttf') format('truetype');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/*
+  Money Coming — 850×480 premium canvas
+  z: bg0 · wheel2 · machine6 · frame8 · info14 · header/footer50 · spin60
+*/
+.root {
+  --design-width: 850px;
+  --design-height: 480px;
+  --reel-cell-height: 148px;
+  --footer-h: 86px;
+  --machine-top: 176px;
+  --machine-h: 210px;
+  --machine-w: 758px;
+  --wheel-size: 246px;
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #1a0608;
+}
+
+.canvas {
+  position: relative;
+  width: var(--design-width);
+  height: var(--design-height);
+  overflow: hidden;
+  transform-origin: top left;
+  will-change: transform;
+  font-family: 'McBahn', 'Arial Narrow', Arial, sans-serif;
+  color: #fff;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 58% 52% at 56% 54%, rgba(255, 150, 45, 0.34) 0%, transparent 68%),
+    radial-gradient(ellipse 42% 36% at 70% 30%, rgba(255, 190, 70, 0.2) 0%, transparent 62%),
+    radial-gradient(ellipse 30% 28% at 28% 40%, rgba(255, 120, 40, 0.12) 0%, transparent 70%);
+}
+
+/* ═══════════════ HEADER — absolute 3-zone ═══════════════ */
+.topBar {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: 58px;
+  pointer-events: none;
+}
+
+.topLeft {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.topRight {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.backBtn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2.5px solid #f0c860;
+  background: radial-gradient(circle at 35% 28%, #ef5a68, #9a1420 70%, #4a080c);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.promo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 118px;
+  height: 40px;
+  padding: 3px 8px 3px 3px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, #5a3010 0%, #2a1408 45%, #180a04 100%);
+  border: 1.5px solid #d4a848;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 230, 140, 0.35),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.promoOrb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #f0d070;
+  background:
+    radial-gradient(circle at 38% 30%, #a8ecff 0%, #3a9ae0 40%, #1458a8 70%, #0a3068 100%);
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, 0.45),
+    inset 0 2px 3px rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+
+.promoText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  line-height: 1.05;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.promoText span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffe9a8;
+  text-shadow: 0 1px 2px #000, 0 0 1px #000;
+  letter-spacing: 0.15px;
+}
+
+.promoText em {
+  font-style: normal;
+  font-weight: 900;
+  font-size: 14px;
+  color: #ffe050;
+  text-shadow: 0 1px 2px #000, 0 0 1px #000;
+  letter-spacing: 0.2px;
+}
+
+.logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 52px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.addBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  height: 36px;
+  width: 102px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.addBtn img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
+}
+
+.menuBtn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2.5px solid #f0c860;
+  background: radial-gradient(circle at 35% 28%, #ef5a68, #9a1420 70%, #4a080c);
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 10px;
+  flex-shrink: 0;
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.menuBtn i {
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(145deg, #fff0b0, #e0b040 50%, #a87820);
+  transform: rotate(45deg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  border-radius: 1px;
+}
+
+/* ═══════════════ STAGE ═══════════════ */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.stage button,
+.stage .machine {
+  pointer-events: auto;
+}
+
+.wheelHost {
+  position: absolute;
+  left: 46px;
+  top: 54px;
+  width: var(--wheel-size);
+  height: var(--wheel-size);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.wheelPointer {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  z-index: 5;
+  width: 28px;
+  height: 32px;
+  margin-left: -14px;
+  background: linear-gradient(180deg, #6af088 0%, #0e9830 100%);
+  clip-path: polygon(50% 100%, 0 6%, 100% 6%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 3px;
+  border: 1.5px solid #f0d070;
+  box-sizing: border-box;
+}
+
+.wheelPointer span {
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff8c0;
+  text-shadow: 0 1px 1px #000;
+  line-height: 1;
+}
+
+.wheelRim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 2px #5a3808,
+    0 0 0 5px #f8e080,
+    0 0 0 8px #a07018,
+    0 0 0 11px #3a2408,
+    0 12px 30px rgba(0, 0, 0, 0.6),
+    0 0 40px rgba(255, 200, 60, 0.35);
+  animation: mcWheelIdle 14s linear infinite;
+}
+
+.wheelFast .wheelRim {
+  animation: mcWheelFast 1.8s cubic-bezier(0.08, 0.75, 0.2, 1) both;
+}
+
+.wheelDisk {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 50%;
+}
+
+.wheelShine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 230, 0.4) 48%,
+    transparent 60%
+  );
+  background-size: 220% 100%;
+  animation: mcShine 2.4s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+.wheelHub {
+  display: none;
+}
+
+/* Bet info panels */
+.infoStack {
+  position: absolute;
+  left: 332px;
+  top: 78px;
+  width: 448px;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.infoStack::before {
+  content: '';
+  position: absolute;
+  inset: -20px -30px -16px -20px;
+  z-index: -1;
+  background: radial-gradient(ellipse at 45% 50%, rgba(255, 170, 50, 0.26) 0%, transparent 68%);
+  pointer-events: none;
+}
+
+.infoCard {
+  position: relative;
+  height: 50px;
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.55),
+    0 0 0 1.5px rgba(240, 200, 90, 0.45),
+    inset 0 1px 0 rgba(255, 235, 160, 0.35);
+}
+
+.infoCardGold {
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.55),
+    0 0 0 1.5px rgba(255, 120, 80, 0.4),
+    inset 0 1px 0 rgba(255, 200, 160, 0.3);
+}
+
+.infoBg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.infoBody {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 14px;
+}
+
+.infoLabel {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffe9a0;
+  text-shadow: 0 1px 2px #000, 0 0 1px #000;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.infoLabel em {
+  font-style: normal;
+  color: #ffe050;
+  font-size: 18px;
+}
+
+.scatterImg {
+  height: 34px;
+  width: auto;
+  max-width: 270px;
+  object-fit: contain;
+  flex: 1;
+  object-position: center left;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+.unlockImg {
+  height: 36px;
+  width: auto;
+  max-width: 240px;
+  object-fit: contain;
+  flex: 1;
+  object-position: center left;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+/* Machine — natural frame aspect (~3.61:1) */
+.machine {
+  position: absolute;
+  left: 46px;
+  top: var(--machine-top);
+  width: var(--machine-w);
+  height: var(--machine-h);
+  z-index: 6;
+  pointer-events: none;
+  filter: drop-shadow(0 16px 26px rgba(0, 0, 0, 0.65));
+}
+
+.reelBed {
+  position: absolute;
+  left: 26px;
+  top: 20px;
+  right: 26px;
+  bottom: 20px;
+  display: flex;
+  overflow: hidden;
+  background: #030e04;
+  z-index: 1;
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.65);
+}
+
+.numGroup {
+  flex: 1 1 74%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0;
+  min-width: 0;
+}
+
+.numReel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      180deg,
+      #021810 0%,
+      #064a22 10%,
+      #0e9038 22%,
+      #1ad060 40%,
+      #28f078 50%,
+      #16b848 60%,
+      #0a7830 78%,
+      #043018 90%,
+      #010c06 100%
+    );
+  box-shadow:
+    inset 10px 0 16px rgba(0, 0, 0, 0.5),
+    inset -10px 0 16px rgba(0, 0, 0, 0.5);
+}
+
+.numReel + .numReel {
+  border-left: 2px solid rgba(0, 0, 0, 0.65);
+  box-shadow:
+    inset 10px 0 16px rgba(0, 0, 0, 0.5),
+    inset -10px 0 16px rgba(0, 0, 0, 0.5),
+    -1px 0 0 rgba(255, 220, 100, 0.08);
+}
+
+.reelCurve {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.65) 0%,
+      rgba(0, 0, 0, 0.25) 10%,
+      transparent 22%,
+      rgba(255, 255, 255, 0.06) 48%,
+      transparent 78%,
+      rgba(0, 0, 0, 0.25) 90%,
+      rgba(0, 0, 0, 0.65) 100%
+    );
+}
+
+.reelCurveGold {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.45) 0%,
+    transparent 18%,
+    rgba(255, 255, 220, 0.14) 50%,
+    transparent 82%,
+    rgba(0, 0, 0, 0.45) 100%
+  );
+}
+
+.reelShade {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.35) 10%,
+    transparent 26%,
+    transparent 74%,
+    rgba(0, 0, 0, 0.35) 90%,
+    rgba(0, 0, 0, 0.78) 100%
+  );
+}
+
+.multReel {
+  flex: 0 0 25.5%;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    #3a2808 0%,
+    #8a6018 16%,
+    #d4a028 36%,
+    #fff0b0 50%,
+    #d4a028 64%,
+    #8a6018 84%,
+    #3a2808 100%
+  );
+  border-left: 3px solid rgba(60, 35, 8, 0.7);
+  box-shadow: inset 0 0 24px rgba(80, 45, 8, 0.4);
+}
+
+.reelWindow {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.reelStrip {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+  height: 100%;
+}
+
+.reelIdle {
+  display: flex;
+  flex-direction: column;
+}
+
+.reelIdle .reelCell {
+  flex: 0 0 14%;
+  opacity: 0.22;
+  overflow: hidden;
+}
+
+.reelIdle .reelCell:nth-child(2) {
+  flex: 0 0 72%;
+  opacity: 1;
+}
+
+.reelIdle .reelCell:nth-child(2) .multBadge {
+  width: 118px;
+  height: 100px;
+}
+
+.reelIdle .reelCell:nth-child(2) .multBadge b {
+  font-size: 40px;
+}
+
+.reelIdle .reelCell:nth-child(2) .multBadge small {
+  font-size: 12px;
+}
+
+.reelSpinning {
+  height: auto;
+  animation: mcReel 1.55s cubic-bezier(0.1, 0.72, 0.15, 1) both;
+}
+
+.reelCell {
+  height: var(--reel-cell-height);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.digit {
+  font-size: 124px;
+  font-weight: 800;
+  line-height: 0.85;
+  color: #fff8e8;
+  -webkit-text-stroke: 2.5px #6a4010;
+  paint-order: stroke fill;
+  text-shadow:
+    0 1px 0 #d4a040,
+    0 2px 0 #a87820,
+    0 3px 0 #7a5810,
+    0 5px 12px rgba(0, 0, 0, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.digitWide {
+  letter-spacing: -0.1em;
+  transform: scaleX(0.88);
+  transform-origin: center;
+}
+
+/* Multiplier badges — premium oval jewels */
+.multBadge {
+  width: 108px;
+  height: 92px;
+  border-radius: 50% / 46%;
+  border: 3.5px solid #f0d070;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow:
+    0 5px 14px rgba(0, 0, 0, 0.5),
+    inset 0 3px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -5px 12px rgba(0, 0, 0, 0.3),
+    0 0 16px rgba(255, 200, 80, 0.25);
+}
+
+.multBadge b {
+  font-size: 34px;
+  font-weight: 900;
+  color: #fff8e0;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 1px #000,
+    0 1px 0 rgba(255, 240, 160, 0.4);
+  letter-spacing: -0.02em;
+}
+
+.multBadge small {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #fff8e0;
+  margin-top: 1px;
+  font-weight: 700;
+  text-shadow: 0 1px 2px #000;
+}
+
+.mult2 {
+  background:
+    radial-gradient(ellipse at 38% 28%, #b8ffb0 0%, #28d050 40%, #0a9028 72%, #045018 100%);
+}
+
+.mult5 {
+  background:
+    radial-gradient(ellipse at 38% 28%, #f0c0ff 0%, #a040e8 40%, #6818b0 72%, #300860 100%);
+}
+
+.mult10 {
+  background:
+    radial-gradient(ellipse at 38% 28%, #ffc0d8 0%, #e83878 40%, #a01048 72%, #600828 100%);
+}
+
+.multRespin {
+  background:
+    radial-gradient(ellipse at 38% 28%, #b0e8ff 0%, #3090e0 40%, #1860a8 72%, #083060 100%);
+  padding: 8px;
+}
+
+.multRespinImg {
+  width: 90%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+.multNeutral {
+  background:
+    radial-gradient(ellipse at 38% 28%, #fff0b8 0%, #e0b040 45%, #a87820 75%, #6a4810 100%);
+}
+
+.multNeutral b {
+  color: #4a2008;
+  text-shadow: 0 1px 0 rgba(255, 240, 180, 0.75);
+}
+
+.multNeutral small {
+  color: #4a2008;
+  text-shadow: none;
+}
+
+.multImgWrap {
+  background:
+    radial-gradient(ellipse at 38% 28%, #ffc0d8 0%, #e83878 50%, #600828 100%);
+  padding: 8px 10px;
+  overflow: hidden;
+}
+
+.multImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.payline {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  z-index: 4;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(240, 200, 100, 0.35) 8%,
+    rgba(255, 230, 160, 0.55) 50%,
+    rgba(240, 200, 100, 0.35) 92%,
+    transparent 100%
+  );
+  box-shadow: none;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.shineSweep {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.18) 50%,
+    transparent 65%
+  );
+  background-size: 220% 100%;
+  animation: mcShine 0.75s linear infinite;
+  mix-blend-mode: soft-light;
+  opacity: 0.7;
+}
+
+.frameImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  z-index: 8;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 14px 24px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 12px rgba(255, 200, 70, 0.32));
+}
+
+.machineShine .frameImg {
+  filter:
+    drop-shadow(0 14px 24px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 18px rgba(255, 210, 80, 0.55));
+}
+
+.machine::before {
+  content: '';
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 2px;
+  height: 6px;
+  z-index: 9;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 245, 200, 0.35), transparent);
+  border-radius: 4px;
+}
+
+/* ═══════════════ FOOTER CONSOLE ═══════════════ */
+.bottomBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  height: var(--footer-h);
+  display: grid;
+  grid-template-columns:
+    130px
+    1px
+    160px
+    1px
+    120px
+    minmax(16px, 1fr)
+    100px
+    108px;
+  align-items: center;
+  padding: 0 8px 0 72px;
+  box-sizing: border-box;
+  overflow: visible;
+  background:
+    linear-gradient(180deg, rgba(40, 16, 10, 0.15) 0%, rgba(12, 4, 3, 0.96) 18%, #080202 100%);
+  border-top: 1px solid rgba(200, 160, 80, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 140, 0.12);
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+  gap: 1px;
+}
+
+.statLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d4b060;
+  line-height: 1.1;
+  text-shadow: 0 1px 2px #000;
+  letter-spacing: 0.3px;
+}
+
+.statValue {
+  font-size: 19px;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+  line-height: 1.15;
+}
+
+.winFlash {
+  color: #ffe050;
+  animation: mcPulse 0.55s ease-in-out 3;
+}
+
+.divider {
+  width: 1px;
+  height: 52px;
+  align-self: center;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(200, 160, 80, 0.5) 25%,
+    rgba(255, 220, 120, 0.75) 50%,
+    rgba(200, 160, 80, 0.5) 75%,
+    transparent 100%
+  );
+  justify-self: center;
+}
+
+.footerSpacer {
+  min-width: 0;
+}
+
+.betBlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.betCoinBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+}
+
+.betCoinBtn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.betMinus {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #d4a848;
+  background: radial-gradient(circle at 40% 30%, #3a2810, #100808);
+  color: #ffe9a0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 230, 140, 0.2);
+}
+
+.betMinus img {
+  display: none;
+}
+
+.ctrlGroup {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  position: relative;
+  padding-bottom: 10px;
+  padding-right: 4px;
+  margin-right: 4px;
+}
+
+.ctrlBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2.5px solid #d4a848;
+  background: radial-gradient(circle at 40% 28%, #5a3818, #180808 75%);
+  color: #f0d070;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 230, 140, 0.2);
+  flex-shrink: 0;
+}
+
+.ctrlBtn img {
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+}
+
+.ctrlOn {
+  border-color: #ffe050;
+  box-shadow:
+    0 0 14px rgba(255, 200, 60, 0.55),
+    inset 0 0 8px rgba(255, 200, 60, 0.22);
+}
+
+.hint {
+  position: absolute;
+  right: 0;
+  left: auto;
+  bottom: -1px;
+  transform: none;
+  font-size: 8px;
+  color: #a89060;
+  white-space: nowrap;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.spinSlot {
+  width: 100%;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* SPIN — sits in far-right slot; does not cover turbo/auto */
+.spinBtn {
+  position: absolute;
+  right: 10px;
+  left: auto;
+  top: 378px;
+  z-index: 60;
+  width: 96px;
+  height: 96px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.55));
+  transform: none;
+}
+
+.spinBtn:disabled {
+  cursor: default;
+}
+
+.spinRing {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  z-index: 0;
+  background: radial-gradient(circle at 38% 28%, #fff0b0 0%, #e8bc48 30%, #b88820 58%, #6a4810 100%);
+  box-shadow:
+    0 0 0 3px #f8e080,
+    0 0 0 6px #6a4010,
+    inset 0 4px 0 rgba(255, 255, 220, 0.4),
+    inset 0 -6px 12px rgba(60, 30, 0, 0.4);
+  pointer-events: none;
+}
+
+.spinDiskImg {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  object-fit: contain;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  opacity: 0.92;
+}
+
+.spinArrow {
+  position: absolute;
+  inset: 16%;
+  width: 68%;
+  height: 68%;
+  object-fit: contain;
+  z-index: 2;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.spinWord {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 52%;
+  height: auto;
+  z-index: 3;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 1px 0 #000)
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85))
+    contrast(1.25)
+    brightness(1.1);
+}
+
+.spinShine {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 48%,
+    transparent 60%
+  );
+  background-size: 220% 100%;
+  animation: mcShine 2.2s ease-in-out infinite;
+  mix-blend-mode: soft-light;
+}
+
+.spinActive .spinArrow {
+  animation: mcSpinRot 0.55s linear infinite;
+}
+
+.spinActive .spinRing {
+  animation: mcPulse 0.45s ease-in-out infinite;
+}
+
+.spinBtn:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+@keyframes mcReel {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(var(--reel-cell-height) * -16));
+  }
+}
+
+@keyframes mcWheelIdle {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mcWheelFast {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(1080deg);
+  }
+}
+
+@keyframes mcShine {
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
+}
+
+@keyframes mcSpinRot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mcPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.96);
+  }
+}

@@ -47,10 +47,11 @@ export const settingsPatchSchema = z
     depositWager: z.number().min(0).max(100),
 
     payoutReward: pct,
+    agentEarnHoldDays: z.number().int().min(0).max(90).optional(),
     wheelDepositPerSpin: money,
     depositPresets: z.array(money).max(20).optional(),
-    maxAgentJazzcash: z.number().int().min(1).max(10).optional(),
-    maxAgentEasypaisa: z.number().int().min(1).max(10).optional(),
+    maxAgentJazzcash: z.number().int().min(1).max(30).optional(),
+    maxAgentEasypaisa: z.number().int().min(1).max(30).optional(),
 
     methodJazzcash: z.boolean(),
     methodEasypaisa: z.boolean(),

@@ -4,7 +4,7 @@ import { prisma } from '../../lib/prisma.js'
 import { runMoneyTx } from '../../core/tx.js'
 import { post, getBalances } from '../../core/ledger.js'
 import { getSettings } from '../../core/settings.js'
-import { toPaisa } from '../../lib/money.js'
+import { toPaisa, toRupees } from '../../lib/money.js'
 import { conflict, notFound, unprocessable } from '../../core/errors.js'
 
 import { notify } from '../../core/notify.js'
@@ -17,8 +17,63 @@ function methodEnabled(s: Awaited<ReturnType<typeof getSettings>>, method: Payme
   return s.methodBank
 }
 
-async function hasApprovedDeposit(tx: Tx, userId: string) {
+async function hasApprovedDeposit(tx: Tx | typeof prisma, userId: string) {
   return (await tx.deposit.count({ where: { userId, status: 'APPROVED' } })) > 0
+}
+
+/** Player-facing eligibility (why withdraw may be blocked). */
+export async function eligibility(userId: string) {
+  const s = await getSettings()
+  const { balances } = await import('../wallet/wallet.service.js')
+  const bal = await balances(userId)
+  const main = bal.MAIN ?? 0n
+  const hasDeposit = await hasApprovedDeposit(prisma, userId)
+  const [depSum, betSum] = await Promise.all([
+    prisma.deposit.aggregate({ where: { userId, status: 'APPROVED' }, _sum: { amount: true } }),
+    prisma.gameRound.aggregate({ where: { userId }, _sum: { bet: true } }),
+  ])
+  const deposited = depSum._sum.amount ?? 0n
+  const wagered = betSum._sum.bet ?? 0n
+  const required =
+    s.depositWager <= 0 || deposited <= 0n
+      ? 0n
+      : (deposited * BigInt(Math.round(s.depositWager * 100))) / 100n
+  const remaining = required > wagered ? required - wagered : 0n
+  const wagerOk = remaining <= 0n
+  const minP = toPaisa(s.minWithdraw)
+  const maxP = toPaisa(s.maxWithdraw)
+
+  let reason: string | null = null
+  let canWithdraw = true
+  if (!hasDeposit) {
+    canWithdraw = false
+    reason = 'Complete your first deposit before withdrawing'
+  } else if (!wagerOk) {
+    canWithdraw = false
+    reason = `Wager Rs ${toRupees(remaining).toLocaleString('en-PK')} more (${s.depositWager}× deposits required)`
+  } else if (main < minP) {
+    canWithdraw = false
+    reason = `Need at least Rs ${s.minWithdraw} in MAIN balance`
+  }
+
+  const eligibleCap = main < maxP ? main : maxP
+  const eligibleAmount = canWithdraw && eligibleCap >= minP ? eligibleCap : 0n
+
+  return {
+    canWithdraw: canWithdraw && eligibleAmount >= minP,
+    eligibleAmount,
+    balance: main,
+    minWithdraw: s.minWithdraw,
+    maxWithdraw: s.maxWithdraw,
+    depositWager: s.depositWager,
+    hasDeposit,
+    deposited,
+    wagered,
+    wagerRequired: required,
+    wagerRemaining: remaining,
+    wagerOk,
+    reason,
+  }
 }
 
 export async function create(userId: string, input: {
@@ -34,8 +89,6 @@ export async function create(userId: string, input: {
   }
 
   return runMoneyTx(async (tx) => {
-    // Withdrawals draw only from MAIN (released funds). Bonus funds stay in BONUS
-    // until wagering is met, so bucket separation enforces the wager rule.
     const bal = await getBalances(tx, userId)
     if (bal.MAIN! < amount) throw unprocessable('Insufficient withdrawable balance')
 
@@ -45,7 +98,17 @@ export async function create(userId: string, input: {
 
     const wagerOk = await depositWagerMet(tx, userId)
     if (!wagerOk) {
-      throw unprocessable(`You must wager ${s.depositWager}x your total deposits before withdrawing`)
+      const [depSum, betSum] = await Promise.all([
+        tx.deposit.aggregate({ where: { userId, status: 'APPROVED' }, _sum: { amount: true } }),
+        tx.gameRound.aggregate({ where: { userId }, _sum: { bet: true } }),
+      ])
+      const deposited = depSum._sum.amount ?? 0n
+      const wagered = betSum._sum.bet ?? 0n
+      const required = (deposited * BigInt(Math.round(s.depositWager * 100))) / 100n
+      const left = required > wagered ? required - wagered : 0n
+      throw unprocessable(
+        `You must wager ${s.depositWager}x deposits before withdrawing. Still need Rs ${toRupees(left).toLocaleString('en-PK')} more play.`,
+      )
     }
 
     const wd = await tx.withdrawal.create({
@@ -59,7 +122,6 @@ export async function create(userId: string, input: {
       },
     })
 
-    // Freeze: MAIN -> FROZEN
     await post(tx, {
       type: 'WITHDRAWAL_FREEZE',
       referenceType: 'withdrawal',
@@ -89,7 +151,18 @@ export function adminList(status?: string) {
   })
 }
 
-/** Admin/agent confirms the manual payout was sent. */
+async function closeOpenPayoutOrders(tx: Tx, withdrawalId: string, status: 'SUCCESS' | 'FAIL') {
+  await tx.collectionOrder.updateMany({
+    where: {
+      withdrawalId,
+      type: 'WITHDRAW',
+      status: { in: ['PENDING', 'CHECKING', 'PROCESSING'] },
+    },
+    data: { status, resolvedAt: new Date() },
+  })
+}
+
+/** Admin confirms the manual payout was sent. */
 export async function markPaid(id: string, adminId: string, trxId: string, payoutProofUrl?: string) {
   return runMoneyTx(async (tx) => {
     const wd = await tx.withdrawal.findUnique({ where: { id } })
@@ -100,8 +173,8 @@ export async function markPaid(id: string, adminId: string, trxId: string, payou
       where: { id },
       data: { status: 'PAID', trxId, payoutProofUrl, processedById: adminId, processedAt: new Date() },
     })
+    await closeOpenPayoutOrders(tx, id, 'SUCCESS')
     await notify(tx, wd.userId, 'withdrawal', 'Withdrawal paid', `Your withdrawal of Rs ${(Number(wd.amount) / 100).toLocaleString('en-PK')} has been sent.`)
-    // FROZEN -> out (GATEWAY_CLEARING)
     await post(tx, {
       type: 'WITHDRAWAL_PAID',
       referenceType: 'withdrawal',
@@ -126,8 +199,8 @@ export async function reject(id: string, adminId: string, reason: string) {
       where: { id },
       data: { status: 'REJECTED', rejectReason: reason, processedById: adminId, processedAt: new Date() },
     })
+    await closeOpenPayoutOrders(tx, id, 'FAIL')
     await notify(tx, wd.userId, 'withdrawal', 'Withdrawal rejected', reason || 'Your withdrawal was rejected and funds returned.')
-    // Unfreeze: FROZEN -> MAIN
     await post(tx, {
       type: 'WITHDRAWAL_UNFREEZE',
       referenceType: 'withdrawal',

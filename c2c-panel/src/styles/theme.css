@@ -29,6 +29,12 @@ body { background: #2c2b52; }
 
 button { font-family: inherit; cursor: pointer; border: none; background: none; }
 input { font-family: inherit; }
+a, .link, .sub, .tab, .tab-customize, .tb-face, .tb-btn,
+.menu-item, .filter-pill, .sheet-radio, .sheet-opt, .action-btn,
+.wallet-row, .copy-ic, .il-copy, .cc-copy, .seg-btn, .toggle {
+  cursor: pointer;
+}
+select.filter-pill { cursor: pointer; }
 
 /* ---- Phone shell ---- */
 .shell {

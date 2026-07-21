@@ -8,7 +8,11 @@ import { validate } from '../../middleware/validate.js'
 import { notFound } from '../../core/errors.js'
 import * as mines from './mines.service.js'
 import * as aviator from './aviator.service.js'
+import * as crash from './crash.service.js'
+import * as wingo from './wingo.service.js'
 import { kickAviatorRealtime } from './aviator.realtime.js'
+import { kickCrashRealtime } from './crash.realtime.js'
+import { kickWingoRealtime } from './wingo.realtime.js'
 
 export const gamesRoutes = Router()
 
@@ -65,6 +69,93 @@ gamesRoutes.post(
   asyncHandler(async (req, res) => {
     const data = await aviator.cashOut(req.user!.id, req.body.betId)
     kickAviatorRealtime()
+    ok(res, data)
+  }),
+)
+
+/* ---------------- Crash (S9-style rocket) ---------------- */
+const crashBetSchema = aviatorBetSchema
+const crashCashoutSchema = aviatorCashoutSchema
+
+gamesRoutes.get(
+  '/crash/state',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    await crash.processAutoCashouts(req.user!.id)
+    ok(res, await crash.getState(req.user!.id))
+  }),
+)
+
+gamesRoutes.post(
+  '/crash/bet',
+  authenticate,
+  validate({ body: crashBetSchema }),
+  asyncHandler(async (req, res) => {
+    const data = await crash.placeBet(
+      req.user!.id,
+      req.body.amount,
+      req.body.slot ?? 0,
+      req.body.autoAt,
+    )
+    kickCrashRealtime()
+    ok(res, data, 201)
+  }),
+)
+
+gamesRoutes.post(
+  '/crash/cashout',
+  authenticate,
+  validate({ body: crashCashoutSchema }),
+  asyncHandler(async (req, res) => {
+    const data = await crash.cashOut(req.user!.id, req.body.betId)
+    kickCrashRealtime()
+    ok(res, data)
+  }),
+)
+
+/* ---------------- WinGo (color / number lottery) ---------------- */
+const wingoModeSchema = z.enum(['30s', '1min', '3min', '5min'])
+const wingoBetSchema = z.object({
+  mode: wingoModeSchema,
+  type: z.enum(['number', 'green', 'red', 'violet', 'big', 'small']),
+  value: z.number().int().min(0).max(9).nullable().optional(),
+  amount: z.number().positive(),
+})
+const wingoRevokeSchema = z.object({ mode: wingoModeSchema })
+
+gamesRoutes.get(
+  '/wingo/state',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const mode = typeof req.query.mode === 'string' ? req.query.mode : '30s'
+    ok(res, await wingo.getState(req.user!.id, mode))
+  }),
+)
+
+gamesRoutes.post(
+  '/wingo/bet',
+  authenticate,
+  validate({ body: wingoBetSchema }),
+  asyncHandler(async (req, res) => {
+    const data = await wingo.placeBet(
+      req.user!.id,
+      req.body.mode,
+      req.body.type,
+      req.body.amount,
+      req.body.value,
+    )
+    kickWingoRealtime(req.body.mode)
+    ok(res, data, 201)
+  }),
+)
+
+gamesRoutes.post(
+  '/wingo/revoke',
+  authenticate,
+  validate({ body: wingoRevokeSchema }),
+  asyncHandler(async (req, res) => {
+    const data = await wingo.revokeBets(req.user!.id, req.body.mode)
+    kickWingoRealtime(req.body.mode)
     ok(res, data)
   }),
 )

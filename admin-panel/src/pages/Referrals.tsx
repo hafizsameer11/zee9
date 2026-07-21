@@ -56,6 +56,36 @@ export default function Referrals() {
             </div>
           </div>
 
+          <div className="divider" />
+
+          <h3 className="section-title">C2C agent rewards</h3>
+          <p className="section-sub">Collection / pay-on-behalf reward % and when earnings unlock.</p>
+          <div className="form-grid">
+            <div className="fld">
+              <label>Reward on each deposit/payout (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={s.payoutReward ?? 2}
+                onChange={(e) => patchSettings({ payoutReward: Number(e.target.value) })}
+              />
+              <div className="hint" style={{ marginTop: 6 }}>Default 2%. Agent never receives the deposit principal.</div>
+            </div>
+            <div className="fld">
+              <label>Earnings hold (days)</label>
+              <input
+                type="number"
+                min={0}
+                max={90}
+                value={s.agentEarnHoldDays ?? 7}
+                onChange={(e) => patchSettings({ agentEarnHoldDays: Number(e.target.value) })}
+              />
+              <div className="hint" style={{ marginTop: 6 }}>After this many days, agent can move rewards into float.</div>
+            </div>
+          </div>
+
           <div className="card" style={{ background: 'var(--brand-soft)', boxShadow: 'none', marginTop: 18, padding: 16, borderRadius: 12 }}>
             <b style={{ color: 'var(--brand)' }}>Current rule:</b>{' '}
             <span style={{ color: 'var(--ink-2)' }}>

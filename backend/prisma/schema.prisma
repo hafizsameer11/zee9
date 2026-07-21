@@ -65,6 +65,7 @@ model User {
   ordersAsAgent     CollectionOrder[] @relation("OrderAgent")
   gameRounds        GameRound[]
   crashBets         CrashBet[]
+  wingoBets         WingoBet[]
   notifications     Notification[]
 
   @@index([role])
@@ -547,6 +548,58 @@ model CrashBet {
   @@unique([roundId, userId, slot])
   @@index([userId])
   @@index([roundId, state])
+}
+
+enum WingoPhase {
+  BETTING
+  LOCKED
+  REVEAL
+}
+
+enum WingoBetType {
+  number
+  green
+  red
+  violet
+  big
+  small
+}
+
+// Shared multiplayer WinGo round per mode (30s / 1min / 3min / 5min).
+model WingoRound {
+  id            String     @id @default(cuid())
+  mode          String
+  period        String
+  phase         WingoPhase @default(BETTING)
+  resultNumber  Int?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime   @default(now())
+  bets          WingoBet[]
+
+  @@unique([mode, period])
+  @@index([mode, phase])
+  @@index([mode, createdAt])
+}
+
+model WingoBet {
+  id        String       @id @default(cuid())
+  roundId   String
+  round     WingoRound   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  betType   WingoBetType
+  value     Int?
+  amount    BigInt
+  payout    BigInt       @default(0)
+  state     RoundState   @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
 }
 
 // ------------------------------------------------------------------

@@ -154,10 +154,6 @@ export default function S9Lobby() {
             category={category}
             onPlay={(id) => navigate(`/play/${id}`)}
             onClaimBonus={openDeposit}
-            onWheel={openWheel}
-            onDepositWheel={() => setShowDepositWheel(true)}
-            onCashback={() => setShowRebate(true)}
-            onDailyBonus={() => setShowWelcome(true)}
             gridRef={gridRef}
           />
         )}

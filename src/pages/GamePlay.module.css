@@ -6,6 +6,11 @@
   background: #1f1208;
 }
 
+.shellPortrait {
+  background: transparent;
+  overflow: hidden;
+}
+
 .toast {
   position: absolute;
   top: 48px;

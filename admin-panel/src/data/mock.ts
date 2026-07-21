@@ -6,10 +6,23 @@ export interface GameRow {
   color: string
   category: 'Slots' | 'Crash' | 'Lottery' | 'Table' | 'Mini'
   enabled: boolean
-  winPct: number // RTP / win percentage the house allows
+  winPct: number // RTP / win percentage the house allows (0–100)
   tag?: 'hot' | 'new'
   plays: number
-  ggr: number // gross gaming revenue
+  /** Total amount wagered by players (rupees) */
+  wagered: number
+  /** Rounds players cashed out / won */
+  playerWins: number
+  /** Rounds players busted / lost */
+  playerLosses: number
+  /** Total paid out to players on wins (rupees) */
+  playerWonAmount: number
+  /** Total bets lost by players (rupees) */
+  playerLostAmount: number
+  /** House profit = wagered settled − payouts (rupees). Positive = house profit */
+  houseProfit: number
+  /** @deprecated use houseProfit — kept for dashboard charts */
+  ggr: number
   order: number
 }
 
@@ -123,6 +136,9 @@ export interface Settings {
   bonusWager: number
   depositWager: number
   wheelDepositPerSpin: number
+  // agent C2C
+  payoutReward: number
+  agentEarnHoldDays: number
   // methods
   methodJazzcash: boolean
   methodEasypaisa: boolean
@@ -161,6 +177,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bonusWager: 5,
   depositWager: 1,
   wheelDepositPerSpin: 1000,
+  payoutReward: 2,
+  agentEarnHoldDays: 7,
   methodJazzcash: true,
   methodEasypaisa: true,
   methodBank: true,
@@ -169,18 +187,18 @@ export const DEFAULT_SETTINGS: Settings = {
 
 // ---------- Games ----------
 export const GAMES: GameRow[] = [
-  { id: 'fortune-gems', title: 'Fortune Gems', emoji: '💎', color: '#7b1f2b', category: 'Slots', enabled: true, winPct: 92, tag: 'hot', plays: 48210, ggr: 1284000, order: 1 },
-  { id: 'aviator', title: 'Aviator', emoji: '✈️', color: '#2a1030', category: 'Crash', enabled: true, winPct: 95, tag: 'hot', plays: 88120, ggr: 2140000, order: 2 },
-  { id: 'wingo', title: 'Wingo Lottery', emoji: '🎯', color: '#0d8a5f', category: 'Lottery', enabled: true, winPct: 90, tag: 'hot', plays: 67340, ggr: 1760000, order: 3 },
-  { id: 'crash', title: 'Crash', emoji: '🚀', color: '#1b2a52', category: 'Crash', enabled: true, winPct: 94, plays: 41200, ggr: 980000, order: 4 },
-  { id: 'mines', title: 'Mines', emoji: '💣', color: '#3a2a15', category: 'Mini', enabled: true, winPct: 91, tag: 'hot', plays: 39880, ggr: 720000, order: 5 },
-  { id: 'fortune-ox', title: 'Fortune Ox', emoji: '🐂', color: '#7a1414', category: 'Slots', enabled: true, winPct: 92, plays: 22140, ggr: 540000, order: 6 },
-  { id: '7up-down', title: '7 Up Down', emoji: '🎲', color: '#1d5c2e', category: 'Table', enabled: true, winPct: 89, plays: 30120, ggr: 610000, order: 7 },
-  { id: 'teen-patti', title: 'Teen Patti', emoji: '🃏', color: '#5a1130', category: 'Table', enabled: false, winPct: 90, plays: 18110, ggr: 410000, order: 8 },
-  { id: 'dragon-tiger', title: 'Dragon Tiger', emoji: '🐉', color: '#8a2410', category: 'Table', enabled: true, winPct: 93, tag: 'new', plays: 12040, ggr: 260000, order: 9 },
-  { id: 'andar-bahar', title: 'Andar Bahar', emoji: '🎴', color: '#132a4a', category: 'Table', enabled: true, winPct: 92, plays: 15230, ggr: 320000, order: 10 },
-  { id: 'double-crash', title: 'Double Crash', emoji: '⚡', color: '#28104a', category: 'Crash', enabled: false, winPct: 96, tag: 'new', plays: 8100, ggr: 190000, order: 11 },
-  { id: 'winzo', title: 'Winzo Lottery', emoji: '🎰', color: '#0a5a52', category: 'Lottery', enabled: true, winPct: 90, plays: 20440, ggr: 480000, order: 12 },
+  { id: 'fortune-gems', title: 'Fortune Gems', emoji: '💎', color: '#7b1f2b', category: 'Slots', enabled: true, winPct: 92, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 1 },
+  { id: 'aviator', title: 'Aviator', emoji: '✈️', color: '#2a1030', category: 'Crash', enabled: true, winPct: 95, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 2 },
+  { id: 'wingo', title: 'Wingo Lottery', emoji: '🎯', color: '#0d8a5f', category: 'Lottery', enabled: true, winPct: 90, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 3 },
+  { id: 'crash', title: 'Crash', emoji: '🚀', color: '#1b2a52', category: 'Crash', enabled: true, winPct: 94, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 4 },
+  { id: 'mines', title: 'Mines', emoji: '💣', color: '#3a2a15', category: 'Mini', enabled: true, winPct: 91, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 5 },
+  { id: 'fortune-ox', title: 'Fortune Ox', emoji: '🐂', color: '#7a1414', category: 'Slots', enabled: true, winPct: 92, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 6 },
+  { id: '7up-down', title: '7 Up Down', emoji: '🎲', color: '#1d5c2e', category: 'Table', enabled: true, winPct: 89, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 7 },
+  { id: 'teen-patti', title: 'Teen Patti', emoji: '🃏', color: '#5a1130', category: 'Table', enabled: false, winPct: 90, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 8 },
+  { id: 'dragon-tiger', title: 'Dragon Tiger', emoji: '🐉', color: '#8a2410', category: 'Table', enabled: true, winPct: 93, tag: 'new', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 9 },
+  { id: 'andar-bahar', title: 'Andar Bahar', emoji: '🎴', color: '#132a4a', category: 'Table', enabled: true, winPct: 92, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 10 },
+  { id: 'double-crash', title: 'Double Crash', emoji: '⚡', color: '#28104a', category: 'Crash', enabled: false, winPct: 96, tag: 'new', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 11 },
+  { id: 'winzo', title: 'Winzo Lottery', emoji: '🎰', color: '#0a5a52', category: 'Lottery', enabled: true, winPct: 90, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 12 },
 ]
 
 const A = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)

@@ -5,31 +5,38 @@ import styles from './S9GameGrid.module.css'
 type Props = {
   games: S9Game[]
   onPlay: (id: string) => void
-  columns?: 4 | 5
+  columns?: 2 | 4 | 5
   scrollable?: boolean
+  /** Lobby featured layout — fills available height, no scroll */
+  lobby?: boolean
   fixedRows?: number
 }
 
 const S9GameGrid = forwardRef<HTMLDivElement, Props>(function S9GameGrid(
-  { games, onPlay, columns = 4, scrollable, fixedRows },
+  { games, onPlay, columns = 4, scrollable, lobby, fixedRows },
   ref,
 ) {
-  const gridClass = fixedRows
-    ? styles.gridFixed
-    : scrollable
-      ? styles.gridVertical
-      : columns === 4
-        ? styles.grid4
-        : styles.grid
+  const gridClass = lobby
+    ? games.length <= 2
+      ? styles.gridLobby
+      : styles.gridFixed
+    : fixedRows
+      ? styles.gridFixed
+      : scrollable
+        ? styles.gridVertical
+        : columns === 4
+          ? styles.grid4
+          : styles.grid
 
   return (
-    <div ref={ref} className={styles.wrap}>
+    <div ref={ref} className={`${styles.wrap} ${lobby ? styles.wrapLobby : ''} ${scrollable ? '' : styles.wrapNoScroll}`}>
       <div className={gridClass}>
         {games.map((game, index) => (
           <button
             key={game.id}
             type="button"
             className={`${styles.tile} ${game.badge === 'hot' ? styles.tileHot : ''}`}
+            data-sfx="open"
             onClick={() => onPlay(game.id)}
             style={{ animationDelay: `${(index % 8) * 0.05}s` }}
           >

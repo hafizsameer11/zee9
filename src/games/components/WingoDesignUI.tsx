@@ -1,38 +1,53 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
-import type { RefObject } from 'react'
-import { ArrowLeft, HelpCircle, LayoutGrid, RefreshCw } from 'lucide-react'
-import type { WingoBet, WingoBetType, WingoResult } from '../engines/wingo'
-import { numberToDisplayColors } from '../engines/wingo'
-import { WingoBall, ballColorForNumber } from './wingoGfx'
-import styles from './wingoClassic.module.css'
+import { useMemo, useState } from 'react'
+import { ArrowLeft, HelpCircle, RefreshCw, Undo2 } from 'lucide-react'
+import type { WingoBetType } from '../engines/wingo'
+import styles from './wingoVertical.module.css'
 
-const CHIPS = [
-  { value: 1, cls: styles.chipGreen },
-  { value: 10, cls: styles.chipOrange },
-  { value: 100, cls: styles.chipBlue },
-  { value: 500, cls: styles.chipPurple },
-  { value: 1000, cls: styles.chipRed },
-] as const
-
-const MODES = [
-  { id: '30s', label: '30s', ms: 30000 },
-  { id: '1min', label: '1min', ms: 60000 },
-  { id: '3min', label: '3min', ms: 180000 },
-  { id: '5min', label: '5min', ms: 300000 },
-] as const
-
-export type WingoMode = (typeof MODES)[number]['id']
-
-export type MyBetRecord = {
-  id: number
-  period: string
-  bets: WingoBet[]
-  result: WingoResult | null
-  winAmount: number
-}
+export type WingoMode = '30s' | '1min' | '3min' | '5min'
 
 export type BetCounters = Record<string, { count: number; amount: number }>
+
+export type WingoHistoryRow = {
+  period: string
+  number: number
+  color: string
+  size: string
+  colors: string[]
+}
+
+export type MyBetRecord = {
+  id: string
+  period: string
+  type: WingoBetType
+  value: number | null
+  amount: number
+  payout: number
+  state: string
+  resultNumber: number | null
+}
+
+export type WingoServerResult = {
+  number: number
+  color: string
+  size: string
+  colors: string[]
+  period: string
+}
+
+const MODES: { id: WingoMode; label: string; title: string }[] = [
+  { id: '30s', label: '30s', title: 'Win Go 30s' },
+  { id: '1min', label: '1Min', title: 'Win Go 1Min' },
+  { id: '3min', label: '3Min', title: 'Win Go 3Min' },
+  { id: '5min', label: '5Min', title: 'Win Go 5Min' },
+]
+
+const CHIP_META = [
+  { value: 1, cls: styles.chip1, label: '1' },
+  { value: 10, cls: styles.chip10, label: '10' },
+  { value: 100, cls: styles.chip100, label: '100' },
+  { value: 500, cls: styles.chip500, label: '500' },
+  { value: 1000, cls: styles.chip1000, label: '1K' },
+] as const
 
 function formatTime(ms: number) {
   const s = Math.max(0, Math.ceil(ms / 1000))
@@ -45,473 +60,414 @@ function betKey(type: WingoBetType, value?: number) {
   return type === 'number' ? `n-${value}` : type
 }
 
-function FlipDigit({ digit, urgent }: { digit: string; urgent: boolean }) {
-  const [shown, setShown] = useState(digit)
-  const [flip, setFlip] = useState(false)
+function ballClass(n: number) {
+  if (n === 0) return styles.ball0
+  if (n === 5) return styles.ball5
+  if ([1, 3, 7, 9].includes(n)) return styles.ballGreen
+  return styles.ballRed
+}
 
-  useEffect(() => {
-    if (digit === shown) return
-    setFlip(true)
-    const swap = window.setTimeout(() => {
-      setShown(digit)
-      setFlip(false)
-    }, 180)
-    return () => clearTimeout(swap)
-  }, [digit, shown])
-
-  return (
-    <span
-      className={`${styles.flipDigit} ${flip ? styles.flipDigitFlip : ''} ${urgent ? styles.flipDigitUrgent : ''}`}
-    >
-      <span className={styles.flipDigitInner}>{shown}</span>
-    </span>
-  )
+function colorBarClass(colors: string[]) {
+  if (colors.includes('violet') && colors.includes('red')) return styles.barRedViolet
+  if (colors.includes('violet') && colors.includes('green')) return styles.barGreenViolet
+  if (colors[0] === 'green') return styles.barGreen
+  if (colors[0] === 'violet') return styles.barViolet
+  return styles.barRed
 }
 
 function FlipClock({ time, urgent }: { time: string; urgent: boolean }) {
-  const chars = [...time]
   return (
-    <div className={`${styles.flipClock} ${urgent ? styles.flipClockUrgent : ''}`}>
-      {chars.map((d, i) =>
-        d === ':' ? (
-          <span key={`sep-${i}`} className={`${styles.flipSep} ${urgent ? styles.flipSepBlink : ''}`}>
+    <div className={`${styles.flipClock} ${urgent ? styles.flipUrgent : ''}`}>
+      {[...time].map((ch, i) =>
+        ch === ':' ? (
+          <span key={`s-${i}`} className={styles.flipSep}>
             :
           </span>
         ) : (
-          <FlipDigit key={`d-${i}`} digit={d} urgent={urgent} />
+          <span key={`${i}-${ch}`} className={styles.flipDigit}>
+            {ch}
+          </span>
         ),
       )}
     </div>
   )
 }
 
-function ColorSwatches({ number }: { number: number }) {
-  const colors = numberToDisplayColors(number)
-  return (
-    <div className={styles.colorSwatches}>
-      {colors.map((c) => (
-        <span
-          key={c}
-          className={`${styles.colorSwatch} ${
-            c === 'green' ? styles.swatchGreen : c === 'red' ? styles.swatchRed : styles.swatchViolet
-          }`}
-        />
-      ))}
-    </div>
-  )
-}
-
-function AmbientBg() {
-  return (
-    <div className={styles.ambient} aria-hidden>
-      <span className={styles.orb1} />
-      <span className={styles.orb2} />
-      <span className={styles.orb3} />
-      {Array.from({ length: 12 }, (_, i) => (
-        <span key={i} className={styles.sparkle} style={{ '--i': i } as CSSProperties} />
-      ))}
-    </div>
-  )
-}
-
 export type WingoDesignUIProps = {
-  viewportRef: RefObject<HTMLDivElement | null>
-  layout: DesignLayout
-  rootClassName: string
-  canvasClassName: string
   balance: number
   betAmount: number
-  onBetAmount: (n: number) => void
-  onRefreshBalance: () => void
-  period: string
-  timeLeft: number
-  roundMs: number
-  resultReveal: WingoResult | null
-  lastBetKey: string | null
+  chips: number[]
   mode: WingoMode
-  onModeChange: (mode: WingoMode) => void
-  history: WingoResult[]
-  myHistory: MyBetRecord[]
-  pending: (WingoBet & { id: number })[]
+  period: string
+  phase: 'betting' | 'locked' | 'reveal'
+  msLeft: number
+  canBet: boolean
   counters: BetCounters
+  history: WingoHistoryRow[]
+  myHistory: MyBetRecord[]
+  result: WingoServerResult | null
+  showHelp: boolean
+  onHome: () => void
+  onHelp: () => void
+  onCloseHelp: () => void
+  onModeChange: (mode: WingoMode) => void
+  onChipSelect: (v: number) => void
   onBet: (type: WingoBetType, value?: number) => void
   onRevoke: () => void
-  canBet: boolean
-  onHome: () => void
+  onRefreshBalance: () => void
 }
 
 export default function WingoDesignUI({
-  viewportRef,
-  layout,
-  rootClassName,
-  canvasClassName,
   balance,
   betAmount,
-  onBetAmount,
-  onRefreshBalance,
-  period,
-  timeLeft,
-  roundMs,
-  resultReveal,
-  lastBetKey,
   mode,
-  onModeChange,
+  period,
+  phase,
+  msLeft,
+  canBet,
+  counters,
   history,
   myHistory,
-  pending,
-  counters,
+  result,
+  showHelp,
+  onHome,
+  onHelp,
+  onCloseHelp,
+  onModeChange,
+  onChipSelect,
   onBet,
   onRevoke,
-  canBet,
-  onHome,
+  onRefreshBalance,
 }: WingoDesignUIProps) {
-  const [tab, setTab] = useState<'history' | 'chart' | 'my'>('history')
-  const [showHelp, setShowHelp] = useState(false)
-  const [refreshSpin, setRefreshSpin] = useState(false)
-  const modeInfo = MODES.find((m) => m.id === mode) ?? MODES[0]
-  const timeStr = formatTime(timeLeft)
-  const urgent = timeLeft <= 5000
-  const progress = Math.max(0, Math.min(1, timeLeft / roundMs))
+  const [tab, setTab] = useState<'game' | 'chart' | 'my'>('game')
+  const urgent = phase === 'locked' || (phase === 'betting' && msLeft <= 5000)
+  const modeMeta = MODES.find((m) => m.id === mode) ?? MODES[0]!
+  const hasActiveBets = Object.keys(counters).length > 0
 
   const getCounter = (type: WingoBetType, value?: number) => {
     const c = counters[betKey(type, value)]
-    return c ? `${c.count}/${c.amount}` : '0/0'
+    if (!c) return '0/0'
+    return `${c.count}/${Math.round(c.amount)}`
   }
 
-  const getNumCounter = (n: number) => {
+  const getNumAmount = (n: number) => {
     const c = counters[betKey('number', n)]
-    return c ? String(c.amount) : '0'
+    return c ? String(Math.round(c.amount)) : '0'
   }
 
-  const counterClass = (key: string) =>
-    lastBetKey === key ? `${styles.colorCounter} ${styles.counterPop}` : styles.colorCounter
-
-  const handleRefresh = () => {
-    setRefreshSpin(true)
-    onRefreshBalance()
-    window.setTimeout(() => setRefreshSpin(false), 600)
-  }
+  const chartCounts = useMemo(() => {
+    const counts = Array.from({ length: 10 }, () => 0)
+    for (const h of history) counts[h.number] = (counts[h.number] ?? 0) + 1
+    return counts
+  }, [history])
 
   return (
-    <div className={rootClassName} ref={viewportRef}>
-      <div style={getDesignScaleShellStyle(layout)}>
-        <div className={canvasClassName} style={getDesignCanvasStyle(layout)}>
-          <AmbientBg />
+    <div className={styles.root}>
+      <div className={styles.headerBg} aria-hidden />
+      <div className={styles.scroll}>
+        <div className={styles.page}>
+          <header className={styles.header}>
+            <button type="button" className={styles.iconBtn} onClick={onHome} aria-label="Back">
+              <ArrowLeft size={18} strokeWidth={2.5} />
+            </button>
+            <div className={styles.logoWrap} aria-label="WinGo">
+              <span className={styles.logo}>WinGo</span>
+            </div>
+            <button type="button" className={styles.iconBtn} onClick={onHelp} aria-label="Help">
+              <HelpCircle size={18} strokeWidth={2.5} />
+            </button>
+          </header>
 
-          <aside className={styles.leftBar}>
-            <div className={styles.balance}>
-              <span>Balance:</span>
-              <span className={styles.balanceAmount}>Rs {balance.toLocaleString()}</span>
+          <div className={styles.modeTabs}>
+            {MODES.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`${styles.modeTab} ${mode === m.id ? styles.modeTabOn : ''}`}
+                onClick={() => onModeChange(m.id)}
+              >
+                <span className={styles.modeTabLabel}>{m.label}</span>
+                <span className={styles.modeTabSub}>{m.title}</span>
+              </button>
+            ))}
+          </div>
+
+          <section className={styles.roundCard}>
+            <div className={styles.roundLeft}>
+              <div className={styles.roundTitle}>{modeMeta.title}</div>
+              <div className={styles.period}>{period}</div>
+            </div>
+            <div className={styles.roundRight}>
+              <div className={styles.timeLabel}>Time Remaining</div>
+              <div className={styles.timerBox}>
+                <FlipClock time={formatTime(msLeft)} urgent={urgent} />
+              </div>
+            </div>
+          </section>
+
+          <div className={styles.notice}>
+            <span className={styles.noticeIcon} aria-hidden />
+            <div className={styles.noticeTrack}>
+              <span>
+                Please place or withdraw your bet 5 seconds before the countdown ends. No betting is
+                allowed within the last 5 seconds.
+              </span>
+            </div>
+          </div>
+
+          <section className={`${styles.betCard} ${!canBet ? styles.betCardLocked : ''}`}>
+            <div className={styles.colorRow}>
               <button
                 type="button"
-                className={`${styles.refreshBtn} ${refreshSpin ? styles.refreshSpin : ''}`}
-                onClick={handleRefresh}
-                aria-label="Refresh balance"
+                className={`${styles.colorBtn} ${styles.colorGreen}`}
+                disabled={!canBet}
+                onClick={() => onBet('green')}
               >
-                <RefreshCw size={10} />
+                <span className={styles.colorName}>Green</span>
+                <span className={styles.colorOdds}>2x</span>
+                <span className={styles.colorCount}>{getCounter('green')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.colorBtn} ${styles.colorViolet}`}
+                disabled={!canBet}
+                onClick={() => onBet('violet')}
+              >
+                <span className={styles.colorName}>Violet</span>
+                <span className={styles.colorOdds}>4.5x</span>
+                <span className={styles.colorCount}>{getCounter('violet')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.colorBtn} ${styles.colorRed}`}
+                disabled={!canBet}
+                onClick={() => onBet('red')}
+              >
+                <span className={styles.colorName}>Red</span>
+                <span className={styles.colorOdds}>2x</span>
+                <span className={styles.colorCount}>{getCounter('red')}</span>
               </button>
             </div>
 
-            <div className={styles.chips}>
-              {CHIPS.map((chip) => (
+            <div className={styles.numberGrid}>
+              {Array.from({ length: 10 }, (_, n) => (
                 <button
-                  key={chip.value}
+                  key={n}
                   type="button"
-                  className={`${styles.chip} ${chip.cls} ${betAmount === chip.value ? styles.chipSelected : ''}`}
-                  onClick={() => onBetAmount(chip.value)}
+                  className={styles.numberCell}
+                  disabled={!canBet}
+                  onClick={() => onBet('number', n)}
                 >
-                  {chip.value >= 1000 ? '1k' : chip.value}
+                  <span className={`${styles.ball} ${ballClass(n)}`}>
+                    <span className={styles.ballShine} />
+                    <span className={styles.ballNum}>{n}</span>
+                  </span>
+                  <span className={styles.numMult}>9x</span>
+                  <span className={styles.numCounter}>{getNumAmount(n)}</span>
                 </button>
               ))}
             </div>
 
-            <button
-              type="button"
-              className={styles.revokeBtn}
-              onClick={onRevoke}
-              disabled={pending.length === 0 || !canBet}
-            >
-              <ArrowLeft size={10} />
-              Revocation
-            </button>
-          </aside>
+            <div className={styles.sizeRow}>
+              <button
+                type="button"
+                className={`${styles.sizeBtn} ${styles.sizeBig}`}
+                disabled={!canBet}
+                onClick={() => onBet('big')}
+              >
+                <span className={styles.sizeName}>Big</span>
+                <span className={styles.sizeOdds}>2x</span>
+                <span className={styles.sizeCount}>{getCounter('big')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sizeBtn} ${styles.sizeSmall}`}
+                disabled={!canBet}
+                onClick={() => onBet('small')}
+              >
+                <span className={styles.sizeName}>Small</span>
+                <span className={styles.sizeOdds}>2x</span>
+                <span className={styles.sizeCount}>{getCounter('small')}</span>
+              </button>
+            </div>
+          </section>
 
-          <div className={styles.mainPanel}>
-            <section className={styles.historySection}>
-              <div className={styles.tabs}>
-                {(['history', 'chart', 'my'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    className={`${styles.tab} ${tab === t ? styles.tabActive : ''}`}
-                    onClick={() => setTab(t)}
-                  >
-                    {t === 'history' ? 'Game History' : t === 'chart' ? 'Chart' : 'My History'}
-                  </button>
+          <section className={styles.historyCard}>
+            <div className={styles.histTabs}>
+              {(
+                [
+                  ['game', 'Game History'],
+                  ['chart', 'Chart'],
+                  ['my', 'My History'],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`${styles.histTab} ${tab === id ? styles.histTabOn : ''}`}
+                  onClick={() => setTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {tab === 'game' && (
+              <div className={styles.tableWrap}>
+                <div className={styles.tableHead}>
+                  <span>Period</span>
+                  <span>Number</span>
+                  <span>Big/Small</span>
+                  <span>Color</span>
+                </div>
+                <ul className={styles.tableBody}>
+                  {history.map((h) => (
+                    <li key={h.period} className={styles.tableRow}>
+                      <span>{h.period.slice(-4)}</span>
+                      <span>
+                        <span className={`${styles.ballSm} ${ballClass(h.number)}`}>
+                          <span className={styles.ballNum}>{h.number}</span>
+                        </span>
+                      </span>
+                      <span>{h.size === 'big' ? 'Big' : 'Small'}</span>
+                      <span>
+                        <span className={`${styles.colorBar} ${colorBarClass(h.colors)}`} />
+                      </span>
+                    </li>
+                  ))}
+                  {!history.length && <li className={styles.empty}>Waiting for results…</li>}
+                </ul>
+              </div>
+            )}
+
+            {tab === 'chart' && (
+              <div className={styles.chartWrap}>
+                {chartCounts.map((c, n) => (
+                  <div key={n} className={styles.chartCol}>
+                    <div className={styles.chartBarTrack}>
+                      <div
+                        className={`${styles.chartBarFill} ${ballClass(n)}`}
+                        style={{ height: `${Math.min(100, c * 12)}%` }}
+                      />
+                    </div>
+                    <span className={`${styles.ballSm} ${ballClass(n)}`}>
+                      <span className={styles.ballNum}>{n}</span>
+                    </span>
+                    <span className={styles.chartCount}>{c}</span>
+                  </div>
                 ))}
               </div>
+            )}
 
-              <div className={styles.historyScroll}>
-                {tab === 'history' && (
-                  <table className={styles.historyTable}>
-                    <thead>
-                      <tr>
-                        <th>Period</th>
-                        <th>Number</th>
-                        <th>Big/Small</th>
-                        <th>Color</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {history.map((h, idx) => (
-                        <tr
-                          key={h.period}
-                          className={idx === 0 ? styles.historyRowNew : undefined}
-                          style={{ animationDelay: `${idx * 30}ms` }}
-                        >
-                          <td className={styles.periodCell}>{h.period}</td>
-                          <td>
-                            <WingoBall
-                              number={h.number}
-                              color={ballColorForNumber(h.number)}
-                              size="compact"
-                              className={`${styles.chartBall} ${idx === 0 ? styles.ballGlow : ''}`}
-                            />
-                          </td>
-                          <td className={styles.sizeCell}>{h.size === 'big' ? 'Big' : 'Small'}</td>
-                          <td>
-                            <ColorSwatches number={h.number} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
-                {tab === 'chart' && (
-                  <div className={styles.chartGrid}>
-                    {history.map((h, idx) => (
-                      <WingoBall
-                        key={h.period}
-                        number={h.number}
-                        color={ballColorForNumber(h.number)}
-                        size="compact"
-                        className={`${styles.chartBall} ${styles.chartBallPop}`}
-                        style={{ animationDelay: `${idx * 40}ms` } as CSSProperties}
-                      />
-                    ))}
-                    {history.length === 0 && <p className={styles.emptyHistory}>No results yet</p>}
-                  </div>
-                )}
-
-                {tab === 'my' && (
-                  <>
-                    {myHistory.length === 0 && <p className={styles.emptyHistory}>No bets yet</p>}
-                    {myHistory.map((r) => (
-                      <div key={r.id} className={styles.myHistoryItem}>
-                        <span>
-                          {r.period.slice(-8)} · {r.bets.length} bet{r.bets.length !== 1 ? 's' : ''}
-                        </span>
-                        {r.result ? (
-                          <span className={r.winAmount > 0 ? styles.myHistoryWin : styles.myHistoryLoss}>
-                            {r.winAmount > 0 ? `+Rs ${r.winAmount}` : 'Lost'}
+            {tab === 'my' && (
+              <div className={styles.tableWrap}>
+                <div className={styles.tableHead}>
+                  <span>Period</span>
+                  <span>Bet</span>
+                  <span>Result</span>
+                  <span>Payout</span>
+                </div>
+                <ul className={styles.tableBody}>
+                  {myHistory.map((h) => (
+                    <li key={h.id} className={styles.tableRow}>
+                      <span>{h.period.slice(-4)}</span>
+                      <span>
+                        {h.type === 'number' ? `#${h.value}` : h.type} · {Math.round(h.amount)}
+                      </span>
+                      <span>
+                        {h.resultNumber != null ? (
+                          <span className={`${styles.ballSm} ${ballClass(h.resultNumber)}`}>
+                            <span className={styles.ballNum}>{h.resultNumber}</span>
                           </span>
                         ) : (
-                          <span>Pending</span>
+                          '—'
                         )}
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </section>
-
-            <section className={`${styles.bettingSection} ${!canBet ? styles.bettingLocked : ''}`}>
-              {!canBet && (
-                <div className={styles.lockBanner}>
-                  <span className={styles.lockPulse} />
-                  Bets locked — drawing soon
-                </div>
-              )}
-
-              <div className={styles.colorRow}>
-                <button
-                  type="button"
-                  className={`${styles.colorBtn} ${styles.colorBtnGreen}`}
-                  disabled={!canBet}
-                  onClick={() => onBet('green')}
-                >
-                  Green
-                  <span className={styles.colorMult}>2x</span>
-                  <span className={counterClass('green')}>{getCounter('green')}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.colorBtn} ${styles.colorBtnViolet}`}
-                  disabled={!canBet}
-                  onClick={() => onBet('violet')}
-                >
-                  Violet
-                  <span className={styles.colorMult}>4.5x</span>
-                  <span className={counterClass('violet')}>{getCounter('violet')}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.colorBtn} ${styles.colorBtnRed}`}
-                  disabled={!canBet}
-                  onClick={() => onBet('red')}
-                >
-                  Red
-                  <span className={styles.colorMult}>2x</span>
-                  <span className={counterClass('red')}>{getCounter('red')}</span>
-                </button>
-              </div>
-
-              <div className={styles.betGridRow}>
-                <button
-                  type="button"
-                  className={`${styles.sizeBtn} ${styles.sizeBtnBig}`}
-                  disabled={!canBet}
-                  onClick={() => onBet('big')}
-                >
-                  Big
-                  <span className={styles.colorMult}>2x</span>
-                  <span className={counterClass('big')}>{getCounter('big')}</span>
-                </button>
-
-                <div className={styles.numberGrid}>
-                  {Array.from({ length: 10 }, (_, n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      className={`${styles.numberBtn} ${lastBetKey === betKey('number', n) ? styles.numberBtnPop : ''}`}
-                      disabled={!canBet}
-                      onClick={() => onBet('number', n)}
-                    >
-                      <WingoBall number={n} color={ballColorForNumber(n)} size="bet" />
-                      <span className={styles.numberMult}>9x</span>
-                      <span className={counterClass(betKey('number', n))}>{getNumCounter(n)}</span>
-                    </button>
+                      </span>
+                      <span className={h.payout > 0 ? styles.winText : ''}>
+                        {h.payout > 0 ? `+${Math.round(h.payout)}` : '0'}
+                      </span>
+                    </li>
                   ))}
-                </div>
-
-                <button
-                  type="button"
-                  className={`${styles.sizeBtn} ${styles.sizeBtnSmall}`}
-                  disabled={!canBet}
-                  onClick={() => onBet('small')}
-                >
-                  Small
-                  <span className={styles.colorMult}>2x</span>
-                  <span className={counterClass('small')}>{getCounter('small')}</span>
-                </button>
+                  {!myHistory.length && <li className={styles.empty}>No bets yet</li>}
+                </ul>
               </div>
-            </section>
-
-            <section className={styles.timerSection}>
-              <div className={styles.timerHeader}>
-                <span className={styles.logo}>
-                  <span className={styles.logoText}>Win Go</span>
-                </span>
-                <button type="button" className={styles.headerIcon} onClick={() => setShowHelp(true)} aria-label="Help">
-                  <HelpCircle size={12} />
-                </button>
-                <button type="button" className={styles.headerIcon} onClick={onHome} aria-label="Menu">
-                  <LayoutGrid size={12} />
-                </button>
-              </div>
-
-              <div className={styles.modeTabs}>
-                {MODES.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    className={`${styles.modeTab} ${mode === m.id ? styles.modeTabActive : ''}`}
-                    onClick={() => onModeChange(m.id)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className={`${styles.periodBox} ${urgent ? styles.periodBoxUrgent : ''}`}>
-                <div className={styles.periodLabel}>Win Go {modeInfo.label}</div>
-                <div className={styles.periodId}>{period}</div>
-              </div>
-
-              <div className={styles.timerBlock}>
-                <div className={styles.timerLabel}>Time Remaining</div>
-                <div className={styles.timerRingWrap}>
-                  <svg className={styles.timerRing} viewBox="0 0 36 36" aria-hidden>
-                    <circle className={styles.timerRingBg} cx="18" cy="18" r="15.5" />
-                    <circle
-                      className={`${styles.timerRingFill} ${urgent ? styles.timerRingUrgent : ''}`}
-                      cx="18"
-                      cy="18"
-                      r="15.5"
-                      style={{ strokeDashoffset: `${97.4 * (1 - progress)}` }}
-                    />
-                  </svg>
-                  <FlipClock time={timeStr} urgent={urgent} />
-                </div>
-                <div className={styles.progressTrack}>
-                  <div
-                    className={`${styles.progressFill} ${urgent ? styles.progressUrgent : ''}`}
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.marqueeWrap}>
-                <div className={styles.marquee}>
-                  <span>
-                    ...the countdown ends. No betting is allowed within the last 5 seconds. · Good luck! · Pick your
-                    color, number, or size ·
-                  </span>
-                  <span aria-hidden>
-                    ...the countdown ends. No betting is allowed within the last 5 seconds. · Good luck! · Pick your
-                    color, number, or size ·
-                  </span>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {resultReveal && (
-            <div className={styles.resultOverlay} key={resultReveal.period}>
-              <div className={styles.resultBurst} aria-hidden />
-              <div className={styles.resultCard}>
-                <span className={styles.resultLabel}>Winning Number</span>
-                <WingoBall
-                  number={resultReveal.number}
-                  color={ballColorForNumber(resultReveal.number)}
-                  size="bet"
-                  className={styles.resultBall}
-                />
-                <span className={styles.resultMeta}>
-                  {resultReveal.color.toUpperCase()} · {resultReveal.size.toUpperCase()}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {showHelp && (
-            <div className={styles.helpOverlay} onClick={() => setShowHelp(false)}>
-              <div className={styles.helpModal} onClick={(e) => e.stopPropagation()}>
-                <h3>How to Play Win Go</h3>
-                <p>
-                  Select a chip amount, then tap a bet option. Green/Red pay 2×, Violet pays 4.5×, exact number pays 9×,
-                  Big (5–9) and Small (0–4) pay 2×. Bets lock in the last 5 seconds. Use Revocation to undo your last
-                  bet.
-                </p>
-                <button type="button" className={styles.helpClose} onClick={() => setShowHelp(false)}>
-                  Got it
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </section>
         </div>
       </div>
+
+      <footer className={styles.footer}>
+        <div className={styles.balanceRow}>
+          <span className={styles.balanceText}>
+            Balance: Rs {Math.round(balance).toLocaleString('en-PK')}
+          </span>
+          <button
+            type="button"
+            className={styles.refreshBtn}
+            onClick={onRefreshBalance}
+            aria-label="Refresh"
+          >
+            <RefreshCw size={13} strokeWidth={2.5} />
+          </button>
+        </div>
+        <div className={styles.footerActions}>
+          <button
+            type="button"
+            className={styles.revokeBtn}
+            disabled={!canBet || !hasActiveBets}
+            onClick={onRevoke}
+          >
+            <Undo2 size={14} />
+            <span>Revocation</span>
+          </button>
+          <div className={styles.chips}>
+            {CHIP_META.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                className={`${styles.chip} ${c.cls} ${betAmount === c.value ? styles.chipOn : ''}`}
+                onClick={() => onChipSelect(c.value)}
+              >
+                <span className={styles.chipRing} />
+                <span className={styles.chipLabel}>{c.label}</span>
+                {betAmount === c.value && <span className={styles.chipArrow} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      </footer>
+
+      {phase === 'reveal' && result && (
+        <div className={styles.resultOverlay} aria-live="polite">
+          <div className={styles.resultCard}>
+            <div className={styles.resultLabel}>Result</div>
+            <div className={`${styles.resultBall} ${ballClass(result.number)}`}>
+              <span className={styles.ballShine} />
+              <span className={styles.ballNum}>{result.number}</span>
+            </div>
+            <div className={styles.resultMeta}>
+              {result.size === 'big' ? 'Big' : 'Small'} · {result.colors.join(' / ')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHelp && (
+        <div className={styles.helpOverlay} onClick={onCloseHelp}>
+          <div className={styles.helpCard} onClick={(e) => e.stopPropagation()}>
+            <h2>How to play</h2>
+            <p>Pick a chip, then tap Green / Violet / Red, a number 0–9, or Big / Small.</p>
+            <p>Betting closes in the last 5 seconds. Use Revocation to cancel before lock.</p>
+            <p>
+              Payouts: Color/Size 2x (1.5x on 0/5 edge), Violet 4.5x, Number 9x. Big = 5–9, Small =
+              0–4.
+            </p>
+            <button type="button" className={styles.helpClose} onClick={onCloseHelp}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

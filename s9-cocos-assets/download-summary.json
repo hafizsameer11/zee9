@@ -1,0 +1,382 @@
+{
+  "exportedAt": "2026-07-20T21:23:10.757Z",
+  "origin": "https://super9.bet",
+  "downloadedAt": "2026-07-20T22:06:35.991Z",
+  "games": {
+    "crash2": {
+      "ok": 34,
+      "fail": 0,
+      "bytes": 2855442,
+      "byExt": {
+        ".json": 19,
+        ".webp": 2,
+        ".mp3": 4,
+        ".png": 8,
+        ".js": 1
+      },
+      "errors": [],
+      "files": [
+        {
+          "rel": "import/06/06fd568c7.b11b6.json",
+          "bytes": 430
+        },
+        {
+          "rel": "import/03/03e6f4e40.5c2fa.json",
+          "bytes": 3296
+        },
+        {
+          "rel": "import/01/0164f190-48c1-4db3-beeb-e44ac5c757f1.d1317.json",
+          "bytes": 15754
+        },
+        {
+          "rel": "import/04/0474261cd.a4579.json",
+          "bytes": 1458
+        },
+        {
+          "rel": "config.39e61.json",
+          "bytes": 7735
+        },
+        {
+          "rel": "import/03/0357da46e.d4a2f.json",
+          "bytes": 14333
+        },
+        {
+          "rel": "import/04/04e50cd3e.66491.json",
+          "bytes": 35169
+        },
+        {
+          "rel": "import/01/01ddf0eb6.37d28.json",
+          "bytes": 338921
+        },
+        {
+          "rel": "import/0f/0f7a53942.c8df2.json",
+          "bytes": 6173
+        },
+        {
+          "rel": "import/39/398d7f11-1d23-45b1-b5e8-9e40d24a76fb.4c9b7.json",
+          "bytes": 82
+        },
+        {
+          "rel": "import/0c/0cc237a4-a19e-4555-a815-f9a3b13e8699.592f4.json",
+          "bytes": 15867
+        },
+        {
+          "rel": "import/2d/2d32c5df-58e1-42f3-a33e-deef1d7d5338.82123.json",
+          "bytes": 83
+        },
+        {
+          "rel": "import/a1/a162b363-d36c-42db-9e19-1146692c8d29.07943.json",
+          "bytes": 81
+        },
+        {
+          "rel": "import/4e/4e5fe8e3-dce4-45cf-9c6c-a2e9fccced5b.480fe.json",
+          "bytes": 3845
+        },
+        {
+          "rel": "import/29/29332815-79cc-45af-a66f-73e2150ec946.dcb10.json",
+          "bytes": 75834
+        },
+        {
+          "rel": "import/a2/a2a80bff-a1b0-44d1-b1a1-202f029185d4.85a20.json",
+          "bytes": 84
+        },
+        {
+          "rel": "import/be/be0ab67a-a425-47b8-97c8-57a2a7da2635.4d977.json",
+          "bytes": 158
+        },
+        {
+          "rel": "import/e6/e63318f8-5678-446c-82ac-6799f433cc09.4e99e.json",
+          "bytes": 104998
+        },
+        {
+          "rel": "import/ea/ea1a2176-b612-4ea5-ac87-c9ad807de7ba.0561c.json",
+          "bytes": 264988
+        },
+        {
+          "rel": "native/15/15753b3c8.3d3c4.webp",
+          "bytes": 45676
+        },
+        {
+          "rel": "native/2d/2d32c5df-58e1-42f3-a33e-deef1d7d5338.e368f.mp3",
+          "bytes": 2304
+        },
+        {
+          "rel": "native/15/154f1e167.c110e.webp",
+          "bytes": 15386
+        },
+        {
+          "rel": "native/07/07946dfb-bc64-481c-ade1-2d99f9a78137.b5454.png",
+          "bytes": 24250
+        },
+        {
+          "rel": "native/39/398d7f11-1d23-45b1-b5e8-9e40d24a76fb.98695.mp3",
+          "bytes": 245184
+        },
+        {
+          "rel": "native/54/5456986b-e693-4948-9eeb-85d74fdd670c.94c93.png",
+          "bytes": 203375
+        },
+        {
+          "rel": "native/6a/6a10ab61-8198-4dad-84b0-958cee4ac503.32b4a.png",
+          "bytes": 417371
+        },
+        {
+          "rel": "index.39e61.js",
+          "bytes": 201750
+        },
+        {
+          "rel": "native/ba/badbba38-7b09-4bda-ae32-ccd4468a29e0.3713d.png",
+          "bytes": 113583
+        },
+        {
+          "rel": "native/d1/d1c3811b-45ab-4e7f-b3fd-1ee0b2cda9fd.558f2.png",
+          "bytes": 262972
+        },
+        {
+          "rel": "native/a7/a7589805-e933-449c-999b-2bce6cf024d7.cd26d.png",
+          "bytes": 10874
+        },
+        {
+          "rel": "native/a1/a162b363-d36c-42db-9e19-1146692c8d29.f7388.mp3",
+          "bytes": 15360
+        },
+        {
+          "rel": "native/f7/f7f9c683-d882-40bb-93b8-2eb83ec127e4.6b3f0.png",
+          "bytes": 42698
+        },
+        {
+          "rel": "native/a2/a2a80bff-a1b0-44d1-b1a1-202f029185d4.37f7b.mp3",
+          "bytes": 2688
+        },
+        {
+          "rel": "native/f0/f0f9f481-12cd-4e7d-be87-4a1679b6a1e9.9565d.png",
+          "bytes": 362682
+        }
+      ]
+    },
+    "fortuneGems": {
+      "ok": 52,
+      "fail": 0,
+      "bytes": 5029029,
+      "byExt": {
+        ".json": 24,
+        ".js": 1,
+        ".png": 22,
+        ".webp": 3,
+        ".jpg": 1,
+        ".mp3": 1
+      },
+      "errors": [],
+      "files": [
+        {
+          "rel": "import/03/03cb31555.a52c3.json",
+          "bytes": 1427
+        },
+        {
+          "rel": "import/06/066a357be.d9b58.json",
+          "bytes": 1775
+        },
+        {
+          "rel": "import/0a/0aa0658ee.160db.json",
+          "bytes": 3297
+        },
+        {
+          "rel": "config.6f4e3.json",
+          "bytes": 13280
+        },
+        {
+          "rel": "import/0e/0ea1a1a20.e62f3.json",
+          "bytes": 3354
+        },
+        {
+          "rel": "import/0d/0d0d621db.55d6f.json",
+          "bytes": 880
+        },
+        {
+          "rel": "import/1c/1cc71661-05a8-447a-b4de-3f6475200e3d.5e800.json",
+          "bytes": 5111
+        },
+        {
+          "rel": "import/09/096580f5a.e6dc2.json",
+          "bytes": 216521
+        },
+        {
+          "rel": "import/4e/4e925429-dee7-4df3-9b01-73e74e62237c.18733.json",
+          "bytes": 17542
+        },
+        {
+          "rel": "import/27/273ad634-d6ee-40e3-8eed-0553ba9ff8ac.23d2a.json",
+          "bytes": 3313
+        },
+        {
+          "rel": "import/75/75e1c841-cc5b-47c9-aff7-f1c0f4f25907.4157a.json",
+          "bytes": 29658
+        },
+        {
+          "rel": "import/62/62490e2e-b8a3-462b-a9a1-0188bcfc174a.23c37.json",
+          "bytes": 4779
+        },
+        {
+          "rel": "import/6b/6b334fbd-c5a1-487e-93f4-e07a53d5f83b.befe1.json",
+          "bytes": 33426
+        },
+        {
+          "rel": "import/a7/a71c7911-d8d2-49a1-9674-f83c29396edd.01a20.json",
+          "bytes": 7683
+        },
+        {
+          "rel": "import/7e/7ef8b426-2d85-4a9b-be8f-dce98f0812e0.7743a.json",
+          "bytes": 6720
+        },
+        {
+          "rel": "import/ad/ad9707b5-1ef9-4814-96f7-5af1ffea3cfb.aa5cb.json",
+          "bytes": 1895
+        },
+        {
+          "rel": "import/c8/c8a78313-49da-4cf8-9090-9440f9d9f92d.fe973.json",
+          "bytes": 10482
+        },
+        {
+          "rel": "import/c5/c588e545-21ca-43bc-b3b0-51eb251221e0.3ba12.json",
+          "bytes": 168
+        },
+        {
+          "rel": "import/ce/ce850037-f3ba-45d0-ba38-bc8f1e8d5685.bfa80.json",
+          "bytes": 104364
+        },
+        {
+          "rel": "import/e5/e555e9fe-4aef-400f-8fc6-0b6a907edf7b.340cf.json",
+          "bytes": 16022
+        },
+        {
+          "rel": "import/fd/fd4e281a-e2d7-4962-87f4-1dc617e0a601.cdc00.json",
+          "bytes": 76
+        },
+        {
+          "rel": "import/d0/d0ca1876-5c44-478c-9c16-89f393bf39a4.7d382.json",
+          "bytes": 146444
+        },
+        {
+          "rel": "import/f1/f16a5333-6581-4abd-825f-be11e720fdbc.1a5df.json",
+          "bytes": 133744
+        },
+        {
+          "rel": "index.6f4e3.js",
+          "bytes": 177238
+        },
+        {
+          "rel": "native/11/11c34dbc-5e98-4666-89e4-50e81c6c645b.95e83.png",
+          "bytes": 52050
+        },
+        {
+          "rel": "import/d1/d1b26a57-0c6c-41f3-8b0c-e184c396c335.63b86.json",
+          "bytes": 1198842
+        },
+        {
+          "rel": "native/12/123fa15c9.9a2bd.webp",
+          "bytes": 86320
+        },
+        {
+          "rel": "native/1c/1cef62630.f498a.webp",
+          "bytes": 14264
+        },
+        {
+          "rel": "native/19/1970ea912.5c0fa.webp",
+          "bytes": 142444
+        },
+        {
+          "rel": "native/1e/1e2df30a-07ab-424d-aa86-6950abd83d67.ca472.png",
+          "bytes": 52611
+        },
+        {
+          "rel": "native/47/47ad221e-568a-4965-a419-90dc4cb8e4d2.3184d.png",
+          "bytes": 4605
+        },
+        {
+          "rel": "native/4d/4df19b8c-6c44-4e15-9dea-2342c130ba22.d8a8f.png",
+          "bytes": 39727
+        },
+        {
+          "rel": "native/4e/4e4e6acc-e609-4f71-96b9-a780c206c659.156ca.png",
+          "bytes": 33211
+        },
+        {
+          "rel": "native/75/7577d3fe-7cd7-4400-960d-05a0824fa13a.931b5.png",
+          "bytes": 276061
+        },
+        {
+          "rel": "native/76/76d19d32-041e-44d3-a0fa-694f4e71a592.4d54e.png",
+          "bytes": 72211
+        },
+        {
+          "rel": "native/80/8079457a-5c0b-4bb5-8c34-bb423b39d124.65805.png",
+          "bytes": 12564
+        },
+        {
+          "rel": "native/22/22e59873-7c34-4016-b6af-5b8b9eb9367d.066e7.png",
+          "bytes": 309260
+        },
+        {
+          "rel": "native/91/91c28331-0c73-402b-b324-25803bfbfc69.1771c.png",
+          "bytes": 81811
+        },
+        {
+          "rel": "native/a0/a041467d-7966-46d1-bb4a-2d7b5b3e2746.2799c.png",
+          "bytes": 21247
+        },
+        {
+          "rel": "native/71/7172d7f8-8fc0-45e2-8b44-3810509d789a.917fb.png",
+          "bytes": 204619
+        },
+        {
+          "rel": "native/a6/a63db309-b3a9-43b4-ab93-2ae150521ceb.ff52c.png",
+          "bytes": 20053
+        },
+        {
+          "rel": "native/a3/a30f7772-b0eb-48b2-b87c-31721205c98c.23721.png",
+          "bytes": 187589
+        },
+        {
+          "rel": "native/41/41b18abe-3ca6-4696-84cc-a252374d8c10.9f8a5.png",
+          "bytes": 215741
+        },
+        {
+          "rel": "native/ad/ad62a90c-f9e8-49c7-9c6f-59cac8c7236f.88533.png",
+          "bytes": 18055
+        },
+        {
+          "rel": "native/c7/c718b1d2-4fd2-49e3-afeb-875d247419c4.fca26.png",
+          "bytes": 9970
+        },
+        {
+          "rel": "native/ca/ca3728c9-1ac9-4835-8fdf-b4ad1b903573.ffee4.png",
+          "bytes": 3706
+        },
+        {
+          "rel": "native/d0/d06317d6-93b1-461c-aad5-75d61aa9fa42.a6bcc.png",
+          "bytes": 27464
+        },
+        {
+          "rel": "native/e9/e9fce806-d600-49e1-af7e-002e4914145f.5e556.png",
+          "bytes": 39506
+        },
+        {
+          "rel": "native/f8/f892fb24-b95b-4a8a-97b9-79e234013145.2a1bf.png",
+          "bytes": 4418
+        },
+        {
+          "rel": "native/d8/d8602200-6895-46b5-a1eb-27ccf38afa84.7172d.jpg",
+          "bytes": 136932
+        },
+        {
+          "rel": "native/fd/fd4e281a-e2d7-4962-87f4-1dc617e0a601.7ce94.mp3",
+          "bytes": 270432
+        },
+        {
+          "rel": "native/a8/a85b595b-62c9-4b31-8a51-7e0e2a6c81dc.9428b.png",
+          "bytes": 554117
+        }
+      ]
+    }
+  }
+}

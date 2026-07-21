@@ -14,11 +14,11 @@ type Props = {
 }
 
 const FEATURES = [
-  { key: 'wheel' as const, label: 'Wheel', icon: <S9AssetIcon name="wheel" size={44} />, anim: 'wheel' },
-  { key: 'daily' as const, label: 'Daily Bonus', icon: <S9CalendarIcon day="07" size={44} />, anim: 'daily' },
-  { key: 'betWheel' as const, label: 'Bet Bonus', icon: <S9AssetIcon name="betWheel" size={44} />, anim: 'betWheel' },
-  { key: 'recharge' as const, label: 'Recharge', icon: <S9AssetIcon name="recharge" size={44} />, dot: true, anim: 'recharge' },
-  { key: 'cashback' as const, label: 'Cashback', icon: <S9CalendarIcon day="30" size={44} />, anim: 'cashback' },
+  { key: 'wheel' as const, label: 'Wheel', icon: <S9AssetIcon name="wheel" size={40} />, anim: 'wheel' },
+  { key: 'daily' as const, label: 'Daily Bonus', icon: <S9CalendarIcon day="07" size={40} />, anim: 'daily' },
+  { key: 'betWheel' as const, label: 'Bet Bonus', icon: <S9AssetIcon name="betWheel" size={40} />, anim: 'betWheel' },
+  { key: 'recharge' as const, label: 'Recharge', icon: <S9AssetIcon name="recharge" size={40} />, dot: true, anim: 'recharge' },
+  { key: 'cashback' as const, label: 'Cashback', icon: <S9CalendarIcon day="30" size={40} />, anim: 'cashback' },
 ]
 
 export default function S9BottomBar({

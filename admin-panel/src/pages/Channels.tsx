@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { PageHead, Pill, Toggle, Modal } from '../components/ui'
 import { Icons } from '../components/icons'
 import { api } from '../api/client'
@@ -15,6 +16,7 @@ interface Channel {
 
 export default function Channels() {
   const { agents, showToast } = useAdmin()
+  const nav = useNavigate()
   const [channels, setChannels] = useState<Channel[]>([])
   const [showCreate, setShowCreate] = useState(false)
   const [code, setCode] = useState('')
@@ -83,14 +85,23 @@ export default function Channels() {
                     <div className="cell-sub">channel={c.code}</div>
                   </td>
                   <td>
-                    <div className="cell-main">{c.owner.displayName}</div>
-                    <div className="cell-sub">{c.owner.phone}</div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{ padding: 0, textAlign: 'left' }}
+                      onClick={() => nav(`/users/${c.owner.id}`)}
+                      title="Open mentor full profile"
+                    >
+                      <div className="cell-main" style={{ color: 'var(--brand)' }}>{c.owner.displayName}</div>
+                      <div className="cell-sub">{c.owner.phone}</div>
+                    </button>
                   </td>
                   <td><Pill tone="violet">{c.owner.referralCode}</Pill></td>
                   <td className="t-right num">{c.members}</td>
                   <td>{c.enabled ? <Pill tone="green">Enabled</Pill> : <Pill tone="grey">Off</Pill>}</td>
                   <td className="t-right">
                     <div className="flex gap8" style={{ justifyContent: 'flex-end' }}>
+                      <Link className="btn btn-light btn-sm" to={`/users/${c.owner.id}`}>Open mentor</Link>
                       <Toggle on={c.enabled} onChange={() => toggle(c)} />
                       <button className="btn btn-danger btn-sm" onClick={() => remove(c)}>Delete</button>
                     </div>

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { S9_GAMES } from '../data/s9Games'
 import ComingSoon from '../games/components/ComingSoon'
 import GameShell from '../games/components/GameShell'
-import { getGameEntry, isPlayableGame } from '../games/registry'
+import { getGameEntry, isPlayableGame, isPortraitGame } from '../games/registry'
 import styles from './GamePlay.module.css'
 
 export default function GamePlay() {
@@ -15,6 +15,7 @@ export default function GamePlay() {
   const [message, setMessage] = useState<string | null>(null)
 
   const title = entry?.title ?? game?.name ?? gameId ?? 'Game'
+  const portrait = isPortraitGame(gameId)
 
   if (!entry) {
     return (
@@ -28,7 +29,7 @@ export default function GamePlay() {
 
   if (isPlayableGame(gameId)) {
     return (
-      <div className={styles.shell}>
+      <div className={`${styles.shell} ${portrait ? styles.shellPortrait : ''}`}>
         {message && <div className={styles.toast}>{message}</div>}
         <GameComponent gameId={gameId} bet={bet} onMessage={setMessage} />
       </div>

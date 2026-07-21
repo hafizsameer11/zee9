@@ -6,19 +6,60 @@ import type { GameRow } from '../data/mock'
 
 const EMOJIS = ['💎', '✈️', '🎯', '🚀', '💣', '🐂', '🎲', '🃏', '🐉', '🎴', '⚡', '🎰', '🍀', '👑', '🔥', '⭐']
 
+function profitTone(n: number) {
+  if (n > 0) return { color: '#0f7a3a' }
+  if (n < 0) return { color: '#c62828' }
+  return { color: 'inherit' }
+}
+
 export default function Games() {
   const { games, updateGame, addGame, showToast } = useAdmin()
   const [edit, setEdit] = useState<GameRow | null>(null)
   const sorted = [...games].sort((a, b) => a.order - b.order)
   const live = games.filter((g) => g.enabled).length
 
+  const totals = games.reduce(
+    (acc, g) => {
+      acc.plays += g.plays
+      acc.wagered += g.wagered
+      acc.won += g.playerWonAmount
+      acc.lost += g.playerLostAmount
+      acc.profit += g.houseProfit
+      return acc
+    },
+    { plays: 0, wagered: 0, won: 0, lost: 0, profit: 0 },
+  )
+
   return (
     <>
       <PageHead
         title="Games"
-        subtitle={`${live} of ${games.length} games live · control titles, icons, win % and visibility`}
+        subtitle={`${live} of ${games.length} games live · win % 0–100 · live plays / P&L from real rounds`}
         actions={<button className="btn btn-primary" onClick={addGame}>{Icons.plus} Add game</button>}
       />
+
+      <div className="stat-grid" style={{ marginBottom: 16 }}>
+        <div className="card card-pad">
+          <div className="stat-label">Total plays</div>
+          <div className="stat-val">{compact(totals.plays)}</div>
+        </div>
+        <div className="card card-pad">
+          <div className="stat-label">Total wagered</div>
+          <div className="stat-val">{money(totals.wagered)}</div>
+        </div>
+        <div className="card card-pad">
+          <div className="stat-label">Player wins (paid)</div>
+          <div className="stat-val" style={{ color: '#c62828' }}>{money(totals.won)}</div>
+        </div>
+        <div className="card card-pad">
+          <div className="stat-label">Player losses</div>
+          <div className="stat-val" style={{ color: '#0f7a3a' }}>{money(totals.lost)}</div>
+        </div>
+        <div className="card card-pad">
+          <div className="stat-label">House profit / loss</div>
+          <div className="stat-val" style={profitTone(totals.profit)}>{money(totals.profit)}</div>
+        </div>
+      </div>
 
       <div className="card">
         <div className="table-wrap">
@@ -27,9 +68,12 @@ export default function Games() {
               <tr>
                 <th>Game</th>
                 <th>Category</th>
-                <th style={{ width: 240 }}>Win / Payout %</th>
+                <th style={{ width: 220 }}>Win / Payout %</th>
                 <th className="t-right">Plays</th>
-                <th className="t-right">Revenue</th>
+                <th className="t-right">Wagered</th>
+                <th className="t-right">User wins</th>
+                <th className="t-right">User losses</th>
+                <th className="t-right">House P/L</th>
                 <th>Status</th>
                 <th className="t-right">Actions</th>
               </tr>
@@ -55,10 +99,21 @@ export default function Games() {
                     <Pill tone="grey">{g.category}</Pill>
                   </td>
                   <td>
-                    <Range value={g.winPct} min={70} max={99} onChange={(v) => updateGame(g.id, { winPct: v })} />
+                    <Range value={g.winPct} min={0} max={100} onChange={(v) => updateGame(g.id, { winPct: v })} />
                   </td>
                   <td className="t-right num">{compact(g.plays)}</td>
-                  <td className="t-right num cell-main">{money(g.ggr)}</td>
+                  <td className="t-right num">{money(g.wagered)}</td>
+                  <td className="t-right num">
+                    <div className="cell-main">{compact(g.playerWins)}</div>
+                    <div className="cell-sub" style={{ color: '#c62828' }}>{money(g.playerWonAmount)}</div>
+                  </td>
+                  <td className="t-right num">
+                    <div className="cell-main">{compact(g.playerLosses)}</div>
+                    <div className="cell-sub" style={{ color: '#0f7a3a' }}>{money(g.playerLostAmount)}</div>
+                  </td>
+                  <td className="t-right num cell-main" style={profitTone(g.houseProfit)}>
+                    {money(g.houseProfit)}
+                  </td>
                   <td>
                     {g.enabled ? <Pill tone="green">Live</Pill> : <Pill tone="grey">Off</Pill>}
                   </td>
@@ -146,8 +201,16 @@ export default function Games() {
           </div>
 
           <div className="fld">
-            <label>Win / Payout percentage <span className="hint">— higher means players win more</span></label>
-            <Range value={edit.winPct} min={70} max={99} onChange={(v) => { updateGame(edit.id, { winPct: v }); setEdit({ ...edit, winPct: v }) }} />
+            <label>Win / Payout percentage <span className="hint">— house edge: 0% = players almost always hit mines · 100% = fair odds · multipliers stay normal</span></label>
+            <Range value={edit.winPct} min={0} max={100} onChange={(v) => { updateGame(edit.id, { winPct: v }); setEdit({ ...edit, winPct: v }) }} />
+          </div>
+
+          <div className="form-grid mt16" style={{ fontSize: 13 }}>
+            <div><b>Plays</b><div>{edit.plays}</div></div>
+            <div><b>Wagered</b><div>{money(edit.wagered)}</div></div>
+            <div><b>User wins</b><div>{edit.playerWins} · {money(edit.playerWonAmount)}</div></div>
+            <div><b>User losses</b><div>{edit.playerLosses} · {money(edit.playerLostAmount)}</div></div>
+            <div><b>House P/L</b><div style={profitTone(edit.houseProfit)}>{money(edit.houseProfit)}</div></div>
           </div>
 
           <div className="field-row mt16">

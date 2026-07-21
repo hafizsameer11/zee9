@@ -67,6 +67,8 @@ interface Store extends State {
   makeAgent: (userId: string) => Promise<AgentCreds>
   approveAgentAccount: (id: string) => void
   rejectAgentAccount: (id: string) => void
+  addAgentAccount: (agentId: string, data: { method: string; number: string; holder: string }) => Promise<void>
+  adjustAgentFloat: (agentId: string, amount: number, reason: string) => Promise<void>
   payoutAgentCommission: (agentId: string) => void
   toast: string | null
   showToast: (m: string) => void
@@ -93,7 +95,26 @@ function mapAgentAccount(a: any): AgentAccountReview {
   }
 }
 function mapGame(g: any): GameRow {
-  return { id: g.id, title: g.title, emoji: g.emoji, color: g.color, category: g.category, enabled: g.enabled, winPct: g.winPct, tag: g.tag || undefined, plays: g.plays, ggr: r(g.ggr), order: g.order }
+  const houseProfit = r(g.houseProfit ?? g.ggr ?? 0)
+  return {
+    id: g.id,
+    title: g.title,
+    emoji: g.emoji,
+    color: g.color,
+    category: g.category,
+    enabled: g.enabled,
+    winPct: g.winPct,
+    tag: g.tag || undefined,
+    plays: g.plays ?? 0,
+    wagered: r(g.wagered ?? 0),
+    playerWins: g.playerWins ?? 0,
+    playerLosses: g.playerLosses ?? 0,
+    playerWonAmount: r(g.playerWonAmount ?? 0),
+    playerLostAmount: r(g.playerLostAmount ?? 0),
+    houseProfit,
+    ggr: houseProfit,
+    order: g.order,
+  }
 }
 function mapAgent(a: any): Agent {
   return { id: a.id, name: a.displayName, phone: a.phone, level: 1, walletsFilled: a.walletsFilled, active: a.agentActive, referrals: a.referrals ?? 0, commission: r(a.commission), commissionBalance: r(a.commissionBalance), joined: String(a.createdAt).slice(0, 10) }
@@ -161,7 +182,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       safeGet('/admin/cashback', []),
       safeGet('/admin/wheel', []),
       safeGet('/admin/reports/revenue-series?days=7', []),
-      safeGet('/admin/dashboard', null),
+      safeGet<DashboardStats | null>('/admin/dashboard', null),
     ])
 
     setState({
@@ -176,16 +197,19 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       cashback: pick(cashback).map(mapCashback),
       wheel: pick(wheel).map(mapWheel),
       revenueSeries: pick(revenue).map((p: any) => ({ d: new Date(p.date).toLocaleDateString('en-US', { weekday: 'short' }), dep: r(p.deposits), wd: r(p.withdrawals) })),
-      dashboard: pick(dashboard) ? {
-        players: pick(dashboard).players,
-        agents: pick(dashboard).agents,
-        pendingDeposits: pick(dashboard).pendingDeposits,
-        pendingWithdrawals: pick(dashboard).pendingWithdrawals,
-        totalDeposited: r(pick(dashboard).totalDeposited),
-        totalWithdrawn: r(pick(dashboard).totalWithdrawn),
-        totalCommission: r(pick(dashboard).totalCommission),
-        liveGames: pick(dashboard).liveGames,
-      } : null,
+      dashboard: (() => {
+        const dash = pick(dashboard)
+        return dash ? {
+          players: dash.players,
+          agents: dash.agents,
+          pendingDeposits: dash.pendingDeposits,
+          pendingWithdrawals: dash.pendingWithdrawals,
+          totalDeposited: r(dash.totalDeposited),
+          totalWithdrawn: r(dash.totalWithdrawn),
+          totalCommission: r(dash.totalCommission),
+          liveGames: dash.liveGames,
+        } : null
+      })(),
       loadErrors: errors,
     })
     setBooting(false)
@@ -309,6 +333,16 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     },
     rejectAgentAccount: (id) => {
       run(async () => { await api.post(`/admin/agent-accounts/${id}/reject`, {}); await loadAll() }, 'Account rejected')
+    },
+    addAgentAccount: async (agentId, data) => {
+      await api.post(`/admin/agents/${agentId}/accounts`, data)
+      await loadAll()
+      showToast('Collection account added')
+    },
+    adjustAgentFloat: async (agentId, amount, reason) => {
+      await api.post('/admin/wallet/adjust', { userId: agentId, bucket: 'MAIN', amount, reason })
+      await loadAll()
+      showToast(amount > 0 ? 'Float credited' : 'Float deducted')
     },
     payoutAgentCommission: (agentId) => {
       run(async () => { await api.post('/admin/commissions/payout', { agentId }); await loadAll() }, 'Commission paid out')

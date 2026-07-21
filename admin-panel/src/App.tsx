@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Games from './pages/Games'
 import Players from './pages/Players'
+import UserDetail from './pages/UserDetail'
 import Agents from './pages/Agents'
 import Referrals from './pages/Referrals'
 import Channels from './pages/Channels'
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/games" element={<Games />} />
         <Route path="/players" element={<Players />} />
+        <Route path="/users/:id" element={<UserDetail />} />
         <Route path="/agents" element={<Agents />} />
         <Route path="/referrals" element={<Referrals />} />
         <Route path="/channels" element={<Channels />} />

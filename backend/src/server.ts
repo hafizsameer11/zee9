@@ -3,6 +3,9 @@ import { env } from './lib/env.js'
 import { logger } from './lib/logger.js'
 import { prisma } from './lib/prisma.js'
 import { attachAviatorRealtime, stopAviatorRealtime } from './modules/games/aviator.realtime.js'
+import { attachCrashRealtime, stopCrashRealtime } from './modules/games/crash.realtime.js'
+import { attachWingoRealtime, stopWingoRealtime } from './modules/games/wingo.realtime.js'
+import { attachGameWsUpgrade } from './modules/games/gameWsRouter.js'
 
 async function main() {
   await prisma.$connect()
@@ -12,10 +15,15 @@ async function main() {
   })
 
   attachAviatorRealtime(server)
+  attachCrashRealtime(server)
+  attachWingoRealtime(server)
+  attachGameWsUpgrade(server)
 
   const shutdown = async (sig: string) => {
     logger.info(`${sig} received, shutting down`)
     stopAviatorRealtime()
+    stopCrashRealtime()
+    stopWingoRealtime()
     server.close()
     await prisma.$disconnect()
     process.exit(0)

@@ -1,188 +1,196 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { api } from '../../api/client'
 import { useWallet } from '../../context/WalletContext'
-import { sound } from '../../lib/sound'
-import {
-  formatPeriod,
-  generateWingoResult,
-  wingoPayoutMultiplier,
-  type WingoBetType,
-} from '../engines/wingo'
-import { useDesignScale } from '../hooks/useDesignScale'
+import type { WingoBetType } from '../engines/wingo'
+import { connectWingoSocket } from '../lib/wingoSocket'
 import type { GameComponentProps } from '../types'
-import WingoDesignUI, { type BetCounters, type MyBetRecord, type WingoMode } from './WingoDesignUI'
-import styles from './wingoGame.module.css'
-import './wingo.tw.css'
+import WingoDesignUI, {
+  type BetCounters,
+  type MyBetRecord,
+  type WingoHistoryRow,
+  type WingoMode,
+  type WingoServerResult,
+} from './WingoDesignUI'
 
-const BET_LOCK_MS = 5000
+const CHIPS = [1, 10, 100, 500, 1000]
 
-const MODE_MS: Record<WingoMode, number> = {
-  '30s': 30000,
-  '1min': 60000,
-  '3min': 180000,
-  '5min': 300000,
+type ServerBet = {
+  id: string
+  type: WingoBetType
+  value: number | null
+  amount: number
+  payout: number
+  state: string
 }
 
-type PendingBet = { type: WingoBetType; value?: number; amount: number; id: number }
-
-function betKey(type: WingoBetType, value?: number) {
+function betKey(type: WingoBetType, value?: number | null) {
   return type === 'number' ? `n-${value}` : type
-}
-
-function seedHistory(count: number): ReturnType<typeof generateWingoResult>[] {
-  const items: ReturnType<typeof generateWingoResult>[] = []
-  let ts = Date.now() - count * 30000
-  for (let i = 0; i < count; i++) {
-    const period = formatPeriod(ts)
-    items.push(generateWingoResult(period))
-    ts += 30000
-  }
-  return items.reverse()
 }
 
 export default function WingoGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
-  const viewportRef = useRef<HTMLDivElement>(null)
-  const layout = useDesignScale(viewportRef)
-  const { balance, debit, credit, canAfford, setBalance } = useWallet()
+  const { balance, refresh, canAfford } = useWallet()
+  const busyRef = useRef(false)
+  const socketRef = useRef<ReturnType<typeof connectWingoSocket> | null>(null)
+  const applyStateRef = useRef<(s: any) => void>(() => {})
+  const lastRevealPeriod = useRef<string | null>(null)
 
-  const [betAmount, setBetAmount] = useState(10)
   const [mode, setMode] = useState<WingoMode>('30s')
-  const [roundMs, setRoundMs] = useState(MODE_MS['30s'])
-  const [timeLeft, setTimeLeft] = useState(MODE_MS['30s'])
-  const [period, setPeriod] = useState(formatPeriod(Date.now()))
-  const [pending, setPending] = useState<PendingBet[]>([])
-  const [history, setHistory] = useState(() => seedHistory(30))
+  const [betAmount, setBetAmount] = useState(10)
+  const [period, setPeriod] = useState('—')
+  const [phase, setPhase] = useState<'betting' | 'locked' | 'reveal'>('betting')
+  const [msLeft, setMsLeft] = useState(30000)
+  const [canBet, setCanBet] = useState(true)
+  const [myBets, setMyBets] = useState<ServerBet[]>([])
+  const [history, setHistory] = useState<WingoHistoryRow[]>([])
   const [myHistory, setMyHistory] = useState<MyBetRecord[]>([])
-  const [resultReveal, setResultReveal] = useState<ReturnType<typeof generateWingoResult> | null>(null)
-  const [lastBetKey, setLastBetKey] = useState<string | null>(null)
-  const roundStart = useRef(Date.now())
-  const pendingRef = useRef<PendingBet[]>([])
-  pendingRef.current = pending
-
-  const canBet = timeLeft > BET_LOCK_MS
+  const [result, setResult] = useState<WingoServerResult | null>(null)
+  const [showHelp, setShowHelp] = useState(false)
 
   const counters = useMemo<BetCounters>(() => {
     const map: BetCounters = {}
-    pending.forEach((b) => {
+    for (const b of myBets) {
+      if (b.state !== 'ACTIVE') continue
       const key = betKey(b.type, b.value)
       if (!map[key]) map[key] = { count: 0, amount: 0 }
       map[key].count += 1
       map[key].amount += b.amount
-    })
+    }
     return map
-  }, [pending])
+  }, [myBets])
 
-  const settleRound = useCallback(() => {
-    const bets = pendingRef.current
-    const res = generateWingoResult(period)
-    setHistory((h) => [res, ...h].slice(0, 50))
-    setResultReveal(res)
-    window.setTimeout(() => setResultReveal(null), 2800)
+  const applyState = useCallback(
+    (state: any) => {
+      if (!state) return
+      setPeriod(state.period ?? '—')
+      setPhase(state.phase ?? 'betting')
+      setMsLeft(typeof state.msLeft === 'number' ? state.msLeft : 0)
+      setCanBet(Boolean(state.canBet))
+      setMyBets(Array.isArray(state.myBets) ? state.myBets : [])
+      if (Array.isArray(state.history)) setHistory(state.history)
+      if (Array.isArray(state.myHistory)) {
+        setMyHistory(
+          state.myHistory.map((b: any) => ({
+            id: b.id,
+            period: b.period,
+            type: b.type,
+            value: b.value,
+            amount: b.amount,
+            payout: b.payout,
+            state: b.state,
+            resultNumber: b.resultNumber,
+          })),
+        )
+      }
 
-    let totalWin = 0
-    bets.forEach((b) => {
-      const mult = wingoPayoutMultiplier(b, res)
-      if (mult > 0) totalWin += b.amount * mult
-    })
-    const roundedWin = Math.round(totalWin * 100) / 100
-
-    if (bets.length > 0) {
-      setMyHistory((h) => [
-        { id: Date.now(), period, bets: [...bets], result: res, winAmount: roundedWin },
-        ...h,
-      ].slice(0, 30))
-    }
-
-    if (roundedWin > 0) {
-      credit(roundedWin)
-      sound.play('win')
-      onMessage?.(`Won Rs ${Math.round(roundedWin).toLocaleString()}!`)
-    } else if (bets.length) {
-      sound.play('lose', { volume: 0.55 })
-      onMessage?.(`Result #${res.number}`)
-    } else {
-      onMessage?.(null)
-    }
-
-    setPending([])
-    setPeriod(formatPeriod(Date.now()))
-    roundStart.current = Date.now()
-    setTimeLeft(roundMs)
-  }, [credit, onMessage, period, roundMs])
+      if (state.phase === 'reveal' && state.result) {
+        setResult(state.result)
+        if (lastRevealPeriod.current !== state.period) {
+          lastRevealPeriod.current = state.period
+          const wins = (state.myBets || []).filter((b: ServerBet) => b.state === 'CASHED_OUT')
+          const totalWin = wins.reduce((s: number, b: ServerBet) => s + (b.payout || 0), 0)
+          if (totalWin > 0) {
+            onMessage?.(`Won Rs ${Math.round(totalWin).toLocaleString()}!`)
+            window.setTimeout(() => onMessage?.(null), 2200)
+          } else if ((state.myBets || []).some((b: ServerBet) => b.state === 'BUST' || b.state === 'CASHED_OUT')) {
+            onMessage?.(`Result #${state.result.number}`)
+            window.setTimeout(() => onMessage?.(null), 1800)
+          }
+          void refresh()
+        }
+      } else if (state.phase !== 'reveal') {
+        setResult(null)
+      }
+    },
+    [onMessage, refresh],
+  )
+  applyStateRef.current = applyState
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const elapsed = Date.now() - roundStart.current
-      const left = Math.max(0, roundMs - elapsed)
-      setTimeLeft(left)
-      if (left <= 0) settleRound()
-    }, 200)
-    return () => clearInterval(id)
-  }, [settleRound, roundMs])
+    const sock = connectWingoSocket(mode, {
+      onState: (s) => applyStateRef.current(s),
+      onError: (message) => onMessage?.(message),
+    })
+    socketRef.current = sock
+    return () => {
+      sock.close()
+      socketRef.current = null
+    }
+    // Reconnect when mode changes for a clean stream
+  }, [mode, onMessage])
 
-  const handleModeChange = (next: WingoMode) => {
+  const onModeChange = (next: WingoMode) => {
     if (next === mode) return
     setMode(next)
-    const ms = MODE_MS[next]
-    setRoundMs(ms)
-    roundStart.current = Date.now()
-    setTimeLeft(ms)
-    setPending([])
-    setPeriod(formatPeriod(Date.now()))
-    onMessage?.(null)
+    setResult(null)
+    lastRevealPeriod.current = null
   }
 
-  const placeBet = (type: WingoBetType, value?: number) => {
-    if (!canBet) {
-      sound.play('error', { volume: 0.4 })
-      onMessage?.('Bets locked — wait for next round')
-      return
-    }
-    if (!canAfford(betAmount) || !debit(betAmount)) {
-      sound.play('error')
+  const placeBet = async (type: WingoBetType, value?: number) => {
+    if (busyRef.current || !canBet) return
+    if (!canAfford(betAmount)) {
       onMessage?.('Insufficient balance')
       return
     }
-    sound.play('chip')
-    setPending((p) => [...p, { type, value, amount: betAmount, id: Date.now() }])
-    setLastBetKey(betKey(type, value))
-    onMessage?.(null)
+    busyRef.current = true
+    try {
+      await api.post('/games/wingo/bet', {
+        mode,
+        type,
+        amount: betAmount,
+        value: type === 'number' ? value : null,
+      })
+      void refresh()
+      socketRef.current?.refresh()
+      onMessage?.(null)
+    } catch (e: any) {
+      onMessage?.(e?.message || 'Bet failed')
+    } finally {
+      busyRef.current = false
+    }
   }
 
-  const revokeLast = () => {
-    if (!canBet || pending.length === 0) return
-    const last = pending[pending.length - 1]
-    credit(last.amount)
-    setPending((p) => p.slice(0, -1))
-    onMessage?.(null)
+  const revoke = async () => {
+    if (busyRef.current || !canBet) return
+    if (!myBets.some((b) => b.state === 'ACTIVE')) return
+    busyRef.current = true
+    try {
+      const res = await api.post('/games/wingo/revoke', { mode })
+      onMessage?.(`Revoked — refunded Rs ${Math.round(res.refunded).toLocaleString()}`)
+      window.setTimeout(() => onMessage?.(null), 1800)
+      void refresh()
+      socketRef.current?.refresh()
+    } catch (e: any) {
+      onMessage?.(e?.message || 'Revoke failed')
+    } finally {
+      busyRef.current = false
+    }
   }
 
   return (
     <WingoDesignUI
-      viewportRef={viewportRef}
-      layout={layout}
-      rootClassName={styles.root}
-      canvasClassName={styles.canvas}
       balance={balance}
       betAmount={betAmount}
-      onBetAmount={setBetAmount}
-      onRefreshBalance={() => setBalance(balance)}
-      period={period}
-      timeLeft={timeLeft}
-      roundMs={roundMs}
-      resultReveal={resultReveal}
-      lastBetKey={lastBetKey}
+      chips={CHIPS}
       mode={mode}
-      onModeChange={handleModeChange}
+      period={period}
+      phase={phase}
+      msLeft={msLeft}
+      canBet={canBet}
+      counters={counters}
       history={history}
       myHistory={myHistory}
-      pending={pending}
-      counters={counters}
+      result={result}
+      showHelp={showHelp}
+      onHome={() => navigate('/')}
+      onHelp={() => setShowHelp((v) => !v)}
+      onCloseHelp={() => setShowHelp(false)}
+      onModeChange={onModeChange}
+      onChipSelect={setBetAmount}
       onBet={placeBet}
-      onRevoke={revokeLast}
-      canBet={canBet}
-      onHome={() => navigate('/home')}
+      onRevoke={() => void revoke()}
+      onRefreshBalance={() => void refresh()}
     />
   )
 }

@@ -105,6 +105,8 @@ async function main() {
   const games = [
     { slug: 'mines', title: 'Mines', emoji: '💣', color: '#3a2a15', category: 'Mini', winPct: 91, tag: 'hot', plays: 0, ggr: 0n, order: 1 },
     { slug: 'aviator', title: 'Aviator', emoji: '✈️', color: '#1a1020', category: 'Crash', winPct: 97, tag: 'hot', plays: 0, ggr: 0n, order: 2 },
+    { slug: 'crash', title: 'Crash', emoji: '🚀', color: '#2a1a0a', category: 'Crash', winPct: 97, tag: 'hot', plays: 0, ggr: 0n, order: 3 },
+    { slug: 'wingo', title: 'WinGo', emoji: '🎱', color: '#0d8a5f', category: 'Lottery', winPct: 90, tag: 'hot', plays: 0, ggr: 0n, order: 4 },
   ]
   for (const g of games) {
     await prisma.game.upsert({

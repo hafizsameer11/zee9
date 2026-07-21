@@ -52,8 +52,12 @@ export async function revenueSeries(days = 7) {
 }
 
 export async function topGames(limit = 5) {
-  const games = await prisma.game.findMany({ orderBy: { ggr: 'desc' }, take: limit, select: { title: true, emoji: true, ggr: true, plays: true } })
+  const { listGamesWithStats } = await import('./games.admin.service.js')
+  const games = await listGamesWithStats()
   return games
+    .sort((a, b) => (b.houseProfit > a.houseProfit ? 1 : b.houseProfit < a.houseProfit ? -1 : 0))
+    .slice(0, limit)
+    .map((g) => ({ title: g.title, emoji: g.emoji, ggr: g.houseProfit, plays: g.plays }))
 }
 
 export async function topAgents(limit = 5) {

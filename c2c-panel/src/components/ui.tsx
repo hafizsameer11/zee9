@@ -5,17 +5,9 @@ export function fmt(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-export function StatusBar({ dark = false }: { dark?: boolean }) {
-  return (
-    <div className="statusbar" style={dark ? { color: '#fff' } : undefined}>
-      <span>6:11</span>
-      <span className="sb-icons">
-        <span>4G</span>
-        <span>&#9679;&#9679;&#9679;</span>
-        <span>94%</span>
-      </span>
-    </div>
-  )
+/** Deprecated faux iOS status bar — kept as no-op so pages don't show native chrome. */
+export function StatusBar(_props?: { dark?: boolean }) {
+  return null
 }
 
 export function Shell({ children, className }: { children: ReactNode; className?: string }) {

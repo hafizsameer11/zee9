@@ -3,6 +3,7 @@ import S9ModalShell from './S9ModalShell'
 import { api, uploadFile } from '../../../api/client'
 import { useWallet } from '../../../context/WalletContext'
 import { useConfig } from '../../../api/hooks'
+import { sound } from '../../../lib/sound'
 import styles from './AddCashModal.module.css'
 import base from './modal.module.css'
 
@@ -92,9 +93,11 @@ export default function AddCashModal({ onClose }: Props) {
         receiptUrl = media.url
       }
       await api.post('/deposits', { amount, method, channelId: channel?.id, trxId: trxId.trim(), receiptUrl })
+      sound.play('success')
       setDone(true)
       refresh()
     } catch (e: any) {
+      sound.play('error')
       setMsg(e?.message || 'Deposit failed')
     } finally {
       setBusy(false)
@@ -108,8 +111,8 @@ export default function AddCashModal({ onClose }: Props) {
           <div style={{ fontSize: 46 }}>✅</div>
           <h3 style={{ color: '#8bd98b', margin: '10px 0' }}>Deposit submitted</h3>
           <p style={{ fontSize: 13, color: '#e8d0a0' }}>
-            Your deposit of <b>Rs {amount}</b> is pending admin approval. Your wallet will be credited and you'll get a
-            notification once it's approved.
+            Your deposit of <b>Rs {amount}</b> is pending agent confirmation. Your wallet will be credited and you'll get a
+            notification once the agent confirms the payment.
           </p>
           <button className={styles.payBtn} style={{ marginTop: 16 }} onClick={onClose}>Done</button>
         </div>

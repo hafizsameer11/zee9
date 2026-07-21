@@ -19,22 +19,25 @@ type SpriteCrop = {
 }
 
 const SPRITES: Record<string, SpriteCrop> = {
+  // Sheet is 2×2: wheel | coin / chip | chip
   wheel: { src: S9_ASSETS.wheelCoinSheet, scale: 2, posX: 0, posY: 0 },
-  coin: { src: S9_ASSETS.wheelCoinSheet, scale: 2, posX: 50, posY: 0 },
-  betWheel: { src: S9_ASSETS.betWheelSheet, scale: 2.2, posX: 55, posY: 52 },
+  coin: { src: S9_ASSETS.wheelCoinSheet, scale: 2, posX: 100, posY: 0 },
+  // Colorful prize wheel sits in the bottom-right of the sheet
+  betWheel: { src: S9_ASSETS.betWheelSheet, scale: 2.05, posX: 100, posY: 100 },
   referShare: { src: S9_ASSETS.referShare, scale: 3.5, posX: 38, posY: 8 },
   gift: { src: S9_ASSETS.giftDaily, scale: 2.4, posX: 2, posY: 2 },
+  // Chest art is left-aligned in a wide PNG — crop to the chest
+  recharge: { src: S9_ASSETS.rechargeChest, scale: 1.35, posX: 0, posY: 45 },
+  cashback: { src: S9_ASSETS.cashbackPot, scale: 1, posX: 50, posY: 50 },
 }
 
 type Props = {
-  name: keyof typeof SPRITES | 'recharge' | 'cashback' | 'gift' | 'coins'
+  name: keyof typeof SPRITES | 'gift' | 'coins'
   size?: number
   className?: string
 }
 
 const FULL_IMAGES: Record<string, string> = {
-  recharge: S9_ASSETS.rechargeChest,
-  cashback: S9_ASSETS.cashbackPot,
   gift: S9_ASSETS.giftDaily,
   coins: S9_ASSETS.coinsStack,
 }

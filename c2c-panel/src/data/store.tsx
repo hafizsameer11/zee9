@@ -31,6 +31,15 @@ export interface PayoutOrder {
   method: string
   time: string
 }
+export interface AvailableWithdrawal {
+  id: string
+  amount: number
+  method: string
+  payeeName: string
+  payeeAccount: string
+  playerName: string
+  time: string
+}
 
 const EMPTY_STAT: StatGroup = { colAmount: 0, colReward: 0, payAmount: 0, payReward: 0 }
 
@@ -41,15 +50,19 @@ interface Store {
   loading: boolean
   collectionsOn: boolean
   setCollectionsOn: (v: boolean) => void
-  accounts: BankAccount[]
-  toggleAccount: (id: string) => void
-  deleteAccount: (id: string) => void
-  addAccount: (a: Omit<BankAccount, 'id'>) => void
+  addAccount: (a: Omit<BankAccount, 'id'>) => Promise<void>
   orders: CollectionOrder[]
   resolveOrder: (id: string, status: CollectionOrder['status'], trxId?: string) => void
   acceptOrder: (id: string) => Promise<void>
+  toggleAccount: (id: string) => void
+  deleteAccount: (id: string) => void
+  accounts: BankAccount[]
   payouts: PayoutOrder[]
+  availablePayouts: AvailableWithdrawal[]
+  claimPayout: (withdrawalId: string) => Promise<void>
   submitPayout: (id: string, trxId: string, senderAccount: string) => Promise<void>
+  earnings: { total: number; locked: number; available: number; holdDays: number }
+  withdrawEarnings: () => Promise<void>
   stats: AgentStats
   transactions: AgentTxn[]
   reload: () => void
@@ -117,6 +130,18 @@ function mapPayout(o: any): PayoutOrder {
     time: String(o.createdAt).replace('T', ' ').slice(0, 19),
   }
 }
+function mapAvailable(w: any): AvailableWithdrawal {
+  const details = w.accountDetails || {}
+  return {
+    id: w.id,
+    amount: r(w.amount),
+    method: METHOD[w.method] ?? 'Bank',
+    payeeName: details.title || w.user?.displayName || '',
+    payeeAccount: details.number || '',
+    playerName: w.user?.displayName || '',
+    time: String(w.createdAt).replace('T', ' ').slice(0, 19),
+  }
+}
 
 const CO_KEY = 'c2c-collections-on'
 
@@ -129,6 +154,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<AgentStats>({ today: EMPTY_STAT, week: EMPTY_STAT, month: EMPTY_STAT })
   const [transactions, setTransactions] = useState<AgentTxn[]>([])
   const [payouts, setPayouts] = useState<PayoutOrder[]>([])
+  const [availablePayouts, setAvailablePayouts] = useState<AvailableWithdrawal[]>([])
+  const [earnings, setEarnings] = useState({ total: 0, locked: 0, available: 0, holdDays: 7 })
   const [loading, setLoading] = useState(true)
   const [collectionsOn, setCollectionsOnState] = useState(localStorage.getItem(CO_KEY) !== '0')
   const [toast, setToast] = useState<string | null>(null)
@@ -142,13 +169,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const safe = async <T,>(fn: () => Promise<T>, fallback: T) => {
       try { return await fn() } catch { return fallback }
     }
-    const [summary, accs, ords, agentStats, txns, pays] = await Promise.all([
+    const [summary, accs, ords, agentStats, txns, pays, avail, earn] = await Promise.all([
       safe(() => api.get('/agent/summary'), { balance: 0, frozen: 0, agentActive: true }),
       safe(() => api.get('/agent/accounts'), []),
       safe(() => api.get('/agent/orders'), []),
       safe(() => api.get('/agent/stats'), { today: EMPTY_STAT, week: EMPTY_STAT, month: EMPTY_STAT }),
       safe(() => api.get('/me/wallet/transactions'), []),
       safe(() => api.get('/agent/payouts'), []),
+      safe(() => api.get('/agent/payouts/available'), []),
+      safe(() => api.get('/agent/earnings'), { total: 0, locked: 0, available: 0, holdDays: 7 }),
     ])
     setBalance(r(summary.balance))
     setFreeze(r(summary.frozen))
@@ -159,6 +188,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setStats({ today: mapStat(agentStats.today), week: mapStat(agentStats.week), month: mapStat(agentStats.month) })
     setTransactions(txns.map(mapTxn))
     setPayouts(pays.map(mapPayout))
+    setAvailablePayouts(avail.map(mapAvailable))
+    setEarnings({
+      total: r(earn.total),
+      locked: r(earn.locked),
+      available: r(earn.available),
+      holdDays: earn.holdDays ?? 7,
+    })
     setWalletAccount(mappedAccs.find((a: BankAccount) => a.on)?.number ?? mappedAccs[0]?.number ?? '—')
     setLoading(false)
   }, [])
@@ -186,18 +222,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleAccount: (id) => {
         const acc = accounts.find((a) => a.id === id)
         if (!acc) return
-        setAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, on: !a.on } : a)))
-        api.patch(`/agent/accounts/${id}`, { enabled: !acc.on }).catch((e) => { showToast(e?.message || 'Failed'); reload() })
+        api
+          .patch(`/agent/accounts/${id}`, { enabled: !acc.on })
+          .then(() => reload())
+          .catch((e) => { showToast(e?.message || 'Failed'); reload() })
       },
       deleteAccount: (id) => {
         setAccounts((prev) => prev.filter((a) => a.id !== id))
         api.del(`/agent/accounts/${id}`).catch((e) => { showToast(e?.message || 'Failed'); reload() })
       },
-      addAccount: (a) => {
-        api
-          .post('/agent/accounts', { method: METHOD_BE[a.method], number: a.number, holder: a.holder })
-          .then(() => reload())
-          .catch((e) => showToast(e?.message || 'Failed to add account'))
+      addAccount: async (a) => {
+        await api.post('/agent/accounts', { method: METHOD_BE[a.method], number: a.number, holder: a.holder })
+        await reload()
       },
       orders,
       acceptOrder: async (id) => {
@@ -213,16 +249,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         showToast(status === 'success' ? 'Order completed' : 'Order updated')
       },
       payouts,
+      availablePayouts,
+      claimPayout: async (withdrawalId) => {
+        await api.post(`/agent/payouts/${withdrawalId}/claim`)
+        showToast('Claimed — pay the player now')
+        await reload()
+      },
       submitPayout: async (id, trxId, senderAccount) => {
         await api.post(`/agent/payouts/${id}/pay`, { trxId, senderAccount })
-        showToast('Payment submitted')
+        showToast('Payment submitted — float deducted, reward earned')
+        await reload()
+      },
+      earnings,
+      withdrawEarnings: async () => {
+        await api.post('/agent/earnings/withdraw', {})
+        showToast('Unlocked earnings moved to float')
         await reload()
       },
       reload: () => { reload().catch(() => {}) },
       toast,
       showToast,
     }),
-    [balance, freeze, walletAccount, stats, transactions, payouts, loading, collectionsOn, setCollectionsOn, accounts, orders, toast, showToast, reload],
+    [balance, freeze, walletAccount, stats, transactions, payouts, availablePayouts, earnings, loading, collectionsOn, setCollectionsOn, accounts, orders, toast, showToast, reload],
   )
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>

@@ -9,6 +9,10 @@
   box-sizing: border-box;
 }
 
+.outerPortrait {
+  background: #b8ecc9;
+}
+
 .device {
   width: 100%;
   height: 100%;
@@ -19,7 +23,11 @@
   overflow: hidden;
 }
 
-/* Desktop preview — centered phone frame */
+.devicePortrait {
+  background: transparent;
+}
+
+/* Desktop preview — centered phone frame (landscape games) */
 @media (min-width: 921px) and (min-height: 500px) and (hover: hover) {
   .outer {
     align-items: center;
@@ -36,6 +44,24 @@
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
     border-radius: 12px;
   }
+
+  .deviceCustom {
+    width: var(--frame-w, 896px);
+    height: var(--frame-h, 414px);
+  }
+
+  /* Portrait games — tall phone frame on desktop */
+  .outerPortrait {
+    background: #0d0d0d;
+  }
+
+  .devicePortrait {
+    width: min(430px, 100vw);
+    height: min(844px, 100vh);
+    max-height: 100dvh;
+    border-radius: 16px;
+    background: #e8f8ef;
+  }
 }
 
 .screen {
@@ -44,4 +70,8 @@
   overflow: hidden;
   box-sizing: border-box;
   position: relative;
+}
+
+.screenPortrait {
+  overflow: hidden;
 }

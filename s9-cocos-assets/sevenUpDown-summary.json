@@ -1,0 +1,19 @@
+{
+  "exportedAt": "2026-07-20T22:15:40.461Z",
+  "sourceManifest": "cocos-complete-export-2026-07-20T22-15-40-461Z.json",
+  "downloadedAt": "2026-07-20T22:24:36.606231+00:00",
+  "game": "sevenUpDown",
+  "paths": {
+    "bundle": "s9-cocos-assets/sevenUpDown/",
+    "namedAssets": "public/games/7up-down/assets/",
+    "icons": "public/games/7up-down/icons/",
+    "rawCocos": "public/games/7up-down/cocos/",
+    "preview": "s9-cocos-assets/_preview/sevenUpDown/",
+    "docs": "s9-cocos-assets/SEVENUPDOWN.md"
+  },
+  "counts": {
+    "icons": 56,
+    "namedAssets": 21,
+    "nativeFiles": 20
+  }
+}

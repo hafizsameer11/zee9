@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma.js'
 import { logger } from '../../lib/logger.js'
 import { env } from '../../lib/env.js'
 import * as aviator from './aviator.service.js'
+import { registerGameWs } from './gameWsRouter.js'
 
 type Client = {
   ws: WebSocket
@@ -74,9 +75,10 @@ export function kickAviatorRealtime() {
   }, 0)
 }
 
-export function attachAviatorRealtime(server: HttpServer) {
+export function attachAviatorRealtime(_server: HttpServer) {
   const path = `${env.apiPrefix}/games/aviator/ws`
-  wss = new WebSocketServer({ server, path })
+  wss = new WebSocketServer({ noServer: true })
+  registerGameWs('/games/aviator/ws', wss)
 
   wss.on('connection', async (ws, req) => {
     try {

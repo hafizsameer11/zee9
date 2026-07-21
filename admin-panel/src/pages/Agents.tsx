@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageHead, Pill, Toggle, Avatar, Wallets, StatCard, Modal, money } from '../components/ui'
 import { Icons } from '../components/icons'
 import { useAdmin } from '../data/store'
@@ -8,12 +9,24 @@ import { CredsModal } from '../components/CredsModal'
 const METHOD_LABEL: Record<string, string> = { JAZZCASH: 'Jazzcash', EASYPAISA: 'Easypaisa', BANK: 'Bank' }
 
 export default function Agents() {
-  const { agents, agentAccounts, updateAgent, createAgent, approveAgentAccount, rejectAgentAccount, payoutAgentCommission, settings, showToast } = useAdmin()
+  const {
+    agents, agentAccounts, updateAgent, createAgent, approveAgentAccount, rejectAgentAccount,
+    addAgentAccount, adjustAgentFloat, payoutAgentCommission, settings, showToast,
+  } = useAdmin()
   const [showCreate, setShowCreate] = useState(false)
   const [phone, setPhone] = useState('')
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [creds, setCreds] = useState<AgentCreds | null>(null)
+
+  const [acctAgent, setAcctAgent] = useState<{ id: string; name: string } | null>(null)
+  const [acctMethod, setAcctMethod] = useState('JAZZCASH')
+  const [acctNumber, setAcctNumber] = useState('')
+  const [acctHolder, setAcctHolder] = useState('')
+
+  const [floatAgent, setFloatAgent] = useState<{ id: string; name: string } | null>(null)
+  const [floatAmount, setFloatAmount] = useState(1000)
+  const [floatReason, setFloatReason] = useState('Admin float top-up')
 
   const active = agents.filter((a) => a.active).length
   const totalCommission = agents.reduce((s, a) => s + a.commission, 0)
@@ -39,11 +52,47 @@ export default function Agents() {
     }
   }
 
+  async function submitAccount() {
+    if (!acctAgent) return
+    if (acctNumber.trim().length < 3 || acctHolder.trim().length < 2) {
+      showToast('Enter account number and holder name')
+      return
+    }
+    setBusy(true)
+    try {
+      await addAgentAccount(acctAgent.id, { method: acctMethod, number: acctNumber.trim(), holder: acctHolder.trim() })
+      setAcctAgent(null)
+      setAcctNumber('')
+      setAcctHolder('')
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to add account')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function submitFloat() {
+    if (!floatAgent) return
+    if (!floatAmount) {
+      showToast('Enter an amount')
+      return
+    }
+    setBusy(true)
+    try {
+      await adjustAgentFloat(floatAgent.id, floatAmount, floatReason.trim() || 'Admin float adjust')
+      setFloatAgent(null)
+    } catch (e: any) {
+      showToast(e?.message || 'Float adjust failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <PageHead
         title="Agents"
-        subtitle={`Agentship activates after ${settings.walletsRequired} wallets · min ${money(settings.minPerWallet)} deposit each`}
+        subtitle="Create agents · assign JazzCash/Easypaisa numbers · top up float · 2% collection reward"
         actions={<button className="btn btn-primary" onClick={() => setShowCreate(true)}>{Icons.plus} Create agent</button>}
       />
 
@@ -57,7 +106,7 @@ export default function Agents() {
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="card-pad">
             <h3 style={{ margin: '0 0 4px', fontSize: 16 }}>Payment accounts awaiting review</h3>
-            <p className="section-sub" style={{ marginBottom: 14 }}>{agentAccounts.length} agent account(s) need approval before they can collect deposits.</p>
+            <p className="section-sub" style={{ marginBottom: 14 }}>{agentAccounts.length} agent-submitted account(s) need approval.</p>
           </div>
           <div className="table-wrap">
             <table className="tbl">
@@ -100,7 +149,7 @@ export default function Agents() {
         <div className="card card-pad" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 800 }}>Unpaid commission balance</div>
-            <div className="muted" style={{ fontSize: 13 }}>Agents have {money(pendingBalance)} in COMMISSION buckets ready to pay out.</div>
+            <div className="muted" style={{ fontSize: 13 }}>Agents have {money(pendingBalance)} in COMMISSION buckets.</div>
           </div>
         </div>
       )}
@@ -118,7 +167,7 @@ export default function Agents() {
                 <th className="t-right">Unpaid</th>
                 <th>Joined</th>
                 <th>Active</th>
-                <th className="t-right">Payout</th>
+                <th className="t-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -156,11 +205,18 @@ export default function Agents() {
                       </div>
                     </td>
                     <td className="t-right">
-                      {a.commissionBalance > 0 ? (
-                        <button className="btn btn-light btn-sm" onClick={() => payoutAgentCommission(a.id)}>Pay out</button>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
+                      <div className="flex gap8" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <Link className="btn btn-light btn-sm" to={`/users/${a.id}`}>Open</Link>
+                        <button className="btn btn-light btn-sm" onClick={() => setAcctAgent({ id: a.id, name: a.name })}>
+                          + Number
+                        </button>
+                        <button className="btn btn-light btn-sm" onClick={() => setFloatAgent({ id: a.id, name: a.name })}>
+                          Float
+                        </button>
+                        {a.commissionBalance > 0 && (
+                          <button className="btn btn-light btn-sm" onClick={() => payoutAgentCommission(a.id)}>Pay out</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -181,7 +237,7 @@ export default function Agents() {
             </>
           }
         >
-          <p className="section-sub">Creates a C2C panel account for a user who reached agent rank. A password is generated automatically.</p>
+          <p className="section-sub">Creates a C2C panel account. Then assign JazzCash/Easypaisa numbers and float.</p>
           <div className="fld" style={{ marginBottom: 14 }}>
             <label>Agent name</label>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Adnan Ali" />
@@ -189,6 +245,60 @@ export default function Agents() {
           <div className="fld">
             <label>Phone (login)</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03001234567" />
+          </div>
+        </Modal>
+      )}
+
+      {acctAgent && (
+        <Modal
+          title={`Add collection number — ${acctAgent.name}`}
+          onClose={() => setAcctAgent(null)}
+          foot={
+            <>
+              <button className="btn btn-outline" onClick={() => setAcctAgent(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitAccount} disabled={busy}>{busy ? 'Saving…' : 'Add number'}</button>
+            </>
+          }
+        >
+          <p className="section-sub">Optional override — agents normally add their own JazzCash/Easypaisa numbers in C2C (up to 30 each; only one active per method).</p>
+          <div className="fld" style={{ marginBottom: 14 }}>
+            <label>Method</label>
+            <select value={acctMethod} onChange={(e) => setAcctMethod(e.target.value)}>
+              <option value="JAZZCASH">JazzCash</option>
+              <option value="EASYPAISA">Easypaisa</option>
+              <option value="BANK">Bank</option>
+            </select>
+          </div>
+          <div className="fld" style={{ marginBottom: 14 }}>
+            <label>Account number</label>
+            <input value={acctNumber} onChange={(e) => setAcctNumber(e.target.value)} placeholder="03XXXXXXXXX" />
+          </div>
+          <div className="fld">
+            <label>Account title</label>
+            <input value={acctHolder} onChange={(e) => setAcctHolder(e.target.value)} placeholder="Name on account" />
+          </div>
+        </Modal>
+      )}
+
+      {floatAgent && (
+        <Modal
+          title={`Agent float — ${floatAgent.name}`}
+          onClose={() => setFloatAgent(null)}
+          foot={
+            <>
+              <button className="btn btn-outline" onClick={() => setFloatAgent(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitFloat} disabled={busy}>{busy ? 'Saving…' : 'Apply'}</button>
+            </>
+          }
+        >
+          <p className="section-sub">Float is used for pay-on-behalf. Positive = credit, negative = deduct. Agent earns only 2% of collections — never the deposit principal.</p>
+          <div className="fld" style={{ marginBottom: 14 }}>
+            <label>Amount (Rs)</label>
+            <input type="number" value={floatAmount} onChange={(e) => setFloatAmount(Number(e.target.value))} />
+          </div>
+          <div className="fld">
+            <label>Reason</label>
+            <input value={floatReason} onChange={(e) => setFloatReason(e.target.value)} />
           </div>
         </Modal>
       )}

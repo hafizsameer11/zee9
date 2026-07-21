@@ -1,8 +1,9 @@
-import { NavLink, useLocation } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
 import { Icons, type IconKey } from './icons'
 import { useAdmin } from '../data/store'
 import { useAuth } from '../api/auth'
+import { api } from '../api/client'
 
 interface NavDef {
   group: string
@@ -10,11 +11,35 @@ interface NavDef {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { withdrawals, deposits, toast, settings } = useAdmin()
+  const { withdrawals, deposits, toast, settings, showToast } = useAdmin()
   const { admin, logout } = useAuth()
   const pendingW = withdrawals.filter((w) => w.status === 'pending').length
   const pendingD = deposits.filter((d) => d.status === 'pending').length
   const loc = useLocation()
+  const navigate = useNavigate()
+  const [q, setQ] = useState('')
+  const [searching, setSearching] = useState(false)
+
+  async function globalSearch() {
+    const term = q.trim()
+    if (!term) return
+    setSearching(true)
+    try {
+      const res = await api.get(`/admin/users?q=${encodeURIComponent(term)}&limit=20`)
+      const list = Array.isArray(res) ? res : (res?.items || [])
+      if (list.length === 0) {
+        showToast('No user found')
+        return
+      }
+      const exact = list.find((u: any) => u.id === term || u.id.endsWith(term) || u.phone === term) || list[0]
+      navigate(`/users/${exact.id}`)
+      setQ('')
+    } catch (e: any) {
+      showToast(e?.message || 'Search failed')
+    } finally {
+      setSearching(false)
+    }
+  }
 
   const nav: NavDef[] = [
     { group: 'Overview', items: [{ to: '/', label: 'Dashboard', icon: 'dashboard' }] },
@@ -85,7 +110,12 @@ export default function Layout({ children }: { children: ReactNode }) {
         <header className="topbar">
           <div className="search">
             {Icons.search}
-            <input placeholder="Search players, agents, orders…" />
+            <input
+              placeholder="Game ID / phone / name — Enter to open…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !searching && globalSearch()}
+            />
           </div>
           <div className="topbar-spacer" />
           <button className="topbar-btn">

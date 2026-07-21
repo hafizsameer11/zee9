@@ -7,6 +7,7 @@ import {
   type PrizeIconType,
 } from './WheelPrizeIcons'
 import { api } from '../../../api/client'
+import { sound } from '../../../lib/sound'
 import styles from './LuckyWheelModal.module.css'
 
 type SpinResult = { label: string; amount: number; isPhysical: boolean }
@@ -66,8 +67,6 @@ export default function LuckyWheelModal({ onClose, onDeposit, onSpinDone, varian
 
   const wheelPath = variant === 'DEPOSIT' ? '/wheel/deposit' : '/wheel'
   const spinPath = variant === 'DEPOSIT' ? '/wheel/deposit/spin' : '/wheel/spin'
-  const wheelTitle = variant === 'DEPOSIT' ? 'Deposit Wheel' : 'Lucky Wheel'
-
   const loadWheel = useCallback(() => {
     api.get(wheelPath)
       .then((data: any) => {
@@ -89,11 +88,13 @@ export default function LuckyWheelModal({ onClose, onDeposit, onSpinDone, varian
   const spin = useCallback(async () => {
     if (spinning || prizes.length === 0) return
     if (tickets <= 0) {
+      sound.play('error')
       setError(`Deposit Rs ${depositPerSpin} to earn a spin`)
       return
     }
     setError(null)
     setSpinning(true)
+    sound.play('spin', { volume: 0.6 })
     try {
       const res = await api.post(spinPath)
       const index = prizes.findIndex((p) => p.id === res.prize.id)
@@ -107,11 +108,14 @@ export default function LuckyWheelModal({ onClose, onDeposit, onSpinDone, varian
       window.setTimeout(() => {
         setSpinning(false)
         setResult({ label: res.prize.label, amount: res.amount, isPhysical: res.prize.isPhysical })
+        if (res.amount > 0 || res.prize.isPhysical) sound.play('bonus')
+        else sound.play('lose', { volume: 0.45 })
         loadWheel()
         onSpinDone?.()
       }, 4200)
     } catch (e: any) {
       setSpinning(false)
+      sound.play('error')
       setError(e?.message || 'Spin failed')
     }
   }, [spinning, prizes, rotation, segmentDeg, onSpinDone, tickets, depositPerSpin, loadWheel, spinPath])

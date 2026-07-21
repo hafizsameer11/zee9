@@ -11,23 +11,51 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   fail: 'Fail',
 }
 
-type SheetKind = 'account' | 'type' | 'filter' | null
+type SheetKind = 'number' | 'method' | 'status' | null
 
 export default function OrderList() {
-  const { orders } = useStore()
+  const { orders, accounts } = useStore()
   const [sheet, setSheet] = useState<SheetKind>(null)
-  const [account, setAccount] = useState<string>('')
+  const [collectionNumber, setCollectionNumber] = useState('')
+  const [method, setMethod] = useState<'' | 'Jazzcash' | 'Easypaisa'>('')
   const [status, setStatus] = useState<OrderStatus | ''>('')
+  const [type, setType] = useState<'' | 'DEPOSIT' | 'WITHDRAW'>('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
   const [detail, setDetail] = useState<CollectionOrder | null>(null)
 
-  const accounts = useMemo(
-    () => Array.from(new Set(orders.map((o) => o.account).filter(Boolean))),
-    [orders],
-  )
+  const numbers = useMemo(() => {
+    const fromAccounts = accounts.map((a) => a.number)
+    const fromOrders = orders.map((o) => o.collectionAccount).filter(Boolean)
+    return Array.from(new Set([...fromAccounts, ...fromOrders]))
+  }, [accounts, orders])
 
-  const filtered = orders.filter(
-    (o) => (!account || o.account === account) && (!status || o.status === status),
-  )
+  const filtered = orders.filter((o) => {
+    if (collectionNumber && o.collectionAccount !== collectionNumber) return false
+    if (method && o.method !== method) return false
+    if (status && o.status !== status) return false
+    if (type && o.type !== type) return false
+    if (from) {
+      const d = o.time.slice(0, 10)
+      if (d < from) return false
+    }
+    if (to) {
+      const d = o.time.slice(0, 10)
+      if (d > to) return false
+    }
+    return true
+  })
+
+  function reset() {
+    setCollectionNumber('')
+    setMethod('')
+    setStatus('')
+    setType('')
+    setFrom('')
+    setTo('')
+  }
+
+  const activeFilters = [collectionNumber, method, status, type, from, to].filter(Boolean).length
 
   return (
     <Shell>
@@ -35,14 +63,15 @@ export default function OrderList() {
       <TopBar title="Order List" />
       <div className="scroll pad">
         <div className="filter-row">
-          <button className="filter-pill" onClick={() => setSheet('account')}>
-            Account &#9662;
+          <button className="filter-pill" onClick={() => setSheet('number')}>
+            {collectionNumber || 'Number'} &#9662;
           </button>
-          <button className="filter-pill" onClick={() => setSheet('type')}>
-            Type &#9662;
+          <button className="filter-pill" onClick={() => setSheet('method')}>
+            {method || 'Method'} &#9662;
           </button>
-          <button className="filter-pill" onClick={() => setSheet('filter')}>
-            Filter &#9662;
+          <button className="filter-pill" onClick={() => setSheet('status')}>
+            {status ? STATUS_LABEL[status] : 'Filter'} &#9662;
+            {activeFilters > 0 ? ` (${activeFilters})` : ''}
           </button>
         </div>
 
@@ -76,7 +105,7 @@ export default function OrderList() {
                 </div>
               </div>
               <div className="oc-foot">
-                <span>Account: {o.account}</span>
+                <span>{o.method}: {o.collectionAccount || '—'}</span>
                 <span>{o.time}</span>
               </div>
             </div>
@@ -85,18 +114,18 @@ export default function OrderList() {
         <div style={{ height: 24 }} />
       </div>
 
-      {sheet === 'account' && (
-        <Sheet title="Account" onClose={() => setSheet(null)}>
-          <div className={'sheet-radio' + (account === '' ? ' active' : '')} onClick={() => { setAccount(''); setSheet(null) }}>
-            <span className="sr-k">All accounts</span>
+      {sheet === 'number' && (
+        <Sheet title="Collection number" onClose={() => setSheet(null)}>
+          <div className={'sheet-radio' + (collectionNumber === '' ? ' active' : '')} onClick={() => { setCollectionNumber(''); setSheet(null) }}>
+            <span className="sr-k">All numbers</span>
             <span className="sr-dot" />
           </div>
-          {accounts.map((a) => (
+          {numbers.map((a) => (
             <div
               key={a}
-              className={'sheet-radio' + (account === a ? ' active' : '')}
+              className={'sheet-radio' + (collectionNumber === a ? ' active' : '')}
               onClick={() => {
-                setAccount(a)
+                setCollectionNumber(a)
                 setSheet(null)
               }}
             >
@@ -107,10 +136,29 @@ export default function OrderList() {
         </Sheet>
       )}
 
-      {(sheet === 'type' || sheet === 'filter') && (
-        <Sheet title="Type" onClose={() => setSheet(null)}>
+      {sheet === 'method' && (
+        <Sheet title="Method" onClose={() => setSheet(null)}>
+          {(['', 'Jazzcash', 'Easypaisa'] as const).map((m) => (
+            <div
+              key={m || 'all'}
+              className={'sheet-radio' + (method === m ? ' active' : '')}
+              onClick={() => {
+                setMethod(m)
+                setSheet(null)
+              }}
+            >
+              <span className="sr-k">{m || 'All methods'}</span>
+              <span className="sr-dot" />
+            </div>
+          ))}
+        </Sheet>
+      )}
+
+      {sheet === 'status' && (
+        <Sheet title="Filter deposits" onClose={() => setSheet(null)}>
+          <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>Status</div>
           <div className="sheet-opts">
-            {(['', 'success', 'fail', 'processing', 'checking'] as const).map((s) => (
+            {(['', 'pending', 'checking', 'processing', 'success', 'fail'] as const).map((s) => (
               <button
                 key={s || 'all'}
                 className={'sheet-opt' + (status === s ? ' active' : '')}
@@ -120,18 +168,25 @@ export default function OrderList() {
               </button>
             ))}
           </div>
+          <div className="muted" style={{ fontSize: 12, margin: '14px 0 8px' }}>Type</div>
+          <div className="sheet-opts">
+            {(['', 'DEPOSIT', 'WITHDRAW'] as const).map((t) => (
+              <button
+                key={t || 'all'}
+                className={'sheet-opt' + (type === t ? ' active' : '')}
+                onClick={() => setType(t)}
+              >
+                {t === '' ? 'All' : t}
+              </button>
+            ))}
+          </div>
+          <div className="muted" style={{ fontSize: 12, margin: '14px 0 8px' }}>Date range</div>
           <div className="time-row">
-            <input placeholder="Start date" />
-            <input placeholder="End date" />
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
           </div>
           <div className="sheet-foot">
-            <button
-              className="btn btn-outline"
-              onClick={() => {
-                setStatus('')
-                setAccount('')
-              }}
-            >
+            <button className="btn btn-outline" onClick={reset}>
               Reset
             </button>
             <button className="btn btn-violet" onClick={() => setSheet(null)}>
@@ -166,11 +221,11 @@ export default function OrderList() {
               <span className="dr-v">{detail.method}</span>
             </div>
             <div className="detail-row">
-              <span className="dr-k">Wallet Account</span>
+              <span className="dr-k">Player account</span>
               <span className="dr-v">{detail.account}</span>
             </div>
             <div className="detail-row">
-              <span className="dr-k">Collection Account</span>
+              <span className="dr-k">Your number</span>
               <span className="dr-v">{detail.collectionAccount}</span>
             </div>
             <div className="detail-row">

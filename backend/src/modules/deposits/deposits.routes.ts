@@ -12,6 +12,7 @@ const createSchema = z.object({
   amount: z.number().positive(),
   method: z.enum(['JAZZCASH', 'EASYPAISA', 'BANK', 'WEGARS']),
   channelId: z.string().optional(),
+  agentAccountId: z.string().optional(),
   senderAccount: z.string().max(40).optional(),
   trxId: z.string().max(60).optional(),
   receiptUrl: z.string().max(300).optional(),
