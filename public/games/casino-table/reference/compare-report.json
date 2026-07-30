@@ -1,0 +1,12 @@
+{
+  "size": [
+    850,
+    480
+  ],
+  "mean_rgb_diff": 70.67,
+  "current_brightness": 64.78,
+  "reference_brightness": 102.04,
+  "brightness_gap": 37.27,
+  "diff_preview": "public/games/casino-table/reference/diff-preview.png",
+  "note": "Original artwork will never match pixel-perfect; use for layout/density/colour drift."
+}

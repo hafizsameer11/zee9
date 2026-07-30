@@ -1,16 +1,73 @@
-import { PageHead, Toggle, Range, money } from '../components/ui'
-import { Icons } from '../components/icons'
+import { PageHead, Toggle, money } from '../components/ui'
 import { useAdmin } from '../data/store'
 
 export default function Cashback() {
-  const { cashback, updateCashback, addCashback, deleteCashback } = useAdmin()
+  const { settings, patchSettings, cashback, updateCashback, addCashback, deleteCashback } = useAdmin()
+  const s = settings
 
   return (
     <>
       <PageHead
-        title="Cashback"
-        subtitle="Loss-based cashback tiers shown on the cashback cards"
-        actions={<button className="btn btn-primary" onClick={addCashback}>{Icons.plus} Add tier</button>}
+        title="Bet Rebate"
+        subtitle="50k loss → wait 24h → claim fixed ReBet (game BET REBATE screen)"
+        actions={<button className="btn btn-primary" onClick={() => patchSettings({})}>Save</button>}
+      />
+
+      <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <h3 className="section-title">Bet Rebate rule</h3>
+        <div className="field-row">
+          <div className="fr-info">
+            <b>Enabled</b>
+            <span>Show / allow Bet Rebate claims in game</span>
+          </div>
+          <div className="fr-control">
+            <Toggle on={s.rebetBonus !== false} onChange={() => patchSettings({ rebetBonus: s.rebetBonus === false })} />
+          </div>
+        </div>
+        <div className="form-grid" style={{ marginTop: 12 }}>
+          <div className="fld">
+            <label>Min loss to qualify</label>
+            <div className="inp-group">
+              <span className="addon">Rs </span>
+              <input
+                type="number"
+                value={s.rebetMinLoss ?? 50000}
+                onChange={(e) => patchSettings({ rebetMinLoss: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div className="fld">
+            <label>ReBet amount</label>
+            <div className="inp-group">
+              <span className="addon">Rs </span>
+              <input
+                type="number"
+                value={s.rebetAmount ?? 600}
+                onChange={(e) => patchSettings({ rebetAmount: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <div className="fld">
+            <label>Wait after qualify</label>
+            <div className="inp-group">
+              <span className="addon">h </span>
+              <input
+                type="number"
+                value={s.rebetDelayHours ?? 24}
+                onChange={(e) => patchSettings({ rebetDelayHours: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+        </div>
+        <p className="hint" style={{ marginTop: 10 }}>
+          Example: lose {money(s.rebetMinLoss ?? 50000)} → wait {s.rebetDelayHours ?? 24}h → claim {money(s.rebetAmount ?? 600)}.
+        </p>
+      </div>
+
+      <PageHead
+        title="Legacy cashback tiers"
+        subtitle="Optional display tiers (Bet Rebate above is what the game uses)"
+        actions={<button className="btn btn-outline" onClick={addCashback}>Add tier</button>}
       />
 
       <div className="grid grid-2">
@@ -25,30 +82,22 @@ export default function Cashback() {
               />
               <div className="flex gap8">
                 <Toggle on={t.enabled} onChange={() => updateCashback(t.id, { enabled: !t.enabled })} />
-                <button className="btn btn-outline btn-icon" onClick={() => deleteCashback(t.id)} title="Delete tier">{Icons.x}</button>
+                <button className="btn btn-outline btn-icon" onClick={() => deleteCashback(t.id)} title="Delete tier">×</button>
               </div>
             </div>
-
-            <div className="fld" style={{ marginBottom: 14 }}>
-              <label>Cashback percentage</label>
-              <Range value={t.pct} min={1} max={30} onChange={(v) => updateCashback(t.id, { pct: v })} />
-            </div>
-
             <div className="form-grid">
               <div className="fld">
-                <label>Min weekly loss</label>
+                <label>Min loss</label>
                 <div className="inp-group"><span className="addon">Rs </span><input type="number" value={t.minLoss} onChange={(e) => updateCashback(t.id, { minLoss: Number(e.target.value) })} /></div>
+              </div>
+              <div className="fld">
+                <label>Pct</label>
+                <div className="inp-group"><span className="addon">% </span><input type="number" value={t.pct} onChange={(e) => updateCashback(t.id, { pct: Number(e.target.value) })} /></div>
               </div>
               <div className="fld">
                 <label>Max claim</label>
                 <div className="inp-group"><span className="addon">Rs </span><input type="number" value={t.maxClaim} onChange={(e) => updateCashback(t.id, { maxClaim: Number(e.target.value) })} /></div>
               </div>
-            </div>
-
-            <div className="card" style={{ background: 'var(--surface-2)', boxShadow: 'none', marginTop: 14, padding: 12, borderRadius: 10, fontSize: 12.5 }}>
-              <span className="muted">Lose {money(t.minLoss)}+ this week → get </span>
-              <b className="green-t">{t.pct}% back</b>
-              <span className="muted"> up to {money(t.maxClaim)}</span>
             </div>
           </div>
         ))}

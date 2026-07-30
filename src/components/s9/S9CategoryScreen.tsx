@@ -19,7 +19,12 @@ type Props = {
   gridRef?: RefObject<HTMLDivElement | null>
 }
 
-export default function S9CategoryScreen({ category, onPlay, onClaimBonus, gridRef }: Props) {
+export default function S9CategoryScreen({
+  category,
+  onPlay,
+  onClaimBonus,
+  gridRef,
+}: Props) {
   const config = CATEGORY_CONFIG[category]
   const categoryGames = getDevelopedGamesForCategory(category)
   const featuredGames = getLobbyFeaturedGames()
@@ -59,7 +64,7 @@ export default function S9CategoryScreen({ category, onPlay, onClaimBonus, gridR
           <strong>{formatS9Amount(PROMO_LEVEL_BONUS.current)} Max</strong>
         </div>
         <button type="button" className={styles.claimBtn} onClick={onClaimBonus}>
-          CLAIM NOW
+          DEPOSIT TO UNLOCK
         </button>
         <div className={styles.dots}>
           {[0, 1, 2, 3, 4].map((i) => (
@@ -79,8 +84,8 @@ export default function S9CategoryScreen({ category, onPlay, onClaimBonus, gridR
           ref={gridRef}
           games={games}
           onPlay={onPlay}
-          lobby={isLobby}
-          scrollable={!isLobby}
+          scrollable
+          fixedRows={2}
         />
         {!isLobby && (
           <p className={styles.categoryHint}>{config.title}</p>

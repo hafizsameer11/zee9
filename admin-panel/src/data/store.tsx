@@ -23,7 +23,8 @@ export interface AgentCreds {
   id: string
   phone: string
   displayName: string
-  referralCode: string
+  panelId?: number | null
+  referralCode?: string
   password: string
 }
 
@@ -51,6 +52,9 @@ interface Store extends State {
   updatePlayer: (id: string, p: Partial<Player>) => void
   setTxnStatus: (kind: 'deposits' | 'withdrawals', id: string, status: Txn['status']) => void
   assignWithdrawal: (id: string, agentId: string) => void
+  releaseWithdrawalsToC2c: (count: number) => Promise<void>
+  recallWithdrawalsFromC2c: (count: number) => Promise<void>
+  releaseWithdrawalIdsToC2c: (ids: string[]) => Promise<void>
   updateOffer: (id: string, p: Partial<Offer>) => void
   updateCashback: (id: string, p: Partial<CashbackTier>) => void
   addCashback: () => void
@@ -65,6 +69,7 @@ interface Store extends State {
   deleteCashback: (id: string) => void
   createAgent: (phone: string, displayName: string) => Promise<AgentCreds>
   makeAgent: (userId: string) => Promise<AgentCreds>
+  makeReferralAgent: (userId: string, active?: boolean) => Promise<void>
   approveAgentAccount: (id: string) => void
   rejectAgentAccount: (id: string) => void
   addAgentAccount: (agentId: string, data: { method: string; number: string; holder: string }) => Promise<void>
@@ -98,6 +103,7 @@ function mapGame(g: any): GameRow {
   const houseProfit = r(g.houseProfit ?? g.ggr ?? 0)
   return {
     id: g.id,
+    slug: g.slug,
     title: g.title,
     emoji: g.emoji,
     color: g.color,
@@ -117,13 +123,65 @@ function mapGame(g: any): GameRow {
   }
 }
 function mapAgent(a: any): Agent {
-  return { id: a.id, name: a.displayName, phone: a.phone, level: 1, walletsFilled: a.walletsFilled, active: a.agentActive, referrals: a.referrals ?? 0, commission: r(a.commission), commissionBalance: r(a.commissionBalance), joined: String(a.createdAt).slice(0, 10) }
+  return {
+    id: a.id,
+    name: a.displayName,
+    phone: a.phone,
+    panelId: a.panelId ?? null,
+    playerNo: a.playerNo != null ? Number(a.playerNo) : null,
+    orderSharePct: typeof a.orderSharePct === 'number' ? a.orderSharePct : 100,
+    level: 1,
+    walletsFilled: a.walletsFilled,
+    active: a.agentActive,
+    referrals: a.referrals ?? 0,
+    commission: r(a.commission),
+    commissionBalance: r(a.commissionBalance),
+    joined: String(a.createdAt).slice(0, 10),
+  }
 }
 function mapPlayer(u: any): Player {
-  return { id: u.id, name: u.displayName, phone: u.phone, balance: r(u.balance), bonus: r(u.bonus), deposited: r(u.deposited), withdrawn: r(u.withdrawn), status: USER_STATUS[u.status] ?? 'active', vip: u.vipLevel, referredBy: u.referredByName || u.referredById || undefined, joined: String(u.createdAt).slice(0, 10) }
+  return {
+    id: u.id,
+    name: u.displayName,
+    phone: u.phone,
+    balance: r(u.balance),
+    bonus: r(u.bonus),
+    deposited: r(u.deposited),
+    withdrawn: r(u.withdrawn),
+    status: USER_STATUS[u.status] ?? 'active',
+    vip: u.vipLevel,
+    referredBy: u.referredByName || u.referredById || undefined,
+    joined: String(u.createdAt).slice(0, 10),
+    playerNo: u.playerNo != null ? Number(u.playerNo) : null,
+    role: u.role,
+    referralAgentActive: !!u.referralAgentActive,
+  }
 }
 function mapTxn(t: any): Txn {
-  return { id: t.id, user: t.user?.displayName ?? '—', phone: t.user?.phone ?? '', amount: r(t.amount), method: METHOD[t.method] ?? 'Bank', status: TXN_STATUS[t.status] ?? 'pending', time: String(t.createdAt).replace('T', ' ').slice(0, 16) }
+  const panelId =
+    t.agentAccount?.user?.panelId ??
+    t.collectionOrder?.agent?.panelId ??
+    null
+  const panelName =
+    t.agentAccount?.user?.displayName ??
+    t.collectionOrder?.agent?.displayName ??
+    null
+  return {
+    id: t.id,
+    user: t.user?.displayName ?? '—',
+    phone: t.user?.phone ?? '',
+    amount: r(t.amount),
+    method: METHOD[t.method] ?? 'Bank',
+    status: TXN_STATUS[t.status] ?? 'pending',
+    time: String(t.createdAt).replace('T', ' ').slice(0, 16),
+    orderNo: t.collectionOrder?.orderNo ?? t.orderNo ?? null,
+    manualDone: !!t.collectionOrder?.manualDone,
+    orderStatus: t.collectionOrder?.status ?? null,
+    playerNo: t.user?.playerNo != null ? Number(t.user.playerNo) : null,
+    panelId: panelId != null ? Number(panelId) : null,
+    panelName,
+    c2cReleased: !!t.c2cReleased,
+  }
 }
 function mapCashback(c: any): CashbackTier {
   return { id: c.id, name: c.name, minLoss: r(c.minLoss), pct: c.pct, maxClaim: r(c.maxClaim), enabled: c.enabled }
@@ -257,25 +315,47 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     updateAgent: (id, p) => {
       patch('agents', (a) => listPatch(a, id, p))
       if (p.active !== undefined) run(() => api.post(`/admin/agents/${id}/active`, { active: p.active }))
+      if (p.orderSharePct !== undefined) {
+        run(() => api.post(`/admin/agents/${id}/order-share`, { orderSharePct: p.orderSharePct }), 'Order ranking saved')
+      }
     },
     updatePlayer: (id, p) => {
       patch('players', (a) => listPatch(a, id, p))
       if (p.status) run(() => api.post(`/admin/users/${id}/status`, { status: p.status === 'banned' ? 'BANNED' : 'ACTIVE' }), p.status === 'banned' ? 'Player banned' : 'Player unbanned')
     },
     setTxnStatus: (kind, id, status) => {
+      if (kind === 'deposits') {
+        showToast('Deposits are handled by C2C merchants — admin cannot approve or reject')
+        return
+      }
       patch(kind, (t) => listPatch(t as Txn[], id, { status }) as any)
       const call =
-        kind === 'deposits'
-          ? status === 'approved'
-            ? () => api.post(`/admin/deposits/${id}/approve`)
-            : () => api.post(`/admin/deposits/${id}/reject`, { reason: 'Rejected by admin' })
-          : status === 'approved'
-            ? () => api.post(`/admin/withdrawals/${id}/pay`, { trxId: 'MANUAL-' + Date.now() })
-            : () => api.post(`/admin/withdrawals/${id}/reject`, { reason: 'Rejected by admin' })
+        status === 'approved'
+          ? () => api.post(`/admin/withdrawals/${id}/pay`, { trxId: 'MANUAL-' + Date.now() })
+          : () => api.post(`/admin/withdrawals/${id}/reject`, { reason: 'Rejected by admin' })
       run(async () => { await call(); await loadAll() }, `Request ${status}`)
     },
     assignWithdrawal: (id, agentId) => {
       run(async () => { await api.post(`/admin/withdrawals/${id}/assign`, { agentId }); await loadAll() }, 'Assigned to agent')
+    },
+    releaseWithdrawalsToC2c: async (count) => {
+      await run(async () => {
+        const r = await api.post('/admin/withdrawals/release-c2c', { count })
+        await loadAll()
+        return r
+      }, `Sent ${count} to C2C pool`)
+    },
+    recallWithdrawalsFromC2c: async (count) => {
+      await run(async () => {
+        await api.post('/admin/withdrawals/recall-c2c', { count })
+        await loadAll()
+      }, `Recalled ${count} from C2C`)
+    },
+    releaseWithdrawalIdsToC2c: async (ids) => {
+      await run(async () => {
+        await api.post('/admin/withdrawals/release-c2c', { ids })
+        await loadAll()
+      }, `Sent ${ids.length} to C2C pool`)
     },
     updateOffer: (id, p) => {
       patch('offers', (o) => listPatch(o, id, p))
@@ -319,17 +399,22 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
     createAgent: async (phone, displayName) => {
       const creds = (await api.post('/admin/agents', { phone, displayName })) as AgentCreds
       await loadAll()
-      showToast('Agent created')
+      showToast('C2C merchant created')
       return creds
     },
     makeAgent: async (userId) => {
       const creds = (await api.post(`/admin/users/${userId}/make-agent`)) as AgentCreds
       await loadAll()
-      showToast('Promoted to agent')
+      showToast('Made C2C merchant')
       return creds
     },
+    makeReferralAgent: async (userId, active = true) => {
+      await api.post(`/admin/referral-agents/${userId}/active`, { active })
+      await loadAll()
+      showToast(active ? 'Agentship enabled (not C2C)' : 'Agentship removed')
+    },
     approveAgentAccount: (id) => {
-      run(async () => { await api.post(`/admin/agent-accounts/${id}/approve`); await loadAll() }, 'Account approved')
+      run(async () => { await api.post(`/admin/agent-accounts/${id}/approve`); await loadAll() }, 'Number verified — merchant can turn collection On')
     },
     rejectAgentAccount: (id) => {
       run(async () => { await api.post(`/admin/agent-accounts/${id}/reject`, {}); await loadAll() }, 'Account rejected')

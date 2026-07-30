@@ -1,27 +1,117 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PageHead, Pill, Avatar, money } from '../components/ui'
 import { useAdmin } from '../data/store'
-import type { AgentCreds } from '../data/store'
-import { CredsModal } from '../components/CredsModal'
 import { api } from '../api/client'
+import type { Player } from '../data/mock'
 
 const STATUS_TONE: Record<string, string> = { active: 'green', banned: 'red', new: 'blue' }
 
+function PlayerActions({
+  p,
+  onMakeAgent,
+  onOpen,
+  onBan,
+  onUnban,
+}: {
+  p: Player
+  onMakeAgent: () => void
+  onOpen: () => void
+  onBan: () => void
+  onUnban: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const wrap = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  if (p.status === 'banned') {
+    return (
+      <button type="button" className="btn btn-success btn-sm" onClick={onUnban}>
+        Unban
+      </button>
+    )
+  }
+
+  return (
+    <div ref={wrap} style={{ position: 'relative', display: 'inline-flex', gap: 8, justifyContent: 'flex-end' }}>
+      <button type="button" className="btn btn-outline btn-sm" onClick={() => setOpen((v) => !v)}>
+        More ▾
+      </button>
+      <button type="button" className="btn btn-light btn-sm" onClick={onOpen}>
+        Open
+      </button>
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: '100%',
+            marginTop: 4,
+            minWidth: 200,
+            background: '#fff',
+            border: '1px solid #e4e4ef',
+            borderRadius: 10,
+            boxShadow: '0 8px 24px rgba(20,18,50,.14)',
+            zIndex: 30,
+            padding: 6,
+          }}
+        >
+          {!p.referralAgentActive && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 4 }}
+              onClick={() => {
+                setOpen(false)
+                onMakeAgent()
+              }}
+              title="Referral Agentship"
+            >
+              Make Agent
+            </button>
+          )}
+          {p.referralAgentActive && (
+            <div className="muted" style={{ fontSize: 12, padding: '6px 8px' }}>
+              Agentship: On
+            </div>
+          )}
+          <button
+            type="button"
+            className="btn btn-danger btn-sm"
+            style={{ width: '100%', justifyContent: 'flex-start' }}
+            onClick={() => {
+              setOpen(false)
+              onBan()
+            }}
+          >
+            Ban
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Players() {
-  const { players, updatePlayer, makeAgent, showToast } = useAdmin()
+  const { players, updatePlayer, makeReferralAgent, showToast } = useAdmin()
   const nav = useNavigate()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'all' | 'active' | 'banned' | 'new'>('all')
-  const [creds, setCreds] = useState<AgentCreds | null>(null)
   const [searching, setSearching] = useState(false)
 
-  async function promote(id: string, e: React.MouseEvent) {
-    e.stopPropagation()
+  async function promoteAgentship(id: string) {
     try {
-      setCreds(await makeAgent(id))
+      await makeReferralAgent(id, true)
     } catch (err: any) {
-      showToast(err?.message || 'Failed to promote')
+      showToast(err?.message || 'Failed to enable agentship')
     }
   }
 
@@ -37,7 +127,13 @@ export default function Players() {
         return
       }
       if (list.length === 0) {
-        const local = players.find((p) => p.id.endsWith(term) || p.id === term || p.phone.includes(term))
+        const local = players.find(
+          (p) =>
+            String(p.playerNo ?? '') === term ||
+            p.id.endsWith(term) ||
+            p.id === term ||
+            p.phone.includes(term),
+        )
         if (local) {
           nav(`/users/${local.id}`)
           return
@@ -45,7 +141,12 @@ export default function Players() {
         showToast('No player found for that ID / phone / name')
         return
       }
-      const exact = list.find((u: any) => u.id === term || u.id.endsWith(term))
+      const exact = list.find(
+        (u: any) =>
+          String(u.playerNo) === term ||
+          u.id === term ||
+          u.id.endsWith(term),
+      )
       if (exact) {
         nav(`/users/${exact.id}`)
         return
@@ -65,12 +166,13 @@ export default function Players() {
         p.name.toLowerCase().includes(q.toLowerCase()) ||
         p.phone.includes(q) ||
         p.id.includes(q) ||
-        p.id.endsWith(q.trim())),
+        p.id.endsWith(q.trim()) ||
+        String(p.playerNo ?? '').includes(q.trim())),
   )
 
   return (
     <>
-      <PageHead title="Players" subtitle={`${players.length} registered players — open any ID to edit balance, wager, profile`} />
+      <PageHead title="Players" subtitle={`${players.length} registered players — Make Agent = agentship`} />
 
       <div className="flex between" style={{ marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
         <div className="tabs-bar" style={{ marginBottom: 0 }}>
@@ -124,7 +226,13 @@ export default function Players() {
                       </div>
                     </div>
                   </td>
-                  <td><code>{p.id.slice(-8)}</code></td>
+                  <td>
+                    <code>{p.playerNo != null ? p.playerNo : p.id.slice(-8)}</code>
+                    <div className="cell-sub" style={{ marginTop: 2 }}>
+                      {p.role === 'AGENT' && <Pill tone="violet">C2C</Pill>}
+                      {p.referralAgentActive && <Pill tone="blue">Agent</Pill>}
+                    </div>
+                  </td>
                   <td>
                     <Pill tone="gold">VIP {p.vip}</Pill>
                   </td>
@@ -137,23 +245,19 @@ export default function Players() {
                     <Pill tone={STATUS_TONE[p.status]}>{p.status}</Pill>
                   </td>
                   <td className="t-right" onClick={(e) => e.stopPropagation()}>
-                    {p.status === 'banned' ? (
-                      <button className="btn btn-success btn-sm" onClick={() => { updatePlayer(p.id, { status: 'active' }); showToast('Player unbanned') }}>
-                        Unban
-                      </button>
-                    ) : (
-                      <div className="flex gap8" style={{ justifyContent: 'flex-end' }}>
-                        <button className="btn btn-ghost btn-sm" onClick={(e) => promote(p.id, e)} title="Generate C2C agent login">
-                          Make agent
-                        </button>
-                        <button className="btn btn-light btn-sm" onClick={() => nav(`/users/${p.id}`)}>
-                          Open
-                        </button>
-                        <button className="btn btn-danger btn-sm" onClick={() => { updatePlayer(p.id, { status: 'banned' }); showToast('Player banned') }}>
-                          Ban
-                        </button>
-                      </div>
-                    )}
+                    <PlayerActions
+                      p={p}
+                      onMakeAgent={() => void promoteAgentship(p.id)}
+                      onOpen={() => nav(`/users/${p.id}`)}
+                      onBan={() => {
+                        updatePlayer(p.id, { status: 'banned' })
+                        showToast('Player banned')
+                      }}
+                      onUnban={() => {
+                        updatePlayer(p.id, { status: 'active' })
+                        showToast('Player unbanned')
+                      }}
+                    />
                   </td>
                 </tr>
               ))}
@@ -161,8 +265,6 @@ export default function Players() {
           </table>
         </div>
       </div>
-
-      {creds && <CredsModal creds={creds} onClose={() => setCreds(null)} />}
     </>
   )
 }

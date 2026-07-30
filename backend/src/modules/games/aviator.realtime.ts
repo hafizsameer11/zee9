@@ -6,6 +6,7 @@ import { logger } from '../../lib/logger.js'
 import { env } from '../../lib/env.js'
 import * as aviator from './aviator.service.js'
 import { registerGameWs } from './gameWsRouter.js'
+import { dispatchWsAction } from './wsActions.js'
 
 type Client = {
   ws: WebSocket
@@ -113,13 +114,30 @@ export function attachAviatorRealtime(_server: HttpServer) {
       }
 
       ws.on('message', (raw) => {
-        try {
-          const msg = JSON.parse(String(raw))
-          if (msg?.type === 'ping') send(ws, { type: 'pong', t: Date.now() })
-          if (msg?.type === 'refresh') kickAviatorRealtime()
-        } catch {
-          /* ignore */
-        }
+        void (async () => {
+          try {
+            const msg = JSON.parse(String(raw))
+            if (msg?.type === 'ping') {
+              send(ws, { type: 'pong', t: Date.now() })
+              return
+            }
+            if (msg?.type === 'refresh') {
+              kickAviatorRealtime()
+              return
+            }
+            await dispatchWsAction(
+              ws,
+              msg,
+              {
+                bet: async (m) => aviator.placeBet(client.userId, m.amount, m.slot ?? 0, m.autoAt),
+                cashout: async (m) => aviator.cashOut(client.userId, m.betId),
+              },
+              { afterOk: () => kickAviatorRealtime() },
+            )
+          } catch {
+            /* ignore */
+          }
+        })()
       })
 
       ws.on('close', () => {

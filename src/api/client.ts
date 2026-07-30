@@ -25,6 +25,21 @@ export class ApiError extends Error {
   }
 }
 
+function parseApiBody(text: string, status: number): any {
+  if (!text) return {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    if (status === 429 || /^too many/i.test(text)) {
+      throw new ApiError(429, 'RATE_LIMITED', 'Too many requests, try later')
+    }
+    throw new ApiError(status, 'PARSE_ERROR', text.slice(0, 120) || 'Invalid server response')
+  }
+}
+
+/** Single-flight refresh — parallel 401s must share one refresh call (token rotation). */
+let refreshInFlight: Promise<boolean> | null = null
+
 async function raw(path: string, opts: RequestInit, retry = true): Promise<any> {
   const access = getAccess()
   const res = await fetch(API_BASE + path, {
@@ -39,11 +54,11 @@ async function raw(path: string, opts: RequestInit, retry = true): Promise<any> 
   if (res.status === 401 && retry) {
     if (await tryRefresh()) return raw(path, opts, false)
     clearTokens()
+    throw new ApiError(401, 'UNAUTHORIZED', 'Session expired — please sign in again')
   }
 
   const text = await res.text()
-  let json: any = {}
-  try { json = text ? JSON.parse(text) : {} } catch { throw new ApiError(res.status, 'PARSE_ERROR', 'Invalid server response') }
+  const json = parseApiBody(text, res.status)
   if (!res.ok || json.ok === false) {
     const err = json.error || { code: 'ERROR', message: res.statusText }
     throw new ApiError(res.status, err.code, err.message)
@@ -52,21 +67,33 @@ async function raw(path: string, opts: RequestInit, retry = true): Promise<any> 
 }
 
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = localStorage.getItem(REFRESH_KEY)
-  if (!refreshToken) return false
-  try {
-    const res = await fetch(API_BASE + '/auth/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    })
-    const json = await res.json()
-    if (!res.ok || !json.ok) return false
-    setTokens(json.data.accessToken, json.data.refreshToken)
-    return true
-  } catch {
-    return false
-  }
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    const refreshToken = localStorage.getItem(REFRESH_KEY)
+    if (!refreshToken) return false
+    try {
+      const res = await fetch(API_BASE + '/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      })
+      const text = await res.text()
+      let json: any = {}
+      try {
+        json = text ? JSON.parse(text) : {}
+      } catch {
+        return false
+      }
+      if (!res.ok || !json.ok) return false
+      setTokens(json.data.accessToken, json.data.refreshToken)
+      return true
+    } catch {
+      return false
+    } finally {
+      refreshInFlight = null
+    }
+  })()
+  return refreshInFlight
 }
 
 export const api = {
@@ -96,10 +123,28 @@ export async function authRequest(kind: 'login' | 'register', body: Record<strin
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  const json = await res.json()
-  if (!res.ok || !json.ok) throw new ApiError(res.status, json.error?.code || 'ERROR', json.error?.message || 'Request failed')
+  const text = await res.text()
+  let json: any = {}
+  try {
+    json = text ? JSON.parse(text) : {}
+  } catch {
+    if (res.status === 429 || /^too many/i.test(text)) {
+      throw new ApiError(429, 'RATE_LIMITED', 'Too many login attempts. Please wait a few minutes and try again.')
+    }
+    throw new ApiError(res.status, 'PARSE_ERROR', text.slice(0, 120) || 'Invalid server response')
+  }
+  if (!res.ok || !json.ok) {
+    throw new ApiError(res.status, json.error?.code || 'ERROR', json.error?.message || 'Request failed')
+  }
   return json.data as {
-    user: { id: string; displayName: string; role: string; phone: string; referralCode?: string }
+    user: {
+      id: string
+      displayName: string
+      role: string
+      phone: string
+      referralCode?: string
+      playerNo?: number
+    }
     accessToken: string
     refreshToken: string
   }

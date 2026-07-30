@@ -1,19 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shell, StatusBar, TopBar, Toggle, Modal, fmt } from '../components/ui'
+import { Shell, StatusBar, TopBar, Toggle, fmt } from '../components/ui'
 import { useStore } from '../data/store'
+import { confirmRemainSec, mmss, payRemainSec, shouldShowConfirmCountdown, shouldShowPayCountdown } from '../lib/confirmWindow'
 
 export default function Collections() {
   const nav = useNavigate()
-  const { balance, freeze, collectionsOn, setCollectionsOn, orders: allOrders, accounts } = useStore()
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const { balance, freeze, collectionsOn, setCollectionsOn, orders: allOrders, accounts, walletAccount } = useStore()
   const [numberFilter, setNumberFilter] = useState('')
   const [methodFilter, setMethodFilter] = useState<'' | 'Jazzcash' | 'Easypaisa'>('')
+  const [now, setNow] = useState(Date.now())
 
-  const activeNumbers = useMemo(
-    () => accounts.filter((a) => a.on).map((a) => `${a.method}: ${a.number}`),
-    [accounts],
-  )
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
+
+  const activeAccount = useMemo(() => accounts.find((a) => a.on) ?? null, [accounts])
 
   const numberOptions = useMemo(() => {
     const fromAcc = accounts.map((a) => a.number)
@@ -51,8 +54,15 @@ export default function Collections() {
         </div>
 
         <div className="card wallet-row" onClick={() => nav('/accounts')} style={{ cursor: 'pointer' }}>
-          <span className="wr-k">Active numbers</span>
-          <span className="wr-v">{activeNumbers.length ? activeNumbers.join(' · ') : 'None — tap to set'} &#8250;</span>
+          <span className="wr-k">Wallet Account</span>
+          <span className="wr-v">
+            {activeAccount
+              ? `${activeAccount.number}`
+              : walletAccount && walletAccount !== '—'
+                ? walletAccount
+                : 'None — tap to set'}{' '}
+            &#8250;
+          </span>
         </div>
 
         <div className="filter-row" style={{ marginTop: 12 }}>
@@ -64,7 +74,9 @@ export default function Collections() {
           >
             <option value="">All numbers</option>
             {numberOptions.map((n) => (
-              <option key={n} value={n}>{n}</option>
+              <option key={n} value={n}>
+                {n}
+              </option>
             ))}
           </select>
           <select
@@ -79,7 +91,14 @@ export default function Collections() {
           </select>
         </div>
 
-        <div className="order-list-title">DEPOSIT QUEUE</div>
+        <div className="details-head">
+          <div className="order-list-title" style={{ margin: 0 }}>
+            DEPOSIT QUEUE
+          </div>
+          <div className="link" onClick={() => nav('/orders')} style={{ cursor: 'pointer' }}>
+            more
+          </div>
+        </div>
 
         {!collectionsOn ? (
           <div className="card empty">
@@ -92,49 +111,57 @@ export default function Collections() {
             No deposits for this filter
           </div>
         ) : (
-          orders.map((o) => (
-            <div className="card collect-order" key={o.id}>
-              <div className="co-lines">
-                <div className="oc-line">
-                  <span className="k">{o.method}</span>
-                  <span className="v">{fmt(o.amount)}</span>
+          orders.map((o) => {
+            const showConfirm = shouldShowConfirmCountdown(o.status, o.submittedAt)
+            const showPay = shouldShowPayCountdown(o.status, o.submittedAt, o.trxId)
+            const confirmLeft = showConfirm ? confirmRemainSec(o.submittedAt, now) : 0
+            const payLeft = showPay ? payRemainSec(o.createdAt || o.time.replace(' ', 'T'), now) : 0
+            return (
+              <div className="card collect-order" key={o.id}>
+                <div className="co-lines">
+                  <div className="oc-line">
+                    <span className="k">{o.method}</span>
+                    <span className="v">{fmt(o.amount)}</span>
+                  </div>
+                  {showPay && (
+                    <div className="oc-line">
+                      <span className="k">TRX WAIT</span>
+                      <span className="ol-timer">{mmss(payLeft)}</span>
+                    </div>
+                  )}
+                  {showConfirm && (
+                    <div className="oc-line">
+                      <span className="k">CONFIRM</span>
+                      <span className="ol-timer">{mmss(confirmLeft)}</span>
+                    </div>
+                  )}
+                  {(o.collectionHolder || o.playerName) && (
+                    <div className="oc-line">
+                      <span className="k">NAME</span>
+                      <span className="v">{o.collectionHolder || o.playerName}</span>
+                    </div>
+                  )}
+                  <div className="oc-line">
+                    <span className="k">YOUR NUMBER</span>
+                    <span className="v">{o.collectionAccount || '—'}</span>
+                  </div>
+                  <div className="oc-line">
+                    <span className="k">REWARD</span>
+                    <span className="v gold">{fmt(o.reward)}</span>
+                  </div>
                 </div>
-                <div className="oc-line">
-                  <span className="k">YOUR NUMBER</span>
-                  <span className="v">{o.collectionAccount || '—'}</span>
-                </div>
-                <div className="oc-line">
-                  <span className="k">REWARD</span>
-                  <span className="v gold">{fmt(o.reward)}</span>
+                <div className="oc-actions">
+                  <button className="btn btn-outline btn-sm" onClick={() => nav('/order/' + o.id)}>
+                    Open
+                  </button>
+                  <span className="status processing">{o.status}</span>
                 </div>
               </div>
-              <div className="oc-actions">
-                <button className="btn btn-outline btn-sm" onClick={() => setConfirmId(o.id)}>
-                  Open
-                </button>
-                <span className="status processing">{o.status}</span>
-              </div>
-            </div>
-          ))
+            )
+          })
         )}
         <div style={{ height: 24 }} />
       </div>
-
-      {confirmId && (
-        <Modal
-          body={
-            <>
-              Review this deposit carefully. Confirm only after you have received the exact amount on the number shown.
-            </>
-          }
-          onCancel={() => setConfirmId(null)}
-          onOk={() => {
-            const id = confirmId
-            setConfirmId(null)
-            nav('/order/' + id)
-          }}
-        />
-      )}
     </Shell>
   )
 }

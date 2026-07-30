@@ -1,26 +1,33 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import S9ModalShell from './S9ModalShell'
-import { api, uploadFile } from '../../../api/client'
-import { useWallet } from '../../../context/WalletContext'
+import MoneyRecordsModal from './MoneyRecordsModal'
+import { api, getAccess } from '../../../api/client'
 import { useConfig } from '../../../api/hooks'
 import { sound } from '../../../lib/sound'
 import styles from './AddCashModal.module.css'
 import base from './modal.module.css'
 
-type Props = { onClose: () => void }
+type Props = { onClose: () => void; initialAmount?: number }
 
-type Method = 'JAZZCASH' | 'EASYPAISA' | 'BANK' | 'WEGARS'
-type Channel = { id: string; method: Method; accountNumber: string; accountTitle: string; bankName?: string; instructions?: string; minAmount?: number; maxAmount?: number }
+type Method = 'JAZZCASH' | 'EASYPAISA'
+type PayMode = 'SIMPLE' | 'C2C'
 type BonusEstimate = { pct: number; bonusAmount: number; label: string }
 
-const METHOD_LABEL: Record<Method, string> = { JAZZCASH: 'Jazzcash', EASYPAISA: 'Easypaisa', BANK: 'Bank', WEGARS: 'Wegars' }
-const ALL_METHODS: Method[] = ['JAZZCASH', 'EASYPAISA', 'BANK', 'WEGARS']
-const FALLBACK_PRESETS = [300, 500, 1000, 2000, 4000, 5000, 10000, 20000, 50000]
+const METHOD_LABEL: Record<Method, string> = { JAZZCASH: 'Jazzcash', EASYPAISA: 'Easypaisa' }
+const ALL_METHODS: Method[] = ['JAZZCASH', 'EASYPAISA']
+const FALLBACK_PRESETS = [300, 500, 1000, 2000, 4000, 5000, 10000, 20000, 50000, 100000]
 
-const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #8b6914', background: '#1a0505', color: '#fff', fontSize: 13 }
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 12px',
+  borderRadius: 8,
+  border: '1px solid #8b6914',
+  background: '#1a0505',
+  color: '#fff',
+  fontSize: 13,
+}
 
-export default function AddCashModal({ onClose }: Props) {
-  const { refresh } = useWallet()
+export default function AddCashModal({ onClose, initialAmount }: Props) {
   const config = useConfig()
   const minDep = config?.limits.minDeposit ?? 300
   const maxDep = config?.limits.maxDeposit ?? 100000
@@ -30,32 +37,22 @@ export default function AddCashModal({ onClose }: Props) {
     return ALL_METHODS.filter((m) => config.methods[m])
   }, [config])
 
-  const [step, setStep] = useState<1 | 2>(1)
   const [method, setMethod] = useState<Method>(enabledMethods[0] ?? 'JAZZCASH')
-  const [channels, setChannels] = useState<Channel[]>([])
-  const [channel, setChannel] = useState<Channel | null>(null)
-  const [amount, setAmount] = useState(minDep)
+  const [payMode, setPayMode] = useState<PayMode>('C2C')
+  const startAmt =
+    initialAmount != null && initialAmount >= minDep && initialAmount <= maxDep
+      ? initialAmount
+      : minDep
+  const [amount, setAmount] = useState(startAmt)
   const [bonusEst, setBonusEst] = useState<BonusEstimate | null>(null)
-  const [trxId, setTrxId] = useState('')
-  const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  const submitLock = useRef(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
+  const [showRecords, setShowRecords] = useState(false)
 
   useEffect(() => {
     if (enabledMethods.length && !enabledMethods.includes(method)) setMethod(enabledMethods[0])
   }, [enabledMethods, method])
-
-  useEffect(() => {
-    setChannel(null)
-    api
-      .get(`/payment-channels?method=${method}`)
-      .then((list: Channel[]) => {
-        setChannels(list)
-        setChannel(list[0] ?? null)
-      })
-      .catch(() => setChannels([]))
-  }, [method])
 
   useEffect(() => {
     api
@@ -65,59 +62,38 @@ export default function AddCashModal({ onClose }: Props) {
   }, [amount])
 
   const bonus = Math.round(bonusEst?.bonusAmount ?? 0)
-  const effectiveMax = channel?.maxAmount ? Math.min(maxDep, channel.maxAmount / 100) : maxDep
-  const effectiveMin = channel?.minAmount ? Math.max(minDep, channel.minAmount / 100) : minDep
+  const methodShort = METHOD_LABEL[method]
 
-  function copy(t: string) {
-    navigator.clipboard?.writeText(t).catch(() => {})
-    setMsg('Copied')
-    window.setTimeout(() => setMsg(null), 1200)
-  }
-
-  function goPay() {
-    if (amount < effectiveMin) return setMsg(`Minimum deposit is Rs ${effectiveMin}`)
-    if (amount > effectiveMax) return setMsg(`Maximum deposit is Rs ${effectiveMax}`)
-    if (!channel) return setMsg('No payment account available for this method')
-    setMsg(null)
-    setStep(2)
-  }
-
-  async function submit() {
-    if (!trxId.trim()) return setMsg('Enter the Transaction ID')
+  async function goPay() {
+    if (submitLock.current || busy) return
+    if (payMode === 'SIMPLE') return setMsg(`${methodShort} Simple is coming soon`)
+    if (amount < minDep) return setMsg(`Minimum deposit is Rs ${minDep}`)
+    if (amount > maxDep) return setMsg(`Maximum deposit is Rs ${maxDep}`)
+    submitLock.current = true
     setBusy(true)
     setMsg(null)
     try {
-      let receiptUrl: string | undefined
-      if (file) {
-        const media = await uploadFile(file)
-        receiptUrl = media.url
+      // Server rotates a merchant account and returns a separate C2C pay URL
+      const data = await api.post('/deposits', { amount, method, autoAssign: true })
+      const payUrl = data?.paymentUrl || data?.paymentPath
+      if (!data?.orderNo || !payUrl) {
+        throw new Error('Could not open payment page')
       }
-      await api.post('/deposits', { amount, method, channelId: channel?.id, trxId: trxId.trim(), receiptUrl })
-      sound.play('success')
-      setDone(true)
-      refresh()
+      sound.play('click')
+      onClose()
+      const url = new URL(payUrl, window.location.origin)
+      const access = getAccess()
+      const refresh = localStorage.getItem('zee9-player-refresh')
+      if (access) url.searchParams.set('t', access)
+      if (refresh) url.searchParams.set('r', refresh)
+      window.location.assign(url.toString())
     } catch (e: any) {
       sound.play('error')
-      setMsg(e?.message || 'Deposit failed')
+      setMsg(e?.message || 'Could not start deposit')
+      submitLock.current = false
     } finally {
       setBusy(false)
     }
-  }
-
-  if (done) {
-    return (
-      <S9ModalShell title="Add Cash" onClose={onClose} wide hideSupport>
-        <div style={{ padding: '30px 20px', textAlign: 'center', color: '#fff' }}>
-          <div style={{ fontSize: 46 }}>✅</div>
-          <h3 style={{ color: '#8bd98b', margin: '10px 0' }}>Deposit submitted</h3>
-          <p style={{ fontSize: 13, color: '#e8d0a0' }}>
-            Your deposit of <b>Rs {amount}</b> is pending agent confirmation. Your wallet will be credited and you'll get a
-            notification once the agent confirms the payment.
-          </p>
-          <button className={styles.payBtn} style={{ marginTop: 16 }} onClick={onClose}>Done</button>
-        </div>
-      </S9ModalShell>
-    )
   }
 
   if (!enabledMethods.length) {
@@ -129,121 +105,132 @@ export default function AddCashModal({ onClose }: Props) {
   }
 
   return (
+    <>
     <S9ModalShell title="Add Cash" onClose={onClose} wide hideSupport>
-      {step === 1 ? (
-        <>
-          <p className={base.sectionTitle}><span>💰</span> Amount</p>
-          <div style={{ display: 'flex', gap: 6, padding: '0 12px 8px', flexWrap: 'wrap' }}>
-            {presets.filter((p) => p >= effectiveMin && p <= effectiveMax).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setAmount(p)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 8,
-                  border: '1px solid #8b6914',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: amount === p ? '#e65100' : 'transparent',
-                  color: amount === p ? '#fff' : '#c9a24a',
-                }}
-              >
-                Rs {p.toLocaleString('en-PK')}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 12px' }}>
-            <div className={styles.productActive}>
-              Rs {amount}
-              {bonus > 0 && <span className={styles.bonusTag}>+{bonus}</span>}
-            </div>
-            <input
-              type="number"
-              value={amount}
-              min={effectiveMin}
-              max={effectiveMax}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              style={{ ...inputStyle, width: 100 }}
-              aria-label="Amount"
-            />
-          </div>
-          {bonusEst && bonusEst.pct > 0 && (
-            <p style={{ fontSize: 11, color: '#8bd98b', padding: '4px 12px 0', margin: 0 }}>
-              {bonusEst.label}: {bonusEst.pct}% bonus (Rs {bonus} after approval)
-            </p>
-          )}
-
-          <p className={base.sectionTitle}><span>💳</span> Select payment method</p>
-          <div className={styles.tabs}>
-            {enabledMethods.map((m) => (
-              <button key={m} type="button" className={method === m ? styles.tabOn : styles.tab} onClick={() => setMethod(m)}>
-                {METHOD_LABEL[m]}
-              </button>
-            ))}
-          </div>
-
-          <p className={base.sectionTitle}><span>🏦</span> Send payment to this account</p>
-          {channels.length > 1 && (
-            <div style={{ display: 'flex', gap: 6, padding: '0 12px 8px', flexWrap: 'wrap' }}>
-              {channels.map((c) => (
-                <button key={c.id} type="button" onClick={() => setChannel(c)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #8b6914', fontSize: 11, fontWeight: 700, background: channel?.id === c.id ? '#e65100' : 'transparent', color: channel?.id === c.id ? '#fff' : '#c9a24a' }}>
-                  {c.accountNumber}
-                </button>
-              ))}
-            </div>
-          )}
-          <div style={{ padding: '0 12px' }}>
-            {channel ? (
-              <div style={{ border: '1px solid #8b6914', borderRadius: 10, padding: 12, background: 'rgba(0,0,0,.25)' }}>
-                {([
-                  ['Account No', channel.accountNumber, true],
-                  ['Account Title', channel.accountTitle, false],
-                  ...(channel.bankName ? [['Bank', channel.bankName, false] as [string, string, boolean]] : []),
-                ] as [string, string, boolean][]).map(([k, v, c]) => (
-                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <span style={{ color: '#c9a24a', fontSize: 12, width: 90 }}>{k}</span>
-                    <b style={{ color: '#fff', fontSize: 14, flex: 1 }}>{v}</b>
-                    {c && <button type="button" onClick={() => copy(v)} style={{ background: '#e65100', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>copy</button>}
-                  </div>
-                ))}
-                {channel.instructions && <p style={{ color: '#e8d0a0', fontSize: 11, margin: '4px 0 0' }}>{channel.instructions}</p>}
-              </div>
-            ) : (
-              <p style={{ color: '#ff8a80', fontSize: 12 }}>No {METHOD_LABEL[method]} account available right now.</p>
-            )}
-          </div>
-
-          {msg && <p style={{ color: msg === 'Copied' ? '#8bd98b' : '#ff8a80', fontSize: 12, padding: '6px 12px', margin: 0 }}>{msg}</p>}
-
-          <div className={styles.footer}>
-            <button type="button" className={styles.payBtn} onClick={goPay} disabled={!channel}>I've sent the payment →</button>
-          </div>
-        </>
-      ) : (
-        <>
-          <p className={base.sectionTitle}><span>🧾</span> Confirm your payment</p>
-          <div style={{ padding: '0 12px', color: '#e8d0a0', fontSize: 13 }}>
-            You are depositing <b style={{ color: '#fff' }}>Rs {amount}</b> via <b style={{ color: '#fff' }}>{METHOD_LABEL[method]}</b> to <b style={{ color: '#fff' }}>{channel?.accountNumber}</b>.
-          </div>
-
-          <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input placeholder="Transaction ID (TID)" value={trxId} onChange={(e) => setTrxId(e.target.value)} style={inputStyle} />
-            <label style={{ color: '#c9a24a', fontSize: 12 }}>
-              Upload payment screenshot (optional)
-              <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ ...inputStyle, marginTop: 4, padding: 8 }} />
-            </label>
-            {file && <span style={{ color: '#8bd98b', fontSize: 11 }}>📎 {file.name}</span>}
-          </div>
-
-          {msg && <p style={{ color: '#ff8a80', fontSize: 12, padding: '6px 12px', margin: 0 }}>{msg}</p>}
-
-          <div className={styles.footer} style={{ gap: 8 }}>
-            <button type="button" className={styles.tab} style={{ flex: 1 }} onClick={() => setStep(1)}>Back</button>
-            <button type="button" className={styles.payBtn} style={{ flex: 2 }} onClick={submit} disabled={busy}>{busy ? 'Submitting…' : 'Submit deposit'}</button>
-          </div>
-        </>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 12px 4px' }}>
+        <button
+          type="button"
+          onClick={() => setShowRecords(true)}
+          style={{
+            border: '1px solid #8b6914',
+            background: 'rgba(0,0,0,.25)',
+            color: '#ffd54f',
+            borderRadius: 8,
+            padding: '5px 10px',
+            fontSize: 11,
+            fontWeight: 800,
+            cursor: 'pointer',
+          }}
+        >
+          Recharge Records
+        </button>
+      </div>
+      <p className={base.sectionTitle}><span>💰</span> Amount</p>
+      <div style={{ display: 'flex', gap: 6, padding: '0 12px 8px', flexWrap: 'wrap' }}>
+        {presets.filter((p) => p >= minDep && p <= maxDep).map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setAmount(p)}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              border: '1px solid #8b6914',
+              fontSize: 12,
+              fontWeight: 700,
+              background: amount === p ? '#e65100' : 'transparent',
+              color: amount === p ? '#fff' : '#c9a24a',
+            }}
+          >
+            Rs {p.toLocaleString('en-PK')}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 12px' }}>
+        <div className={styles.productActive}>
+          Rs {amount}
+          {bonus > 0 && <span className={styles.bonusTag}>+{bonus}</span>}
+        </div>
+        <input
+          type="number"
+          value={amount}
+          min={minDep}
+          max={maxDep}
+          onChange={(e) => setAmount(Number(e.target.value))}
+          style={{ ...inputStyle, width: 100 }}
+          aria-label="Amount"
+        />
+      </div>
+      {bonusEst && bonusEst.pct > 0 && (
+        <p style={{ fontSize: 11, color: '#8bd98b', padding: '4px 12px 0', margin: 0 }}>
+          {bonusEst.label}: {bonusEst.pct}% bonus (Rs {bonus} after approval)
+        </p>
       )}
+
+      <p className={base.sectionTitle}><span>💳</span> Select payment method</p>
+      <div className={styles.tabs}>
+        {enabledMethods.map((m) => (
+          <button
+            key={m}
+            type="button"
+            className={method === m ? styles.tabOn : styles.tab}
+            onClick={() => { setMethod(m); setPayMode('C2C') }}
+          >
+            {METHOD_LABEL[m]}
+          </button>
+        ))}
+      </div>
+
+      <div className={styles.channels} style={{ padding: '0 12px', overflowX: 'auto' }}>
+        <button
+          type="button"
+          className={styles.channelOn}
+          onClick={() => setPayMode('C2C')}
+          style={{ minWidth: 110, flex: '0 0 auto' }}
+        >
+          <span className={styles.chBonus}>C2C</span>
+          <span className={styles.chLabel}>{methodShort} (C2C)</span>
+          <span className={styles.jazzLogo}>{method === 'JAZZCASH' ? 'Jazz Cash' : 'Easypaisa'}</span>
+        </button>
+      </div>
+
+      <div style={{ padding: '8px 12px 0' }}>
+        <div
+          style={{
+            border: '1px solid #8b6914',
+            borderRadius: 10,
+            padding: 14,
+            background: 'rgba(0,0,0,.25)',
+          }}
+        >
+          <b style={{ color: '#ffd54f', fontSize: 13 }}>C2C merchant payment</b>
+          <p style={{ color: '#e8d0a0', fontSize: 12, margin: '8px 0 0' }}>
+            You will be taken to a secure payment page with a merchant {methodShort} account and step-by-step
+            instructions. A <b>new account</b> is assigned every time.
+          </p>
+        </div>
+      </div>
+
+      {msg && (
+        <p style={{ color: '#ff8a80', fontSize: 12, padding: '6px 12px', margin: 0 }}>
+          {msg}
+        </p>
+      )}
+
+      <div className={styles.footer}>
+        <button
+          type="button"
+          className={styles.payBtn}
+          onClick={() => void goPay()}
+          disabled={busy}
+        >
+          {busy ? 'Opening…' : 'Continue to payment →'}
+        </button>
+      </div>
     </S9ModalShell>
+    {showRecords && (
+      <MoneyRecordsModal kind="deposit" onClose={() => setShowRecords(false)} />
+    )}
+    </>
   )
 }

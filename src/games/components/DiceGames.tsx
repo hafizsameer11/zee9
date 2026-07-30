@@ -13,7 +13,7 @@ import { useDesignScale } from '../hooks/useDesignScale'
 import Zee9PremiumFrame from './Zee9PremiumFrame'
 import styles from './premiumFrame.module.css'
 
-const STAKES = [50, 100, 500, 1000]
+const STAKES = [10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
 
 function formatPkr(n: number) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -201,9 +201,9 @@ function DiceControls({
   return (
     <div className="shrink-0 bg-[#0a0603]/80 border border-white/10 rounded-xl p-4 flex items-center gap-4">
       <div className="rounded-full bg-neutral-900 border border-white/10 flex items-center px-2">
-        <button type="button" className="size-8 border-0 bg-transparent text-[#a1a1a1] cursor-pointer" disabled={disabled} onClick={() => setBetAmount(Math.max(50, betAmount - 50))}>−</button>
+        <button type="button" className="size-8 border-0 bg-transparent text-[#a1a1a1] cursor-pointer" disabled={disabled} onClick={() => setBetAmount(Math.max(10, betAmount - 10))}>−</button>
         <span className="font-bold text-sm w-20 text-center">PKR {formatPkr(betAmount)}</span>
-        <button type="button" className="size-8 border-0 bg-transparent text-[#a1a1a1] cursor-pointer" disabled={disabled} onClick={() => setBetAmount(Math.min(5000, betAmount + 50))}>+</button>
+        <button type="button" className="size-8 border-0 bg-transparent text-[#a1a1a1] cursor-pointer" disabled={disabled} onClick={() => setBetAmount(Math.min(10000, betAmount + 10))}>+</button>
       </div>
       <div className="flex gap-2">
         {STAKES.map((s) => (

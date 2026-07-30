@@ -68,7 +68,7 @@ export default function S9AssetIcon({ name, size = 40, className }: Props) {
 
   return (
     <span className={`${styles.wrap} ${className ?? ''}`} style={{ width: size, height: size }} aria-hidden>
-      <img className={styles.img} src={src} alt="" draggable={false} />
+      <img className={styles.img} src={src} alt="" width={size} height={size} decoding="async" draggable={false} />
     </span>
   )
 }

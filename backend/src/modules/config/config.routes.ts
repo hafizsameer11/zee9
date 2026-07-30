@@ -22,11 +22,16 @@ configRoutes.get(
       bonuses: {
         registration: s.registrationBonus,
         dailyOpen: s.dailyOpenBonus,
+        dailyRewards: s.dailyRewards?.length === 7 ? s.dailyRewards : [4, 9, 3, 5, 8, 6, 10],
         deposit: [s.depositBonus1, s.depositBonus2, s.depositBonus3],
         dailyDeposit: s.dailyDepositBonus,
       },
       wager: { bonus: s.bonusWager, deposit: s.depositWager },
-      wheel: { depositPerSpin: s.wheelDepositPerSpin },
+      wheel: {
+        depositPerSpin: s.wheelDepositPerSpin,
+        depositTiers: s.wheelDepositTiers,
+        betTiers: s.wheelBetTiers,
+      },
       layout: { csUpperRight: s.csUpperRight, wheelsLowerTop: s.wheelsLowerTop },
     })
   }),

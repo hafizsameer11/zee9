@@ -8,11 +8,13 @@ export default function Login() {
   const navigate = useNavigate()
   const { login, register } = usePlayerAuth()
   const captured = getReferral()
-  const [mode, setMode] = useState<'login' | 'register'>(captured.shareCode || captured.channel ? 'register' : 'login')
+  const [mode, setMode] = useState<'login' | 'register'>(
+    captured.playerId || captured.shareCode || captured.channel ? 'register' : 'login',
+  )
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [referral, setReferral] = useState(captured.shareCode || '')
+  const [referral, setReferral] = useState(captured.playerId || captured.shareCode || '')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -32,8 +34,13 @@ export default function Login() {
           setBusy(false)
           return
         }
+        const code = referral.trim()
+        const playerId =
+          captured.playerId ||
+          (/^\d{6,10}$/.test(code) ? code : undefined)
         await register(phone.trim(), password, name.trim(), {
-          shareCode: referral.trim() || undefined,
+          playerId,
+          shareCode: code || undefined,
           channel: captured.channel,
           bindCode: captured.bindCode,
         })
@@ -79,12 +86,27 @@ export default function Login() {
       <input type="tel" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
       <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
       {mode === 'register' && (
-        <input placeholder="Referral code (optional)" value={referral} onChange={(e) => setReferral(e.target.value)} />
+        <input
+          placeholder="Player ID / referral code"
+          value={referral}
+          onChange={(e) => setReferral(e.target.value)}
+        />
       )}
-      {mode === 'register' && captured.channel && (
+      {mode === 'register' && (captured.playerId || captured.channel) && (
         <p style={{ color: '#8bd98b', fontSize: 11, margin: 0 }}>
-          ✓ Invited via channel <b>{captured.channel}</b>
-          {captured.shareCode ? ` · code ${captured.shareCode}` : ''}
+          ✓ Invited
+          {captured.playerId ? (
+            <>
+              {' '}
+              by player <b>{captured.playerId}</b>
+            </>
+          ) : null}
+          {captured.channel ? (
+            <>
+              {' '}
+              via channel <b>{captured.channel}</b>
+            </>
+          ) : null}
         </p>
       )}
 

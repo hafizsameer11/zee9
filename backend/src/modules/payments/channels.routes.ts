@@ -56,7 +56,7 @@ channelRoutes.get(
     }
 
     const channels = await prisma.paymentChannel.findMany({
-      where: { enabled: true, ...(method ? { method } : {}) },
+      where: { enabled: true, agentFloat: false, ...(method ? { method } : {}) },
       orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
       select: {
         id: true,

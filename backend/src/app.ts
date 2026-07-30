@@ -21,16 +21,32 @@ import { bonusRoutes } from './modules/bonuses/bonuses.routes.js'
 import { wheelRoutes } from './modules/wheel/wheel.routes.js'
 import { gamesRoutes } from './modules/games/games.routes.js'
 import { agentRoutes } from './modules/agents/agents.routes.js'
+import { referralAgentRoutes } from './modules/referralAgent/referralAgent.routes.js'
+import { mentorRoutes } from './modules/mentor/mentor.routes.js'
 import { adminRoutes } from './modules/admin/admin.routes.js'
+import { vipRoutes } from './modules/vip/vip.routes.js'
+import { freeCashRoutes } from './modules/freeCash/freeCash.routes.js'
 
 export function createApp() {
   const app = express()
+
+  // Nginx terminates TLS and forwards X-Forwarded-For — required for correct rate-limit keys
+  app.set('trust proxy', 1)
+  // Authenticated JSON APIs must not use ETag/304 — browsers revalidate GETs and then
+  // fetch() receives an empty body, which breaks SPA clients (mentor/c2c/admin panels).
+  app.set('etag', false)
 
   app.use(helmet({ crossOriginResourcePolicy: false }))
   app.use(cors({ origin: env.corsOrigins, credentials: true }))
   app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
   app.use(pinoHttp({ logger, autoLogging: { ignore: (req) => req.url === '/health' } }))
+  app.use((req, res, next) => {
+    if (req.path.startsWith(env.apiPrefix) || req.path === '/health') {
+      res.setHeader('Cache-Control', 'no-store')
+    }
+    next()
+  })
 
   // Static uploads (receipts/proofs), served read-only
   app.use('/uploads', express.static(path.resolve(env.uploadDir), { index: false, dotfiles: 'deny' }))
@@ -48,9 +64,13 @@ export function createApp() {
   api.use('/withdrawals', withdrawalRoutes)
   api.use('/referrals', referralRoutes)
   api.use('/bonuses', bonusRoutes)
+  api.use('/vip', vipRoutes)
+  api.use('/free-cash', freeCashRoutes)
   api.use('/wheel', wheelRoutes)
   api.use('/games', gamesRoutes)
   api.use('/agent', agentRoutes)
+  api.use('/referral-agent', referralAgentRoutes)
+  api.use('/mentor', mentorRoutes)
   api.use('/admin', adminRoutes)
 
   app.use(env.apiPrefix, api)

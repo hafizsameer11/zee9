@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { useSound } from '../../lib/sound'
-import { api } from '../../api/client'
 import { GRID_SIZE } from '../engines/mines'
+import { connectMinesSocket } from '../lib/minesSocket'
 import type { GameComponentProps } from '../types'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import {
@@ -20,8 +20,9 @@ import {
   TreasureChestIcon,
 } from './minesClassicGfx'
 import styles from './minesGame.module.css'
+import AddCashModal from '../../components/s9/modals/AddCashModal'
 
-const BET_STEPS = [10, 25, 50, 100, 250, 500, 1000, 5000]
+const BET_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
 const MULT_STEPS = 6
 
 function formatAmount(n: number) {
@@ -53,6 +54,20 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
   const [mineCount, setMineCount] = useState(2)
   const [round, setRound] = useState<Round | null>(null)
   const [busy, setBusy] = useState(false)
+  const [showAddCash, setShowAddCash] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const socketRef = useRef<ReturnType<typeof connectMinesSocket> | null>(null)
+
+  useEffect(() => {
+    const sock = connectMinesSocket({
+      onError: (message) => onMessage?.(message),
+    })
+    socketRef.current = sock
+    return () => {
+      sock.close()
+      socketRef.current = null
+    }
+  }, [onMessage])
 
   // Fair multipliers only — house edge is applied server-side via mine outcomes.
   const mult = useCallback((revealed: number, mines: number) => {
@@ -96,11 +111,16 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
     }
     setBusy(true)
     try {
-      const res = await api.post('/games/mines/start', { bet: betAmount, mines: mineCount })
+      const sock = socketRef.current
+      if (!sock) throw new Error('Not connected')
+      const res = await sock.request<{ roundId: string }>('start', {
+        bet: betAmount,
+        mines: mineCount,
+      })
       play('bet')
       setRound({ roundId: res.roundId, mineCount, bet: betAmount, active: true, gems: new Set(), mines: new Set(), bomb: null, multiplier: 0 })
       onMessage?.(null)
-      refresh()
+      void refresh()
     } catch (e: any) {
       play('error')
       onMessage?.(e?.message || 'Could not place bet')
@@ -115,22 +135,30 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
       setBusy(true)
       play('reveal', { volume: 0.55 })
       try {
-        const res = await api.post(`/games/mines/${round.roundId}/reveal`, { tile: index })
+        const sock = socketRef.current
+        if (!sock) throw new Error('Not connected')
+        const res = await sock.request<{
+          safe: boolean
+          state?: string
+          mines?: number[]
+          multiplier?: number
+          payout?: number
+        }>('reveal', { roundId: round.roundId, tile: index })
         if (res.safe === false) {
           play('boom')
           setTimeout(() => play('lose', { volume: 0.7 }), 180)
           setRound((r) => (r ? { ...r, active: false, bomb: index, mines: new Set(res.mines), multiplier: 0 } : r))
           onMessage?.('Hit a mine!')
-          refresh()
+          void refresh()
         } else if (res.state === 'CASHED_OUT') {
           play('gem')
           setTimeout(() => play('win'), 200)
-          setRound((r) => (r ? { ...r, active: false, gems: new Set([...r.gems, index]), mines: new Set(res.mines), multiplier: res.multiplier } : r))
-          onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
-          refresh()
+          setRound((r) => (r ? { ...r, active: false, gems: new Set([...r.gems, index]), mines: new Set(res.mines), multiplier: res.multiplier ?? 0 } : r))
+          onMessage?.(`Won Rs ${formatCompact(res.payout ?? 0)}`)
+          void refresh()
         } else {
           play('gem')
-          setRound((r) => (r ? { ...r, gems: new Set([...r.gems, index]), multiplier: res.multiplier } : r))
+          setRound((r) => (r ? { ...r, gems: new Set([...r.gems, index]), multiplier: res.multiplier ?? 0 } : r))
         }
       } catch (e: any) {
         play('error')
@@ -146,12 +174,17 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
     if (!round?.active || round.gems.size === 0 || busy) return
     setBusy(true)
     try {
-      const res = await api.post(`/games/mines/${round.roundId}/cashout`)
+      const sock = socketRef.current
+      if (!sock) throw new Error('Not connected')
+      const res = await sock.request<{ mines?: number[]; multiplier: number; payout: number }>(
+        'cashout',
+        { roundId: round.roundId },
+      )
       play('cashout')
       setTimeout(() => play('coin'), 220)
       setRound((r) => (r ? { ...r, active: false, mines: new Set(res.mines), multiplier: res.multiplier } : r))
       onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
-      refresh()
+      void refresh()
     } catch (e: any) {
       play('error')
       onMessage?.(e?.message || 'Cash out failed')
@@ -179,6 +212,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
   const activeStep = playing ? gemsFound : 0
 
   return (
+    <>
     <div className={styles.root} ref={viewportRef}>
       <div style={getDesignScaleShellStyle(layout)}>
         <div className={styles.canvas} style={getDesignCanvasStyle(layout)}>
@@ -213,13 +247,45 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
           </div>
 
           <div className={styles.topRight}>
-            <button type="button" className={styles.addBtn}>
+            <button
+              type="button"
+              className={styles.addBtn}
+              onClick={() => {
+                setMenuOpen(false)
+                setShowAddCash(true)
+              }}
+            >
               <span>ADD</span>
               <CartWagonIcon className={styles.cartIcon} />
             </button>
-            <button type="button" className={styles.menuBtn} aria-label="Menu">
+            <button
+              type="button"
+              className={styles.menuBtn}
+              aria-label="Menu"
+              onClick={() => setMenuOpen((v) => !v)}
+            >
               <MenuDiamondsIcon />
             </button>
+            {menuOpen && (
+              <div className={styles.menuPanel} role="menu">
+                <button type="button" className={styles.menuItem} onClick={() => navigate('/home')}>
+                  Exit to lobby
+                </button>
+                <button
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setShowAddCash(true)
+                  }}
+                >
+                  Add cash
+                </button>
+                <button type="button" className={styles.menuItem} onClick={() => setMenuOpen(false)}>
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -389,5 +455,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
         </div>
       </div>
     </div>
+    {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    </>
   )
 }

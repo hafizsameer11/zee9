@@ -1,0 +1,274 @@
+.page {
+  min-height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12px;
+  background:
+    radial-gradient(ellipse at top, rgba(230, 81, 0, 0.18), transparent 55%),
+    linear-gradient(180deg, #1a0505 0%, #0d0202 100%);
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.card {
+  width: min(420px, 100%);
+  margin: 8px auto 24px;
+  background: linear-gradient(180deg, #2a1008, #140606);
+  border: 1px solid #8b6914;
+  border-radius: 16px;
+  padding: 16px;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.back {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #8b6914;
+  background: #1a0505;
+  color: #ffd54f;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.brand {
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffd54f;
+}
+
+.order {
+  font-size: 11px;
+  color: #c9a24a;
+  word-break: break-all;
+}
+
+.timer {
+  margin-left: auto;
+  min-width: 58px;
+  text-align: center;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #1b5e20;
+  color: #c8e6c9;
+  font-size: 13px;
+}
+
+.timerDead {
+  background: #b71c1c;
+  color: #ffcdd2;
+}
+
+.amountBox {
+  text-align: center;
+  padding: 14px 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(139, 105, 20, 0.55);
+  margin-bottom: 14px;
+}
+
+.amountLabel {
+  font-size: 11px;
+  color: #c9a24a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.amount {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  margin: 4px 0 8px;
+}
+
+.methodPill {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffb300, #e65100);
+  color: #1a0505;
+}
+
+.account {
+  border-radius: 12px;
+  border: 1px solid #8b6914;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.row:last-child {
+  margin-bottom: 0;
+}
+
+.row > span {
+  font-size: 11px;
+  color: #c9a24a;
+}
+
+.row b {
+  font-size: 15px;
+  color: #fff;
+}
+
+.numRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.number {
+  font-size: 20px !important;
+  letter-spacing: 0.03em;
+  flex: 1;
+}
+
+.copy {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-weight: 800;
+  font-size: 12px;
+  background: #e65100;
+  color: #fff;
+}
+
+.howto {
+  margin-bottom: 14px;
+}
+
+.howto h4 {
+  margin: 0 0 8px;
+  color: #ffd54f;
+  font-size: 13px;
+}
+
+.howto ol {
+  margin: 0;
+  padding-left: 18px;
+  color: #e8d0a0;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.warn {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: #ffcc80;
+}
+
+.proof {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.proof label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #c9a24a;
+}
+
+.proof input[type='text'],
+.proof input:not([type]),
+.proof input[type='file'] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #8b6914;
+  background: #1a0505;
+  color: #fff;
+  font-size: 13px;
+}
+
+.fileName {
+  font-size: 11px;
+  color: #8bd98b;
+}
+
+.primary {
+  width: 100%;
+  margin-top: 4px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 2px solid #fff;
+  background: linear-gradient(180deg, #f5d76e, #a67c00);
+  color: #1a0505;
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.error {
+  color: #ff8a80;
+  font-size: 12px;
+  margin: 0;
+}
+
+.muted {
+  color: #e8d0a0;
+  font-size: 13px;
+}
+
+.success {
+  text-align: center;
+  padding: 18px 8px 8px;
+}
+
+.successIcon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background: #2e7d32;
+  color: #fff;
+  font-size: 28px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+}
+
+.success h3 {
+  margin: 0 0 8px;
+  color: #8bd98b;
+}
+
+.success p {
+  color: #e8d0a0;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.expired {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.expired p {
+  color: #ff8a80;
+  font-size: 13px;
+}

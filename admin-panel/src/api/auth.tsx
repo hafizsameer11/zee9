@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { api, clearTokens, getAccess, loginRequest, setTokens } from './client'
+import { api, clearTokens, getAccess, loginRequest, setTokens, SESSION_EXPIRED_EVENT } from './client'
 
 interface Admin {
   id: string
@@ -26,13 +26,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           const me = await api.get('/me')
           if (me.role === 'ADMIN') setAdmin({ id: me.id, name: me.displayName, role: me.role })
-          else clearTokens()
+          else {
+            clearTokens()
+            setAdmin(null)
+          }
         } catch {
           clearTokens()
+          setAdmin(null)
         }
       }
       setReady(true)
     })()
+  }, [])
+
+  useEffect(() => {
+    const onExpired = () => setAdmin(null)
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
   }, [])
 
   async function login(phone: string, password: string) {
@@ -46,7 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const refresh = localStorage.getItem('zee9-admin-refresh')
       if (refresh) await api.post('/auth/logout', { refreshToken: refresh })
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     clearTokens()
     setAdmin(null)
   }

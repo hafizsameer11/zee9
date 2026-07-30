@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
-import { rollTwoDice, upDownPayout, type UpDownChoice } from '../engines/dice'
+import { getAccess } from '../../api/client'
+import { type UpDownChoice } from '../engines/dice'
+import { connectSevenUpSocket } from '../lib/sevenUpSocket'
 import type { GameComponentProps } from '../types'
 import { useDesignScale } from '../hooks/useDesignScale'
 import UpDownDesignUI, {
@@ -14,9 +16,9 @@ import UpDownDesignUI, {
 import { chipColorForValue } from './upDownChips'
 import { zoneForSum } from './upDownClassicGfx'
 import styles from './premiumFrame.module.css'
+import AddCashModal from '../../components/s9/modals/AddCashModal'
 
 const ROUND_SEC = 12
-const RESULT_MS = 2500
 
 const AI_PLAYERS: Omit<AiPlayer, 'avatar'>[] = [
   { id: 'emmett', name: 'Emmett', balance: 72589, badge: 'WINNER', side: 'left' },
@@ -36,7 +38,7 @@ function avatarFor(id: string) {
 
 const INITIAL_HISTORY = [10, 7, 8, 7, 3, 10, 6, 8, 5, 12, 2, 9, 4, 11, 6]
 const INITIAL_ZONE_TOTALS: Record<UpDownChoice, number> = { down: 6170, seven: 690, up: 6670 }
-const CHIP_VALUES = [10, 50, 100, 500, 1000] as const
+const CHIP_VALUES = [10, 50, 100, 500, 1000, 2000, 5000, 10000] as const
 
 let chipIdSeq = 0
 function nextChipId() {
@@ -87,11 +89,18 @@ function seedChipsForZone(zone: UpDownChoice, count: number): TableChip[] {
 
 type MyBets = Record<UpDownChoice, number>
 
+function uiPhaseFromServer(p: string | undefined): 'betting' | 'rolling' | 'result' {
+  if (p === 'reveal') return 'result'
+  if (p === 'locked') return 'rolling'
+  return 'betting'
+}
+
 export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef)
-  const { balance, debit, credit, canAfford } = useWallet()
+  const { balance, canAfford, refresh } = useWallet()
+  const live = !!getAccess()
 
   const [betAmount, setBetAmount] = useState(defaultBet >= 10 ? defaultBet : 100)
   const [phase, setPhase] = useState<'betting' | 'rolling' | 'result'>('betting')
@@ -108,6 +117,8 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   const [aiBalances, setAiBalances] = useState(() =>
     Object.fromEntries(AI_PLAYERS.map((p) => [p.id, p.balance])),
   )
+  const [showAddCash, setShowAddCash] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const seatRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const zoneRefs = useRef<Record<UpDownChoice, HTMLDivElement | null>>({
@@ -117,6 +128,11 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   })
   const selfRef = useRef<HTMLDivElement | null>(null)
   const pendingLands = useRef<Map<string, { zone: UpDownChoice; value: number }>>(new Map())
+  const lastPeriodRef = useRef<string | null>(null)
+  const revealedPeriodRef = useRef<string | null>(null)
+  const myBetsRef = useRef(myBets)
+  myBetsRef.current = myBets
+  const socketRef = useRef<ReturnType<typeof connectSevenUpSocket> | null>(null)
 
   const registerSeatRef = useCallback((playerId: string, el: HTMLDivElement | null) => {
     seatRefs.current[playerId] = el
@@ -188,17 +204,61 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
     [addTableChip, getCoords],
   )
 
+  const showResultFx = useCallback(
+    (sum: number, totalWin: number) => {
+      const won = totalWin > 0
+      if (won) {
+        sound.play('win')
+        onMessage?.(`Won ${totalWin.toLocaleString()} chips!`)
+        const floatId = nextChipId()
+        setWinFloats((prev) => [
+          ...prev,
+          { id: floatId, text: `+${totalWin.toLocaleString()}`, x: 380, y: 180 },
+        ])
+        window.setTimeout(() => {
+          setWinFloats((prev) => prev.filter((f) => f.id !== floatId))
+        }, 1300)
+      } else {
+        sound.play('lose', { volume: 0.5 })
+        onMessage?.(`Sum ${sum} — try again`)
+      }
+    },
+    [onMessage],
+  )
+
   const placeBet = useCallback(
     (zone: UpDownChoice, amount: number, fromId: string, isSelf: boolean) => {
       if (phase !== 'betting') return false
       if (isSelf) {
-        if (!canAfford(amount) || !debit(amount)) {
+        if (!canAfford(amount)) {
           sound.play('error')
           onMessage?.('Insufficient balance')
           return false
         }
-        sound.play('chip')
-        setMyBets((prev) => ({ ...prev, [zone]: prev[zone] + amount }))
+        if (live) {
+          const sock = socketRef.current
+          if (!sock) {
+            sound.play('error')
+            onMessage?.('Not connected')
+            return false
+          }
+          void sock
+            .request('bet', { side: zone, amount })
+            .then(() => {
+              sound.play('chip')
+              setMyBets((prev) => ({ ...prev, [zone]: prev[zone] + amount }))
+              launchChip(fromId, zone, amount, true)
+              void refresh()
+            })
+            .catch((e: any) => {
+              sound.play('error')
+              onMessage?.(e?.message || 'Bet failed')
+            })
+          return true
+        }
+        sound.play('error')
+        onMessage?.('Not authenticated')
+        return false
       } else {
         setAiBalances((prev) => ({
           ...prev,
@@ -208,7 +268,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       launchChip(fromId, zone, amount, isSelf)
       return true
     },
-    [canAfford, debit, launchChip, onMessage, phase],
+    [canAfford, launchChip, live, onMessage, phase, refresh],
   )
 
   const handleZoneBet = useCallback(
@@ -231,88 +291,91 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
     })
   }, [canAfford, lastBets, onMessage, phase, placeBet])
 
-  const resolveRound = useCallback(() => {
-    setPhase('rolling')
-    setLastResult(null)
-    setWinningZone(null)
-
-    window.setTimeout(() => {
-      const rolled = rollTwoDice()
-      const sum = rolled[0]! + rolled[1]!
-      const winZone = zoneForSum(sum)
-
-      let totalWin = 0
-      ;(['down', 'seven', 'up'] as UpDownChoice[]).forEach((z) => {
-        const bet = myBets[z]
-        if (bet > 0) {
-          const mult = upDownPayout(z, sum)
-          if (mult > 0) totalWin += bet * mult
-        }
-      })
-
-      const won = totalWin > 0
-      if (won) credit(totalWin)
-
-      setHistory((h) => [sum, ...h].slice(0, 15))
-      setWinningZone(winZone)
-      setLastResult({ sum, won, win: totalWin })
-      setPhase('result')
-      setLastBets({ ...myBets })
-
-      if (won) {
-        sound.play('win')
-        onMessage?.(`Won ${totalWin.toLocaleString()} chips!`)
-        const floatId = nextChipId()
-        setWinFloats((prev) => [
-          ...prev,
-          { id: floatId, text: `+${totalWin.toLocaleString()}`, x: 380, y: 180 },
-        ])
-        window.setTimeout(() => {
-          setWinFloats((prev) => prev.filter((f) => f.id !== floatId))
-        }, 1300)
-      } else {
-        sound.play('lose', { volume: 0.5 })
-        onMessage?.(`Sum ${sum} — try again`)
-      }
-
-      window.setTimeout(() => {
-        setTableChips([])
-        setZoneTotals({ down: 0, seven: 0, up: 0 })
-        setMyBets({ down: 0, seven: 0, up: 0 })
-        setLastResult(null)
-        setWinningZone(null)
-        setPhase('betting')
-        setCountdown(ROUND_SEC)
-        window.setTimeout(() => {
-          setTableChips([
-            ...seedChipsForZone('down', 12),
-            ...seedChipsForZone('seven', 4),
-            ...seedChipsForZone('up', 12),
-          ])
-          setZoneTotals({
-            down: 5000 + Math.floor(Math.random() * 2000),
-            seven: 500 + Math.floor(Math.random() * 400),
-            up: 5500 + Math.floor(Math.random() * 2000),
-          })
-        }, 80)
-      }, RESULT_MS)
-    }, 1200)
-  }, [credit, myBets, onMessage])
-
+  // Live: server WS drives phase / dice / payouts
   useEffect(() => {
-    if (phase !== 'betting') return
-    const tick = window.setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          window.clearInterval(tick)
-          resolveRound()
-          return 0
+    if (!live) {
+      onMessage?.('Not authenticated')
+      return
+    }
+    const sock = connectSevenUpSocket({
+      onState: (state) => {
+        const nextUi = uiPhaseFromServer(state.phase)
+        const period = String(state.period ?? state.roundId ?? '')
+        setCountdown(Math.max(0, Math.ceil((Number(state.msLeft) || 0) / 1000)))
+
+        if (Array.isArray(state.history) && state.history.length) {
+          setHistory(state.history.slice(0, 15))
         }
-        return c - 1
-      })
-    }, 1000)
-    return () => clearInterval(tick)
-  }, [phase, resolveRound])
+        if (state.zoneTotals) {
+          setZoneTotals({
+            down: Number(state.zoneTotals.down) || 0,
+            seven: Number(state.zoneTotals.seven) || 0,
+            up: Number(state.zoneTotals.up) || 0,
+          })
+        }
+        if (state.myBets) {
+          setMyBets({
+            down: Number(state.myBets.down) || 0,
+            seven: Number(state.myBets.seven) || 0,
+            up: Number(state.myBets.up) || 0,
+          })
+        }
+
+        if (nextUi === 'betting') {
+          if (lastPeriodRef.current && lastPeriodRef.current !== period) {
+            setTableChips([
+              ...seedChipsForZone('down', 8),
+              ...seedChipsForZone('seven', 3),
+              ...seedChipsForZone('up', 8),
+            ])
+            setLastResult(null)
+            setWinningZone(null)
+          }
+          lastPeriodRef.current = period
+          setPhase('betting')
+          return
+        }
+
+        if (nextUi === 'rolling') {
+          setPhase('rolling')
+          return
+        }
+
+        const sum = Number(state.sum)
+        if (!Number.isFinite(sum)) {
+          setPhase('rolling')
+          return
+        }
+        const winZone = (state.winningZone as UpDownChoice) || zoneForSum(sum)
+        const totalWin = Number(state.myPayout ?? 0)
+        setWinningZone(winZone)
+        setLastResult({ sum, won: totalWin > 0, win: totalWin })
+        setPhase('result')
+        setLastBets({
+          down: Number(state.myBets?.down) || 0,
+          seven: Number(state.myBets?.seven) || 0,
+          up: Number(state.myBets?.up) || 0,
+        })
+        if (revealedPeriodRef.current !== period) {
+          revealedPeriodRef.current = period
+          showResultFx(sum, totalWin)
+          void refresh()
+        }
+        lastPeriodRef.current = period
+      },
+      onError: (message) => onMessage?.(message),
+    })
+    socketRef.current = sock
+    return () => {
+      sock.close()
+      socketRef.current = null
+    }
+  }, [live, onMessage, refresh, showResultFx])
+
+  // Demo clock removed — RequireAuth on /play
+  useEffect(() => {
+    if (!live) onMessage?.('Not authenticated')
+  }, [live, onMessage])
 
   useEffect(() => {
     if (phase !== 'betting') return
@@ -324,7 +387,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
         placeBet(zone, value, player.id, false)
       }
     }, 900 + Math.random() * 800)
-    return () => clearInterval(aiTick)
+    return () => window.clearInterval(aiTick)
   }, [aiBalances, phase, placeBet])
 
   useEffect(() => {
@@ -343,6 +406,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   }))
 
   return (
+    <>
     <UpDownDesignUI
       viewportRef={viewportRef}
       layout={layout}
@@ -367,9 +431,17 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       onZoneBet={handleZoneBet}
       onRebet={handleRebet}
       onHome={() => navigate('/home')}
+      onAddCash={() => {
+        setMenuOpen(false)
+        setShowAddCash(true)
+      }}
+      menuOpen={menuOpen}
+      onToggleMenu={() => setMenuOpen((v) => !v)}
       registerSeatRef={registerSeatRef}
       registerZoneRef={registerZoneRef}
       registerSelfRef={registerSelfRef}
     />
+    {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    </>
   )
 }

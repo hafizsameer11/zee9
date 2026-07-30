@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PageHead, Pill, Toggle, Range, Modal, money, compact } from '../components/ui'
 import { Icons } from '../components/icons'
 import { useAdmin } from '../data/store'
 import type { GameRow } from '../data/mock'
+import { api } from '../api/client'
 
 const EMOJIS = ['💎', '✈️', '🎯', '🚀', '💣', '🐂', '🎲', '🃏', '🐉', '🎴', '⚡', '🎰', '🍀', '👑', '🔥', '⭐']
 
@@ -12,11 +13,434 @@ function profitTone(n: number) {
   return { color: 'inherit' }
 }
 
+type LotteryLive = {
+  enabled: boolean
+  winPct: number
+  period: string | null
+  phase: string | null
+  msLeft: number
+  result: number | null
+  forcedResult: number | null
+  pendingForce: boolean
+  betCount: number
+  wagered: number
+}
+
+type CrashLive = {
+  enabled: boolean
+  winPct: number
+  roundId: string | null
+  phase: string | null
+  multiplier: number
+  waitingMsLeft: number
+  crashPoint: number | null
+  forcedCrashPoint: number | null
+  pendingForce: boolean
+  betCount: number
+}
+
+function LotteryOps({ showToast }: { showToast: (m: string) => void }) {
+  const [live, setLive] = useState<LotteryLive | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      const data = await api.get('/admin/games/wingo-lottery/live')
+      setLive(data)
+    } catch {
+      /* game may not be seeded yet */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const force = async (result: number) => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/wingo-lottery/force', { result })
+      showToast(`Forced ${result} (${data.applied} round)`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/wingo-lottery/force/clear')
+      showToast('Force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const secs = live ? Math.ceil((live.msLeft || 0) / 1000) : 0
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>WinGo Lottery ops</div>
+          <div className="cell-sub">
+            {live?.period ? `Period ${live.period}` : 'No live round'} · phase{' '}
+            <b>{live?.phase ?? '—'}</b> · {secs}s left · bets {live?.betCount ?? 0} · wagered{' '}
+            {money(live?.wagered ?? 0)}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next result: <b>{live.forcedResult}</b>
+            </div>
+          )}
+          {live?.result != null && live.phase === 'reveal' && (
+            <div className="cell-sub" style={{ marginTop: 4 }}>
+              Last draw: <b>{live.result}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12 }}>
+        {Array.from({ length: 10 }, (_, n) => (
+          <button
+            key={n}
+            className={'chip' + (live?.forcedResult === n ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(n)}
+            style={{ minWidth: 40, fontWeight: 700 }}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RouletteOps({ showToast }: { showToast: (m: string) => void }) {
+  const [live, setLive] = useState<LotteryLive | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get('/admin/games/roulette/live'))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const force = async (result: number) => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/roulette/force', { result })
+      showToast(`Roulette forced ${result} (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/roulette/force/clear')
+      showToast('Roulette force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const secs = live ? Math.ceil((live.msLeft || 0) / 1000) : 0
+  const presets = [0, 1, 7, 14, 21, 28, 32, 36]
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>Roulette ops</div>
+          <div className="cell-sub">
+            {live?.period ? `Period ${live.period}` : 'No live round'} · phase{' '}
+            <b>{live?.phase ?? '—'}</b> · {secs}s · bets {live?.betCount ?? 0} · wagered{' '}
+            {money(live?.wagered ?? 0)}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next: <b>{live.forcedResult}</b>
+            </div>
+          )}
+          {live?.result != null && live.phase === 'reveal' && (
+            <div className="cell-sub" style={{ marginTop: 4 }}>
+              Last: <b>{live.result}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12 }}>
+        {presets.map((n) => (
+          <button
+            key={n}
+            className={'chip' + (live?.forcedResult === n ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(n)}
+            style={{ minWidth: 40, fontWeight: 700 }}
+          >
+            {n}
+          </button>
+        ))}
+        <input
+          type="number"
+          min={0}
+          max={36}
+          placeholder="0-36"
+          disabled={busy}
+          style={{ width: 72, padding: '6px 8px', borderRadius: 8, border: '1px solid #ddd' }}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return
+            const v = Number((e.target as HTMLInputElement).value)
+            if (Number.isInteger(v) && v >= 0 && v <= 36) void force(v)
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function WingoOps({ showToast }: { showToast: (m: string) => void }) {
+  const [mode, setMode] = useState<'30s' | '1min' | '3min' | '5min'>('30s')
+  const [live, setLive] = useState<(LotteryLive & { mode?: string }) | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get(`/admin/games/wingo/live?mode=${mode}`))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [mode])
+
+  const force = async (result: number) => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/wingo/force', { result, mode })
+      showToast(`WinGo ${mode} forced ${result} (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/wingo/force/clear', { mode })
+      showToast('WinGo force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const secs = live ? Math.ceil((live.msLeft || 0) / 1000) : 0
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>WinGo ops</div>
+          <div className="cell-sub">
+            Mode{' '}
+            <select value={mode} onChange={(e) => setMode(e.target.value as typeof mode)} style={{ marginRight: 8 }}>
+              {(['30s', '1min', '3min', '5min'] as const).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            {live?.period ? `Period ${live.period}` : 'No live round'} · <b>{live?.phase ?? '—'}</b> · {secs}s · bets{' '}
+            {live?.betCount ?? 0}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next: <b>{live.forcedResult}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12 }}>
+        {Array.from({ length: 10 }, (_, n) => (
+          <button
+            key={n}
+            className={'chip' + (live?.forcedResult === n ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(n)}
+            style={{ minWidth: 40, fontWeight: 700 }}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const CRASH_PRESETS = [1.0, 1.2, 1.5, 2, 3, 5, 10, 20, 50]
+
+function CrashOpsPanel({
+  slug,
+  title,
+  showToast,
+}: {
+  slug: string
+  title: string
+  showToast: (m: string) => void
+}) {
+  const [live, setLive] = useState<CrashLive | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [custom, setCustom] = useState('2.00')
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get(`/admin/games/${slug}/live`))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [slug])
+
+  const force = async (crashPoint: number) => {
+    setBusy(true)
+    try {
+      const data = await api.post(`/admin/games/${slug}/force`, { mult: crashPoint })
+      showToast(`${title} forced ${crashPoint}x (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post(`/admin/games/${slug}/force/clear`)
+      showToast(`${title} force cleared`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const waitSecs = live ? Math.ceil((live.waitingMsLeft || 0) / 1000) : 0
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>{title} ops</div>
+          <div className="cell-sub">
+            Phase <b>{live?.phase ?? '—'}</b>
+            {live?.phase === 'waiting' ? ` · ${waitSecs}s` : ''}
+            {live?.phase === 'flying' ? ` · ${live.multiplier?.toFixed(2)}x` : ''}
+            {live?.phase === 'crashed' && live.crashPoint != null ? ` · crashed @ ${live.crashPoint}x` : ''}
+            {' · '}bets {live?.betCount ?? 0}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next crash: <b>{live.forcedCrashPoint}x</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12, alignItems: 'center' }}>
+        {CRASH_PRESETS.map((n) => (
+          <button
+            key={n}
+            className={'chip' + (live?.forcedCrashPoint === n ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(n)}
+            style={{ minWidth: 48, fontWeight: 700 }}
+          >
+            {n}x
+          </button>
+        ))}
+        <input
+          value={custom}
+          onChange={(e) => setCustom(e.target.value)}
+          disabled={busy}
+          style={{ width: 72, padding: '6px 8px', borderRadius: 8, border: '1px solid #ddd' }}
+          placeholder="2.50"
+        />
+        <button
+          className="btn btn-light"
+          disabled={busy}
+          onClick={() => {
+            const v = Number(custom)
+            if (Number.isFinite(v) && v >= 1 && v <= 100) void force(Math.floor(v * 100) / 100)
+            else showToast('Enter 1–100')
+          }}
+        >
+          Force
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Games() {
   const { games, updateGame, addGame, showToast } = useAdmin()
   const [edit, setEdit] = useState<GameRow | null>(null)
   const sorted = [...games].sort((a, b) => a.order - b.order)
   const live = games.filter((g) => g.enabled).length
+  const has = (slug: string) => games.some((g) => g.slug === slug)
 
   const totals = games.reduce(
     (acc, g) => {
@@ -37,6 +461,14 @@ export default function Games() {
         subtitle={`${live} of ${games.length} games live · win % 0–100 · live plays / P&L from real rounds`}
         actions={<button className="btn btn-primary" onClick={addGame}>{Icons.plus} Add game</button>}
       />
+
+      {has('wingo-lottery') && <LotteryOps showToast={showToast} />}
+      {has('roulette') && <RouletteOps showToast={showToast} />}
+      {has('wingo') && <WingoOps showToast={showToast} />}
+      {has('aviator') && <CrashOpsPanel slug="aviator" title="Aviator" showToast={showToast} />}
+      {has('crash') && <CrashOpsPanel slug="crash" title="Crash" showToast={showToast} />}
+      {has('aero-x') && <CrashOpsPanel slug="aero-x" title="AeroX" showToast={showToast} />}
+      {has('double-crash') && <CrashOpsPanel slug="double-crash" title="Double Crash" showToast={showToast} />}
 
       <div className="stat-grid" style={{ marginBottom: 16 }}>
         <div className="card card-pad">
@@ -91,7 +523,7 @@ export default function Games() {
                           {g.title}
                           {g.tag && <span className={'tag ' + g.tag}>{g.tag.toUpperCase()}</span>}
                         </div>
-                        <div className="cell-sub">#{g.id}</div>
+                        <div className="cell-sub">#{g.id} · {g.slug || g.id}</div>
                       </div>
                     </div>
                   </td>

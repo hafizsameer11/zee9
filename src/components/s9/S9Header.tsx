@@ -2,7 +2,7 @@ import { useWallet } from '../../context/WalletContext'
 import { usePlayerAuth } from '../../api/auth'
 import { useConfig } from '../../api/hooks'
 import { formatS9Amount } from '../../data/s9Games'
-import { IconMail, IconSettings } from './S9Icons'
+import { IconMail, IconNews, IconSettings, IconSupport } from './S9Icons'
 import S9AssetIcon from './S9AssetIcon'
 import styles from './S9Header.module.css'
 
@@ -10,12 +10,16 @@ type Props = {
   onDeposit: () => void
   onProfile: () => void
   onDailyBonus: () => void
+  onVip?: () => void
   onMail: () => void
   onSettings: () => void
+  onNews?: () => void
+  onSupport?: () => void
+  onAgent?: () => void
   mailUnread?: boolean
 }
 
-const VIP_THRESHOLDS = [0, 3000, 10000, 30000, 75000, 150000, 300000, 600000]
+const VIP_THRESHOLDS = [0, 1000, 5000, 15000, 40000, 100000, 200000, 350000, 550000, 800000, 1200000, 1800000, 2500000]
 
 function formatNum(n: number) {
   return n.toLocaleString('en-IN', { maximumFractionDigits: 0 })
@@ -25,8 +29,12 @@ export default function S9Header({
   onDeposit,
   onProfile,
   onDailyBonus,
+  onVip,
   onMail,
   onSettings,
+  onNews,
+  onSupport,
+  onAgent,
   mailUnread = true,
 }: Props) {
   const { balance } = useWallet()
@@ -39,16 +47,26 @@ export default function S9Header({
     window.open(`https://wa.me/${waDigits}`, '_blank', 'noopener,noreferrer')
   }
 
-  const vipLevel = player?.vipLevel ?? 1
+  const vipLevel = player?.vipLevel ?? 0
   const deposited = player?.totalDeposited ?? 0
-  const prev = VIP_THRESHOLDS[Math.max(0, vipLevel - 1)] ?? 0
-  const next = VIP_THRESHOLDS[vipLevel] ?? VIP_THRESHOLDS[VIP_THRESHOLDS.length - 1]
+  const prev = VIP_THRESHOLDS[Math.min(vipLevel, VIP_THRESHOLDS.length - 1)] ?? 0
+  const next =
+    VIP_THRESHOLDS[Math.min(vipLevel + 1, VIP_THRESHOLDS.length - 1)] ??
+    VIP_THRESHOLDS[VIP_THRESHOLDS.length - 1]!
   const vipProgress = Math.max(0, deposited - prev)
   const vipTarget = Math.max(1, next - prev)
   const vipPct = Math.min(100, (vipProgress / vipTarget) * 100)
 
   return (
     <header className={styles.header}>
+      {player?.referralAgentActive && onAgent ? (
+        <button type="button" className={styles.agentBtn} onClick={onAgent} data-sfx="tap">
+          <span className={styles.agentIcon} aria-hidden>
+            👥
+          </span>
+          <span>Agent</span>
+        </button>
+      ) : null}
       <button type="button" className={styles.profileBtn} onClick={onProfile}>
         <div className={styles.avatar}>
           <span className={styles.avatarRing} aria-hidden />
@@ -57,7 +75,17 @@ export default function S9Header({
         </div>
         <div className={styles.playerMeta}>
           <span className={styles.playerName}>{player?.name ?? 'Guest'}</span>
-          <span className={styles.vipBadge}>VIP {vipLevel}</span>
+          <span
+            className={styles.vipBadge}
+            role={onVip ? 'button' : undefined}
+            onClick={(e) => {
+              if (!onVip) return
+              e.stopPropagation()
+              onVip()
+            }}
+          >
+            VIP {vipLevel}
+          </span>
           <div className={styles.vipBar}>
             <div className={styles.vipFill} style={{ width: `${vipPct}%` }} />
           </div>
@@ -82,7 +110,21 @@ export default function S9Header({
       </button>
 
       <div className={styles.right}>
-        {config?.whatsapp && (
+        {onSupport && (
+          <button type="button" className={styles.actionBtn} onClick={onSupport} title="Support">
+            <span className={styles.actionCircle}>
+              <IconSupport size={15} />
+            </span>
+          </button>
+        )}
+        {onNews && (
+          <button type="button" className={styles.actionBtn} onClick={onNews} title="News">
+            <span className={styles.actionCircle}>
+              <IconNews size={15} />
+            </span>
+          </button>
+        )}
+        {config?.whatsapp && !onSupport && (
           <button type="button" className={styles.actionBtn} onClick={openWhatsApp} title="Customer Service">
             <span className={styles.actionCircle} style={{ background: '#25D366', color: '#fff' }}>
               WA

@@ -9,6 +9,7 @@ export const registerSchema = z.object({
   displayName: z.string().min(2).max(40),
   referralCode: z.string().min(3).max(20).optional(),
   shareCode: z.string().min(3).max(30).optional(),
+  playerId: z.union([z.string().regex(/^\d{6,10}$/), z.number().int().min(100000).max(9999999999)]).optional(),
   channel: z.string().max(30).optional(),
   bindCode: z.string().max(30).optional(),
 })

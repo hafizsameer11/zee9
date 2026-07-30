@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, getAccess } from '../api/client'
 import { usePlayerAuth } from '../api/auth'
+import { usePlayerWalletRealtime } from '../api/walletRealtime'
 
 type WalletContextValue = {
   balance: number
@@ -36,6 +37,31 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     else {
       setBalanceState(0)
       setBonus(0)
+    }
+  }, [player, refresh])
+
+  // Live balance when deposit is approved / bets settle (no page refresh needed)
+  usePlayerWalletRealtime(!!player, (ev) => {
+    setBalanceState(Number(ev.MAIN ?? 0) / 100)
+    setBonus(Number(ev.BONUS ?? 0) / 100)
+  })
+
+  // Fallback: refresh on focus / slower poll so balance never stays stale if WS drops
+  useEffect(() => {
+    if (!player) return
+    const onFocus = () => {
+      void refresh()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    const t = window.setInterval(() => void refresh(), 60000)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.clearInterval(t)
     }
   }, [player, refresh])
 

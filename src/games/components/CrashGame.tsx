@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../api/client'
 import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
 import { useDesignScale } from '../hooks/useDesignScale'
@@ -8,8 +7,9 @@ import { connectCrashSocket } from '../lib/crashSocket'
 import type { GameComponentProps } from '../types'
 import CrashDesignUI, { type CrashHistoryEntry, type CrashPhase } from './CrashDesignUI'
 import styles from './crashGame.module.css'
+import AddCashModal from '../../components/s9/modals/AddCashModal'
 
-const BET_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
+const BET_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
 const INTRO_STORAGE_KEY = 'zee9-crash-welcome-dismissed'
 const AUTO_CASHOUT_AT = 2
 
@@ -29,7 +29,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
   const [elapsedSec, setElapsedSec] = useState(0)
   const [flightStartPerf, setFlightStartPerf] = useState<number | null>(null)
   const [crashCap, setCrashCap] = useState<number | null>(null)
-  const [betAmount, setBetAmount] = useState(defaultBet || 20)
+  const [betAmount, setBetAmount] = useState(defaultBet || 10)
   const [countdown, setCountdown] = useState(5)
   const [history, setHistory] = useState<CrashHistoryEntry[]>([])
   const [roundNo, setRoundNo] = useState(1000000)
@@ -39,6 +39,8 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
   const [betId, setBetId] = useState<string | null>(null)
   const [pendingNextBet, setPendingNextBet] = useState(false)
   const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem(INTRO_STORAGE_KEY))
+  const [showAddCash, setShowAddCash] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const prevPhase = useRef<ServerPhase | 'idle'>('idle')
   const flightStartPerfRef = useRef<number | null>(null)
@@ -78,8 +80,10 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
     }
     busyRef.current = true
     try {
+      const sock = socketRef.current
+      if (!sock) throw new Error('Not connected')
       sound.play('bet')
-      const res = await api.post('/games/crash/bet', {
+      const res = await sock.request<{ betId: string }>('bet', {
         amount,
         slot: 0,
         autoAt: autoEscapeRef.current ? AUTO_CASHOUT_AT : null,
@@ -229,7 +233,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
     }
   }
 
-  const cashOut = () => {
+  const cashOut = async () => {
     if (busyRef.current || !betId) return
     if (serverPhase !== 'flying' || playerStatus !== 'active') return
     busyRef.current = true
@@ -238,35 +242,30 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
     const atMult = mult
     const estPayout = Math.round(betAmount * atMult)
 
-    // Instant — rocket RAF in DesignUI keeps running
-    setPlayerStatus('cashed')
-    playerStatusRef.current = 'cashed'
-    sound.play('cashout')
-    sound.play('coin', { volume: 0.65 })
-    onMessage?.(`🎉 Cashed ${estPayout.toLocaleString()} @ ${atMult.toFixed(2)}x`)
-    window.setTimeout(() => onMessage?.(null), 2000)
-
-    void (async () => {
-      try {
-        const res = await api.post('/games/crash/cashout', { betId: id })
-        if (Math.abs(Number(res.payout) - estPayout) >= 1) {
-          onMessage?.(
-            `🎉 Cashed ${Math.round(res.payout).toLocaleString()} @ ${Number(res.cashoutAt).toFixed(2)}x`,
-          )
-          window.setTimeout(() => onMessage?.(null), 1800)
-        }
-        window.setTimeout(() => void refresh(), 400)
-        socketRef.current?.refresh()
-      } catch (e: any) {
-        setPlayerStatus('active')
-        playerStatusRef.current = 'active'
-        sound.play('error')
-        onMessage?.(e?.message || 'Cash out failed')
-        socketRef.current?.refresh()
-      } finally {
-        busyRef.current = false
-      }
-    })()
+    onMessage?.(`Cashing out ${estPayout.toLocaleString()}…`)
+    try {
+      const sock = socketRef.current
+      if (!sock) throw new Error('Not connected')
+      const res = await sock.request<{ payout: number; cashoutAt: number }>('cashout', {
+        betId: id,
+      })
+      setPlayerStatus('cashed')
+      playerStatusRef.current = 'cashed'
+      sound.play('cashout')
+      sound.play('coin', { volume: 0.65 })
+      onMessage?.(
+        `🎉 Cashed ${Math.round(res.payout).toLocaleString()} @ ${Number(res.cashoutAt).toFixed(2)}x`,
+      )
+      window.setTimeout(() => onMessage?.(null), 1800)
+      window.setTimeout(() => void refresh(), 400)
+      socketRef.current?.refresh()
+    } catch (e: any) {
+      sound.play('error')
+      onMessage?.(e?.message || 'Cash out failed')
+      socketRef.current?.refresh()
+    } finally {
+      busyRef.current = false
+    }
   }
 
   const adjustBet = (delta: number) => {
@@ -287,6 +286,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
   }
 
   return (
+    <>
     <CrashDesignUI
       viewportRef={viewportRef}
       layout={layout}
@@ -322,6 +322,14 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
       onBet={() => void onBet()}
       onCashOut={cashOut}
       onHome={() => navigate('/')}
+      onAddCash={() => {
+        setMenuOpen(false)
+        setShowAddCash(true)
+      }}
+      menuOpen={menuOpen}
+      onToggleMenu={() => setMenuOpen((v) => !v)}
     />
+    {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    </>
   )
 }

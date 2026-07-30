@@ -6,9 +6,43 @@ export default function PaymentInformation() {
   const { transactions } = useStore()
   const [open, setOpen] = useState(false)
   const [type, setType] = useState<string>('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [draftType, setDraftType] = useState('')
+  const [draftFrom, setDraftFrom] = useState('')
+  const [draftTo, setDraftTo] = useState('')
 
   const txnTypes = useMemo(() => Array.from(new Set(transactions.map((t) => t.type))), [transactions])
-  const rows = transactions.filter((t) => !type || t.type === type)
+  const rows = transactions.filter((t) => {
+    if (type && t.type !== type) return false
+    const day = t.time.slice(0, 10)
+    if (from && day < from) return false
+    if (to && day > to) return false
+    return true
+  })
+
+  function openFilter() {
+    setDraftType(type)
+    setDraftFrom(from)
+    setDraftTo(to)
+    setOpen(true)
+  }
+
+  function apply() {
+    setType(draftType)
+    setFrom(draftFrom)
+    setTo(draftTo)
+    setOpen(false)
+  }
+
+  function reset() {
+    setDraftType('')
+    setDraftFrom('')
+    setDraftTo('')
+    setType('')
+    setFrom('')
+    setTo('')
+  }
 
   return (
     <Shell>
@@ -16,12 +50,23 @@ export default function PaymentInformation() {
       <TopBar
         title="Payment Information"
         right={
-          <button className="tb-btn" onClick={() => setOpen(true)} aria-label="Filter">
+          <button className="tb-btn" onClick={openFilter} aria-label="Filter">
             &#9776;
           </button>
         }
       />
       <div className="scroll pad">
+        {(type || from || to) && (
+          <div className="filter-row" style={{ marginBottom: 10 }}>
+            {type && <span className="filter-pill active">{type}</span>}
+            {(from || to) && (
+              <span className="filter-pill active">
+                {from || '…'} → {to || '…'}
+              </span>
+            )}
+            <button className="filter-pill" onClick={reset}>Clear</button>
+          </div>
+        )}
         <div className="card table">
           <div className="thead">
             <div>Transaction Type</div>
@@ -49,16 +94,16 @@ export default function PaymentInformation() {
         <Sheet title="Type" onClose={() => setOpen(false)}>
           <div className="sheet-opts">
             <button
-              className={'sheet-opt' + (type === '' ? ' active' : '')}
-              onClick={() => setType('')}
+              className={'sheet-opt' + (draftType === '' ? ' active' : '')}
+              onClick={() => setDraftType('')}
             >
               All
             </button>
             {txnTypes.map((t) => (
               <button
                 key={t}
-                className={'sheet-opt' + (type === t ? ' active' : '')}
-                onClick={() => setType(t)}
+                className={'sheet-opt' + (draftType === t ? ' active' : '')}
+                onClick={() => setDraftType(t)}
               >
                 {t}
               </button>
@@ -68,14 +113,14 @@ export default function PaymentInformation() {
             Customize Time
           </div>
           <div className="time-row">
-            <input placeholder="Start date" />
-            <input placeholder="End date" />
+            <input type="date" value={draftFrom} onChange={(e) => setDraftFrom(e.target.value)} />
+            <input type="date" value={draftTo} onChange={(e) => setDraftTo(e.target.value)} />
           </div>
           <div className="sheet-foot">
-            <button className="btn btn-outline" onClick={() => setType('')}>
+            <button className="btn btn-outline" onClick={reset}>
               Reset
             </button>
-            <button className="btn btn-violet" onClick={() => setOpen(false)}>
+            <button className="btn btn-violet" onClick={apply}>
               Confirm
             </button>
           </div>

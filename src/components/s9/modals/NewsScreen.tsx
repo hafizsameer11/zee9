@@ -2,7 +2,7 @@ import { useState } from 'react'
 import S9ModalShell from './S9ModalShell'
 import styles from './NewsScreen.module.css'
 
-type Props = { onClose: () => void }
+type Props = { onClose: () => void; onClaim?: () => void }
 
 const TABS = [
   { id: 'new-user', label: 'New user great offer' },
@@ -24,7 +24,7 @@ const BONUS_ROWS = [
   { bet: '10000', d3: '377', d7: '777', d10: '1777' },
 ]
 
-export default function NewsScreen({ onClose }: Props) {
+export default function NewsScreen({ onClose, onClaim }: Props) {
   const [activeTab, setActiveTab] = useState('new-user')
 
   return (
@@ -90,8 +90,8 @@ export default function NewsScreen({ onClose }: Props) {
             Total bet amount must be reached within the period to unlock each tier.
           </p>
 
-          <button type="button" className={styles.claimBtn}>
-            🎁 Claim Your Bonus
+          <button type="button" className={styles.claimBtn} onClick={() => onClaim?.()}>
+            🎁 Deposit to Unlock
           </button>
         </div>
       </div>

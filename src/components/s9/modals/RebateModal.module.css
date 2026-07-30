@@ -1,69 +1,197 @@
-.body {
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9360;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(40, 0, 50, 0.8);
+}
+
+.panel {
+  position: relative;
+  width: min(360px, 100%);
+  padding: 18px 16px 20px;
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 120, 180, 0.25), transparent 55%),
+    linear-gradient(165deg, #6a1b9a 0%, #4a148c 45%, #880e4f 100%);
+  border: 3px solid #f5d76e;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55), inset 0 0 30px rgba(255, 215, 100, 0.12);
+  color: #fff;
   text-align: center;
 }
 
-.hero span {
-  font-size: 40px;
-  display: block;
-  margin-bottom: 8px;
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
-}
-
-.hero h3 {
-  font-size: 14px;
-  color: var(--zee-gold-light, #f5d76e);
+.closeX {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #e53935;
+  color: #fff;
+  font-size: 18px;
   font-weight: 900;
+  cursor: pointer;
+  z-index: 2;
 }
 
-.hero p {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.55);
-  margin-bottom: 14px;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.badge {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin: 0 auto 12px;
+  padding: 8px 18px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #c62828, #8b0000);
+  border: 2px solid #ffe082;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.stat {
-  padding: 10px 6px;
-  background: linear-gradient(180deg, #1e1e1e, #141414);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: 10px;
-}
-
-.stat strong {
-  display: block;
-  font-size: 13px;
-  color: var(--zee-gold-light, #f5d76e);
+.badge h2 {
+  margin: 0;
+  font-size: 18px;
   font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #ffe566;
+  text-shadow: 0 2px 0 #5d0000;
 }
 
-.stat small {
-  font-size: 7px;
-  color: var(--zee-muted, #9a7b4f);
+.info {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #7b1fa2;
+  border: 2px solid #fff;
+  font-size: 12px;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
 }
 
-.claimBtn {
-  width: 100%;
-  padding: 11px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #2d1515, #140808);
-  color: var(--zee-gold, #e8c547);
+.potWrap {
+  position: relative;
+  margin: 8px auto 16px;
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+}
+
+.pot {
+  font-size: 88px;
+  filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.4));
+  line-height: 1;
+}
+
+.todayBox {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 100px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 215, 100, 0.4);
   font-size: 11px;
   font-weight: 800;
-  border: 1px solid rgba(212, 175, 55, 0.35);
-  margin-bottom: 8px;
 }
 
-.claimBtn:disabled {
-  opacity: 0.45;
+.todayBox strong {
+  font-size: 22px;
+  color: #ffe566;
+}
+
+.rebetPill {
+  position: absolute;
+  right: 8px;
+  top: 18%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff9800, #e65100);
+  font-size: 11px;
+  font-weight: 900;
+  border: 1px solid #fff3e0;
+}
+
+.progressBlock {
+  margin: 0 8px 14px;
+}
+
+.progressTrack {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: #3e2723;
+  border: 2px solid #ffd54f;
+  overflow: visible;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff8a65, #ffd54f);
+}
+
+.progressKnob {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff, #ffecb3);
+  color: #6a1b9a;
+  font-weight: 900;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #ff9800;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.progressLabel {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffe082;
+}
+
+.goBtn {
+  min-width: 180px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  background: linear-gradient(180deg, #69f0ae, #00c853);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 0 #1b5e20, 0 10px 20px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+
+.goBtn:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .note {
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
+  margin: 14px 12px 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.4;
+}
+
+.msg {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffe082;
 }

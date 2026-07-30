@@ -3,18 +3,54 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="preload" as="image" href="/brand/zee9-logo.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/brand/zee9-logo.png" type="image/png" />
+    <link rel="preload" as="image" href="/games/fortune-gems-2.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/chicken-road.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/dragon-tiger.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/roulette.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/mines.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/aviator.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/aero-x.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/games/double-crash.webp" type="image/webp" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#0a0a0a" />
+    <meta name="theme-color" content="#07060a" />
     <meta name="description" content="Zee9 - Premium mobile gaming platform" />
     <title>Zee9 - S9 Game</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Pacifico&display=swap" rel="stylesheet" />
+    <style>
+      html, body, #root { height: 100%; margin: 0; background: #07060a; }
+      #zee9-boot {
+        position: fixed; inset: 0; z-index: 99999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        background: radial-gradient(ellipse 70% 55% at 50% 35%, rgba(180,30,40,.35), transparent 62%), #07060a;
+        color: #ffd54f; font-family: system-ui, sans-serif;
+        transition: opacity .35s ease;
+        pointer-events: none;
+      }
+      #zee9-boot img {
+        width: min(42vw, 200px); height: auto;
+        animation: zee9BootFloat 2.4s ease-in-out infinite;
+        filter: drop-shadow(0 10px 24px rgba(0,0,0,.55));
+      }
+      #zee9-boot p { margin: 14px 0 0; font-size: 12px; letter-spacing: .12em; font-weight: 700; opacity: .85; }
+      @keyframes zee9BootFloat {
+        0%,100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+    </style>
   </head>
   <body>
+    <div id="zee9-boot" aria-hidden="true">
+      <img src="/brand/zee9-logo.webp" alt="Zee9" width="200" height="216"
+           onerror="this.onerror=null;this.src='/brand/zee9-logo.png'" />
+      <p>LOADING</p>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

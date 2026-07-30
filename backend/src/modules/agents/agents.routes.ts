@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { authenticate } from '../../middleware/authenticate.js'
 import { authorize } from '../../middleware/authorize.js'
+import { requireC2cMerchant } from '../../middleware/requireC2cMerchant.js'
 import { validate } from '../../middleware/validate.js'
 import { asyncHandler } from '../../lib/asyncHandler.js'
 import { ok } from '../../lib/respond.js'
@@ -11,41 +12,96 @@ import { runMoneyTx } from '../../core/tx.js'
 import { post } from '../../core/ledger.js'
 import { conflict, notFound, unprocessable } from '../../core/errors.js'
 import { getSettings } from '../../core/settings.js'
-import { listForAgent as listPayouts, listAvailable, claim, submitPay } from '../withdrawals/payouts.service.js'
+import { listForAgent as listPayouts, listAvailable, listHistory as listPayoutHistory, claim, submitPay, cancelPayout, reportAbnormalPayout } from '../withdrawals/payouts.service.js'
 import { create as createDeposit, agentConfirmDeposit, agentRejectDeposit } from '../deposits/deposits.service.js'
 import { toPaisa, toRupees } from '../../lib/money.js'
 
 export const agentRoutes = Router()
 
-agentRoutes.use(authenticate, authorize('AGENT', 'ADMIN'))
+agentRoutes.use(authenticate, authorize('AGENT'), requireC2cMerchant)
+
+/** Move any leftover COMMISSION bucket into MAIN (C2C rewards are instant — no lock). */
+async function flushCommissionToMain(userId: string) {
+  const bal = await balances(userId)
+  const amount = bal.COMMISSION ?? 0n
+  if (amount <= 0n) return 0n
+  await runMoneyTx(async (tx) => {
+    await post(tx, {
+      type: 'COMMISSION',
+      referenceType: 'user',
+      referenceId: userId,
+      idempotencyKey: `c2c-flush-commission:${userId}:${Date.now()}`,
+      assertNonNegative: [{ userId, bucket: 'COMMISSION' }],
+      legs: [
+        { account: { userId, bucket: 'COMMISSION' }, direction: 'DEBIT', amount },
+        { account: { userId, bucket: 'MAIN' }, direction: 'CREDIT', amount },
+      ],
+    })
+  })
+  return amount
+}
 
 agentRoutes.get(
   '/summary',
   asyncHandler(async (req, res) => {
     const userId = req.user!.id
-    const [bal, me, orders, commission] = await Promise.all([
+    await flushCommissionToMain(userId)
+    const [bal, me, orders, rewardSum] = await Promise.all([
       balances(userId),
       prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { agentActive: true, walletsFilled: true, referrals: { select: { id: true } } } }),
       prisma.collectionOrder.count({ where: { agentId: userId, status: { in: ['PENDING', 'CHECKING', 'PROCESSING'] } } }),
-      prisma.commission.aggregate({ where: { agentId: userId }, _sum: { amount: true } }),
+      prisma.collectionOrder.aggregate({
+        where: { agentId: userId, status: 'SUCCESS' },
+        _sum: { reward: true },
+      }),
     ])
     ok(res, {
       balance: bal.MAIN,
-      commission: bal.COMMISSION,
+      commission: 0n,
       frozen: bal.FROZEN,
       agentActive: me.agentActive,
       walletsFilled: me.walletsFilled,
       referrals: me.referrals.length,
       openOrders: orders,
-      totalCommission: commission._sum.amount ?? 0n,
+      totalCommission: rewardSum._sum.reward ?? 0n,
     })
   }),
 )
 
+agentRoutes.patch(
+  '/active',
+  validate({ body: z.object({ active: z.boolean() }) }),
+  asyncHandler(async (req, res) => {
+    const updated = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: { agentActive: req.body.active },
+      select: { id: true, agentActive: true },
+    })
+    ok(res, updated)
+  }),
+)
+
+/** Keep at most one collection number enabled per merchant panel. */
+async function enforceOneActiveAccount(userId: string) {
+  const enabled = await prisma.agentAccount.findMany({
+    where: { userId, enabled: true },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true },
+  })
+  if (enabled.length <= 1) return
+  const keepId = enabled[0]!.id
+  await prisma.agentAccount.updateMany({
+    where: { userId, enabled: true, id: { not: keepId } },
+    data: { enabled: false },
+  })
+}
+
 agentRoutes.get(
   '/accounts',
   asyncHandler(async (req, res) => {
-    ok(res, await prisma.agentAccount.findMany({ where: { userId: req.user!.id }, orderBy: { createdAt: 'desc' } }))
+    const userId = req.user!.id
+    await enforceOneActiveAccount(userId)
+    ok(res, await prisma.agentAccount.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } }))
   }),
 )
 
@@ -66,9 +122,9 @@ agentRoutes.post(
     const count = await prisma.agentAccount.count({ where: { userId: req.user!.id, method } })
     if (count >= max) throw unprocessable(`Maximum ${max} ${method} accounts allowed`)
 
-    // Agent self-adds numbers — no admin review. Starts off; only one per method can be on.
+    // Merchant self-adds numbers — needs admin approve before collection can be turned on.
     const acc = await prisma.agentAccount.create({
-      data: { ...req.body, userId: req.user!.id, enabled: false, awaitingReview: false },
+      data: { ...req.body, userId: req.user!.id, enabled: false, awaitingReview: true },
     })
     ok(res, acc, 201)
   }),
@@ -82,16 +138,19 @@ agentRoutes.patch(
     const acc = await prisma.agentAccount.findFirst({ where: { id: req.params.id, userId } })
     if (!acc) throw notFound('Account not found')
 
-    // Only one JazzCash and one Easypaisa active at a time
+    // Only one collection account active per panel (JazzCash OR Easypaisa — never both)
     if (req.body.enabled) {
+      if (acc.awaitingReview) {
+        throw unprocessable('This number is pending admin approval. You can turn collection on after it is approved.')
+      }
       await prisma.$transaction([
         prisma.agentAccount.updateMany({
-          where: { userId, method: acc.method, id: { not: acc.id } },
+          where: { userId, id: { not: acc.id } },
           data: { enabled: false },
         }),
         prisma.agentAccount.update({
           where: { id: acc.id },
-          data: { enabled: true, awaitingReview: false },
+          data: { enabled: true },
         }),
       ])
       ok(res, await prisma.agentAccount.findUniqueOrThrow({ where: { id: acc.id } }))
@@ -146,8 +205,32 @@ agentRoutes.get(
       where,
       orderBy: { createdAt: 'desc' },
       take: 200,
+      include: {
+        player: { select: { id: true, displayName: true, phone: true } },
+      },
     })
-    ok(res, orders)
+
+    // Attach collection account holder name from the agent's wallets
+    const numbers = Array.from(
+      new Set(orders.map((o) => o.collectionAccount).filter((n): n is string => Boolean(n))),
+    )
+    const holders =
+      numbers.length === 0
+        ? []
+        : await prisma.agentAccount.findMany({
+            where: { userId: req.user!.id, number: { in: numbers } },
+            select: { number: true, holder: true },
+          })
+    const holderByNumber = new Map(holders.map((h) => [h.number, h.holder]))
+
+    ok(
+      res,
+      orders.map((o) => ({
+        ...o,
+        collectionHolder: o.collectionAccount ? holderByNumber.get(o.collectionAccount) ?? null : null,
+        playerName: o.player?.displayName ?? null,
+      })),
+    )
   }),
 )
 
@@ -232,6 +315,13 @@ agentRoutes.get(
 )
 
 agentRoutes.get(
+  '/payouts/history',
+  asyncHandler(async (req, res) => {
+    ok(res, await listPayoutHistory(req.user!.id))
+  }),
+)
+
+agentRoutes.get(
   '/payouts/available',
   asyncHandler(async (_req, res) => {
     ok(res, await listAvailable())
@@ -245,51 +335,114 @@ agentRoutes.post(
   }),
 )
 
-const paySchema = z.object({ trxId: z.string().min(1), senderAccount: z.string().min(3) })
+const paySchema = z.object({
+  trxId: z.string().min(1),
+  senderAccount: z.string().optional(),
+})
 agentRoutes.post(
   '/payouts/:id/pay',
   validate({ body: paySchema }),
   asyncHandler(async (req, res) => {
-    ok(res, await submitPay(req.params.id, req.user!.id, req.body.trxId, req.body.senderAccount))
+    ok(res, await submitPay(req.params.id, req.user!.id, req.body.trxId, req.body.senderAccount ?? ''))
   }),
 )
 
-/** Sum COMMISSION credits still inside the hold window (actual ledger, not seed orders). */
-async function lockedEarnings(userId: string, unlockBefore: Date) {
-  const acc = await prisma.ledgerAccount.findFirst({
-    where: { ownerId: userId, bucket: 'COMMISSION' },
-    select: { id: true },
-  })
-  if (!acc) return 0n
-  const recent = await prisma.ledgerEntry.aggregate({
-    where: {
-      accountId: acc.id,
-      direction: 'CREDIT',
-      createdAt: { gt: unlockBefore },
-      transaction: { type: 'COMMISSION', status: 'POSTED' },
-    },
-    _sum: { amount: true },
-  })
-  return recent._sum.amount ?? 0n
+agentRoutes.post(
+  '/payouts/:id/cancel',
+  asyncHandler(async (req, res) => {
+    ok(res, await cancelPayout(req.params.id, req.user!.id))
+  }),
+)
+
+agentRoutes.post(
+  '/payouts/:id/abnormal',
+  asyncHandler(async (req, res) => {
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : undefined
+    ok(res, await reportAbnormalPayout(req.params.id, req.user!.id, reason))
+  }),
+)
+
+/** Merchant float ledger only — never player game bets/wins. */
+const MERCHANT_TX_TYPES = [
+  'COLLECTION',
+  'DEPOSIT',
+  'COMMISSION',
+  'ADMIN_ADJUST',
+  'WITHDRAWAL_FREEZE',
+  'WITHDRAWAL_PAID',
+  'WITHDRAWAL_UNFREEZE',
+] as const
+
+const MERCHANT_TX_LABEL: Record<string, string> = {
+  COLLECTION: 'Collection',
+  DEPOSIT: 'Float top-up',
+  COMMISSION: 'C2C reward',
+  ADMIN_ADJUST: 'Admin adjustment',
+  WITHDRAWAL_FREEZE: 'Payout (freeze)',
+  WITHDRAWAL_PAID: 'Payout (paid)',
+  WITHDRAWAL_UNFREEZE: 'Payout (returned)',
 }
 
-/** Earnings: locked vs available after admin hold days; withdraw available → MAIN */
+agentRoutes.get(
+  '/transactions',
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id
+    const accountIds = (
+      await prisma.ledgerAccount.findMany({
+        where: { ownerId: userId, bucket: { in: ['MAIN', 'FROZEN', 'COMMISSION'] } },
+        select: { id: true },
+      })
+    ).map((a) => a.id)
+
+    if (accountIds.length === 0) {
+      ok(res, [])
+      return
+    }
+
+    const entries = await prisma.ledgerEntry.findMany({
+      where: {
+        accountId: { in: accountIds },
+        transaction: { type: { in: [...MERCHANT_TX_TYPES] } },
+      },
+      include: {
+        transaction: { select: { type: true, createdAt: true, referenceType: true } },
+        account: { select: { bucket: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 80,
+    })
+
+    ok(
+      res,
+      entries.map((e) => ({
+        id: e.id,
+        type: MERCHANT_TX_LABEL[e.transaction.type] ?? e.transaction.type,
+        amount: e.amount,
+        signed: e.direction === 'CREDIT' ? e.amount : -e.amount,
+        bucket: e.account.bucket,
+        time: e.transaction.createdAt,
+      })),
+    )
+  }),
+)
+
+/** Lifetime C2C rewards (already in MAIN). Lock system disabled — deposit/withdraw % credits float instantly. */
 agentRoutes.get(
   '/earnings',
   asyncHandler(async (req, res) => {
-    const s = await getSettings()
-    const holdMs = (s.agentEarnHoldDays ?? 7) * 24 * 60 * 60 * 1000
-    const unlockBefore = new Date(Date.now() - holdMs)
-    const bal = await balances(req.user!.id)
-    const lockedRaw = await lockedEarnings(req.user!.id, unlockBefore)
-    const total = bal.COMMISSION ?? 0n
-    const locked = lockedRaw > total ? total : lockedRaw
-    const available = total > locked ? total - locked : 0n
+    const userId = req.user!.id
+    await flushCommissionToMain(userId)
+    const rewardSum = await prisma.collectionOrder.aggregate({
+      where: { agentId: userId, status: 'SUCCESS' },
+      _sum: { reward: true },
+    })
+    const total = rewardSum._sum.reward ?? 0n
     ok(res, {
       total,
-      locked,
-      available,
-      holdDays: s.agentEarnHoldDays ?? 7,
+      locked: 0n,
+      available: 0n,
+      holdDays: 0,
+      instantToFloat: true,
     })
   }),
 )
@@ -298,43 +451,21 @@ agentRoutes.post(
   '/earnings/withdraw',
   validate({ body: z.object({ amount: z.number().positive().optional() }) }),
   asyncHandler(async (req, res) => {
-    const userId = req.user!.id
-    const s = await getSettings()
-    const holdMs = (s.agentEarnHoldDays ?? 7) * 24 * 60 * 60 * 1000
-    const unlockBefore = new Date(Date.now() - holdMs)
-    const bal = await balances(userId)
-    const lockedRaw = await lockedEarnings(userId, unlockBefore)
-    const total = bal.COMMISSION ?? 0n
-    const locked = lockedRaw > total ? total : lockedRaw
-    const available = total > locked ? total - locked : 0n
-    const want = req.body.amount != null ? toPaisa(req.body.amount) : available
-    if (want <= 0n || want > available) throw unprocessable('No unlocked earnings available yet')
-
-    await runMoneyTx(async (tx) => {
-      await post(tx, {
-        type: 'COMMISSION',
-        referenceType: 'user',
-        referenceId: userId,
-        idempotencyKey: `earn-withdraw:${userId}:${Date.now()}`,
-        assertNonNegative: [{ userId, bucket: 'COMMISSION' }],
-        legs: [
-          { account: { userId, bucket: 'COMMISSION' }, direction: 'DEBIT', amount: want },
-          { account: { userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: want },
-        ],
-      })
-    })
-    ok(res, { withdrawn: toRupees(want) })
+    // Legacy endpoint — rewards already land in MAIN; flush any leftover COMMISSION.
+    const moved = await flushCommissionToMain(req.user!.id)
+    ok(res, { withdrawn: toRupees(moved), message: 'Rewards already credit float instantly' })
   }),
 )
 
-/** Platform payment numbers agents use to top up their own float (admin confirms). */
+/** Platform bank accounts agents use to top up float (admin-managed, min Rs 10,000). */
+const AGENT_FLOAT_MIN = 10_000
+
 agentRoutes.get(
   '/float/channels',
-  asyncHandler(async (req, res) => {
-    const method = req.query.method as string | undefined
+  asyncHandler(async (_req, res) => {
     const channels = await prisma.paymentChannel.findMany({
-      where: { enabled: true, ...(method ? { method: method as any } : {}) },
-      orderBy: { createdAt: 'desc' },
+      where: { enabled: true, agentFloat: true, method: 'BANK' },
+      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
     })
     ok(
       res,
@@ -343,9 +474,10 @@ agentRoutes.get(
         method: c.method,
         accountNumber: c.accountNumber,
         accountTitle: c.accountTitle,
+        bankName: c.bankName,
         instructions: c.instructions,
-        minAmount: c.minAmount,
-        maxAmount: c.maxAmount,
+        minAmount: Math.max(Number(c.minAmount) / 100, AGENT_FLOAT_MIN),
+        maxAmount: Number(c.maxAmount) / 100,
       })),
     )
   }),
@@ -367,27 +499,35 @@ agentRoutes.post(
   validate({
     body: z.object({
       amount: z.number().positive(),
-      method: z.enum(['JAZZCASH', 'EASYPAISA', 'BANK', 'WEGARS']),
       channelId: z.string().min(1),
       senderAccount: z.string().min(3),
       trxId: z.string().min(1),
     }),
   }),
   asyncHandler(async (req, res) => {
+    if (req.body.amount < AGENT_FLOAT_MIN) {
+      throw unprocessable(`Minimum float top-up is Rs ${AGENT_FLOAT_MIN.toLocaleString('en-PK')}`)
+    }
     const ch = await prisma.paymentChannel.findFirst({
-      where: { id: req.body.channelId, enabled: true, method: req.body.method },
+      where: { id: req.body.channelId, enabled: true, agentFloat: true, method: 'BANK' },
     })
-    if (!ch) throw notFound('Payment account not found')
-    // Force platform channel only — never another agent's collection number
-    // Pass platform channelId only — createDeposit must not treat it as an agentAccount id
+    if (!ch) throw notFound('Bank account not found')
+    const chMin = Math.max(Number(ch.minAmount) / 100, AGENT_FLOAT_MIN)
+    if (req.body.amount < chMin) {
+      throw unprocessable(`Minimum float top-up for this account is Rs ${chMin.toLocaleString('en-PK')}`)
+    }
+    if (ch.maxAmount > 0n && req.body.amount > Number(ch.maxAmount) / 100) {
+      throw unprocessable(`Maximum for this account is Rs ${(Number(ch.maxAmount) / 100).toLocaleString('en-PK')}`)
+    }
     const dep = await createDeposit(req.user!.id, {
       amount: req.body.amount,
-      method: req.body.method,
+      method: 'BANK',
       channelId: ch.id,
       senderAccount: req.body.senderAccount,
       trxId: req.body.trxId,
+      autoAssign: false,
     })
-    if (dep.agentAccountId) throw conflict('Float top-up must use platform accounts')
+    if (dep.agentAccountId) throw conflict('Float top-up must use platform bank accounts')
     ok(res, dep, 201)
   }),
 )
@@ -401,10 +541,20 @@ agentRoutes.get(
     const startWeek = new Date(now); startWeek.setDate(now.getDate() - 6); startWeek.setHours(0, 0, 0, 0)
     const startMonth = new Date(now); startMonth.setDate(now.getDate() - 29); startMonth.setHours(0, 0, 0, 0)
 
-    async function period(from: Date) {
+    async function period(from?: Date, to?: Date) {
+      const createdAt: Record<string, Date> = {}
+      if (from) createdAt.gte = from
+      if (to) createdAt.lte = to
+      const range = Object.keys(createdAt).length ? { createdAt } : {}
       const [col, pay] = await Promise.all([
-        prisma.collectionOrder.aggregate({ where: { agentId, status: 'SUCCESS', type: 'DEPOSIT', createdAt: { gte: from } }, _sum: { amount: true, reward: true } }),
-        prisma.collectionOrder.aggregate({ where: { agentId, status: 'SUCCESS', type: 'WITHDRAW', createdAt: { gte: from } }, _sum: { amount: true, reward: true } }),
+        prisma.collectionOrder.aggregate({
+          where: { agentId, status: 'SUCCESS', type: 'DEPOSIT', ...range },
+          _sum: { amount: true, reward: true },
+        }),
+        prisma.collectionOrder.aggregate({
+          where: { agentId, status: 'SUCCESS', type: 'WITHDRAW', ...range },
+          _sum: { amount: true, reward: true },
+        }),
       ])
       return {
         colAmount: col._sum.amount ?? 0n,
@@ -414,7 +564,17 @@ agentRoutes.get(
       }
     }
 
-    const [today, week, month] = await Promise.all([period(startToday), period(startWeek), period(startMonth)])
-    ok(res, { today, week, month })
+    const fromQ = req.query.from ? new Date(String(req.query.from)) : null
+    const toQ = req.query.to ? new Date(String(req.query.to)) : null
+    const customFrom = fromQ && !Number.isNaN(fromQ.getTime()) ? (() => { const d = new Date(fromQ); d.setHours(0, 0, 0, 0); return d })() : null
+    const customTo = toQ && !Number.isNaN(toQ.getTime()) ? (() => { const d = new Date(toQ); d.setHours(23, 59, 59, 999); return d })() : null
+
+    const [today, week, month, custom] = await Promise.all([
+      period(startToday),
+      period(startWeek),
+      period(startMonth),
+      customFrom || customTo ? period(customFrom ?? undefined, customTo ?? undefined) : Promise.resolve(null),
+    ])
+    ok(res, { today, week, month, ...(custom ? { custom } : {}) })
   }),
 )

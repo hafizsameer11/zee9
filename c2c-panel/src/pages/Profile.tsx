@@ -12,13 +12,13 @@ export default function Profile() {
       <div className="scroll">
         <div className="profile-head">
           <div className="pf-ava">&#128100;</div>
-          <div className="pf-name">{agent?.name ?? 'Agent'}</div>
+          <div className="pf-name">{agent?.name ?? 'Merchant'}</div>
         </div>
 
         <div className="card menu-card">
           <div className="menu-item">
-            <span className="mi-k">Agent ID</span>
-            <span className="mi-v">{agent?.id.slice(-6).toUpperCase()}</span>
+            <span className="mi-k">User ID</span>
+            <span className="mi-v">{agent?.panelId ?? '—'}</span>
           </div>
           <div className="menu-item">
             <span className="mi-k">Phone Number</span>

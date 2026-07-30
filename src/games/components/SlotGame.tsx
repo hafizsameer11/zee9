@@ -7,7 +7,7 @@ import { useDesignScale } from '../hooks/useDesignScale'
 import Zee9PremiumFrame from './Zee9PremiumFrame'
 import styles from './premiumFrame.module.css'
 
-const STAKES = [50, 100, 500, 1000]
+const STAKES = [10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
 
 function formatPkr(n: number) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -93,7 +93,7 @@ export default function SlotGame({ gameId, bet: defaultBet, onMessage }: GameCom
               type="button"
               className="size-8 text-[#a1a1a1] border-0 bg-transparent cursor-pointer disabled:opacity-40"
               disabled={spinning}
-              onClick={() => setBetAmount((b) => Math.max(50, b - 50))}
+              onClick={() => setBetAmount((b) => Math.max(10, b - 10))}
             >
               −
             </button>
@@ -102,7 +102,7 @@ export default function SlotGame({ gameId, bet: defaultBet, onMessage }: GameCom
               type="button"
               className="size-8 text-[#a1a1a1] border-0 bg-transparent cursor-pointer disabled:opacity-40"
               disabled={spinning}
-              onClick={() => setBetAmount((b) => Math.min(5000, b + 50))}
+              onClick={() => setBetAmount((b) => Math.min(10000, b + 10))}
             >
               +
             </button>

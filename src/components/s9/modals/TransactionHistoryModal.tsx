@@ -6,6 +6,7 @@ import styles from './TransactionHistoryModal.module.css'
 type Txn = {
   id: string
   type: string
+  label?: string
   bucket: string
   direction: string
   amount: number
@@ -23,9 +24,17 @@ const TYPE_LABEL: Record<string, string> = {
   WITHDRAWAL_UNFREEZE: 'Withdrawal returned',
   BONUS_RELEASE: 'Bonus released',
   DAILY_BONUS: 'Daily bonus',
+  RETURN: 'Welcome back',
+  FREE_CASH: 'Free Cash',
+  REBET: 'Bet Rebate',
+  CASHBACK: 'Cashback',
   REGISTRATION_BONUS: 'Registration bonus',
   COMMISSION: 'Commission',
-  ADMIN_ADJUST: 'Adjustment',
+  WHEEL_PRIZE: 'Wheel prize',
+  ADMIN_ADJUST: 'Admin adjustment',
+  GAME_BET: 'Game bet',
+  GAME_WIN: 'Game win',
+  GAME_REFUND: 'Bet refund',
 }
 
 export default function TransactionHistoryModal({ onClose }: Props) {
@@ -59,7 +68,7 @@ export default function TransactionHistoryModal({ onClose }: Props) {
           <p className={styles.empty}>No transactions yet</p>
         ) : (
           grouped.map((t) => {
-            const label = TYPE_LABEL[t.type] ?? t.type.replace(/_/g, ' ')
+            const label = t.label || TYPE_LABEL[t.type] || t.type.replace(/_/g, ' ')
             const positive = t.signed >= 0
             return (
               <div key={t.id} className={styles.row}>

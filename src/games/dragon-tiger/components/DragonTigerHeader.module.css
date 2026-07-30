@@ -1,0 +1,280 @@
+.header {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 148px;
+  z-index: 10;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.header button {
+  pointer-events: auto;
+}
+
+.iconBtn {
+  position: absolute;
+  top: 8px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 14;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+}
+
+.iconBtn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.iconBtn:first-of-type {
+  left: 8px;
+}
+
+.rightBtns {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 14;
+}
+
+.rightBtns .iconBtn {
+  position: relative;
+  top: 0;
+}
+
+/* Wide wings so characters fill the header without boxing */
+.dragonWing,
+.tigerWing {
+  position: absolute;
+  top: 0;
+  height: 142px;
+  width: 250px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.dragonWing {
+  left: 2px;
+}
+
+.tigerWing {
+  right: 2px;
+}
+
+.plaque {
+  position: absolute;
+  bottom: 4px;
+  z-index: 9;
+  padding: 2px 14px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #f0d890;
+  background: linear-gradient(180deg, rgba(70, 28, 18, 0.92), rgba(30, 8, 10, 0.92));
+  border: 1px solid rgba(220, 180, 90, 0.65);
+  border-radius: 3px;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 220, 150, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.center {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 12;
+}
+
+.cardSlot {
+  width: 64px;
+  height: 90px;
+  border-radius: 8px;
+  padding: 3px;
+  background: linear-gradient(160deg, rgba(40, 12, 16, 0.85), rgba(20, 6, 8, 0.9));
+  box-shadow:
+    inset 0 0 0 1px rgba(220, 180, 90, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+.dragonSlot {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(100, 180, 255, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.45),
+    0 0 12px rgba(60, 140, 255, 0.2);
+}
+
+.tigerSlot {
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 160, 60, 0.55),
+    0 6px 14px rgba(0, 0, 0, 0.45),
+    0 0 12px rgba(255, 120, 40, 0.2);
+}
+
+.cardSlot :global(.wrap),
+.cardSlot > * {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.timerWrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+}
+
+.emblem {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  object-fit: contain;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 10px rgba(255, 190, 80, 0.35));
+  animation: emblemPulse 3s ease-in-out infinite;
+}
+
+.timerCore {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
+}
+
+.timerNum {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffe9a8;
+  text-shadow: 0 0 10px rgba(255, 200, 80, 0.5);
+}
+
+.timerLabel {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #e8d0a0;
+  text-transform: uppercase;
+  max-width: 56px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.urgent .emblem {
+  filter: drop-shadow(0 0 14px rgba(255, 80, 40, 0.65));
+  animation: emblemUrgent 0.6s ease-in-out infinite;
+}
+
+.history {
+  position: absolute;
+  left: 100px;
+  right: 100px;
+  top: 138px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  z-index: 9;
+  pointer-events: none;
+}
+
+.history button {
+  pointer-events: auto;
+}
+
+.bead {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation: beadIn 0.3s ease-out;
+}
+
+.dragon {
+  background: linear-gradient(160deg, #4a9aef, #163e80);
+}
+
+.tiger {
+  background: linear-gradient(160deg, #ef5a38, #8a1810);
+}
+
+.tie {
+  background: linear-gradient(160deg, #e8c860, #8a6820);
+  color: #2a1c08;
+}
+
+.trendOpen {
+  margin-left: 4px;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #e8c860, #9a7828);
+  color: #2a1808;
+  font-size: 8px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+@keyframes emblemPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes emblemUrgent {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes beadIn {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

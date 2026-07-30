@@ -60,6 +60,9 @@ export type CrashDesignUIProps = {
   onBet: () => void
   onCashOut: () => void
   onHome: () => void
+  onAddCash: () => void
+  menuOpen: boolean
+  onToggleMenu: () => void
 }
 
 function formatBankroll(n: number) {
@@ -67,7 +70,6 @@ function formatBankroll(n: number) {
 }
 
 function formatBet(n: number) {
-  if (n < 100) return (n / 100).toFixed(2)
   return n.toLocaleString('en-PK', { maximumFractionDigits: 0 })
 }
 
@@ -154,6 +156,9 @@ export default function CrashDesignUI({
   onBet,
   onCashOut,
   onHome,
+  onAddCash,
+  menuOpen,
+  onToggleMenu,
 }: CrashDesignUIProps) {
   const axisRef = useRef({ t: 10, m: 2 })
   const rafRef = useRef(0)
@@ -321,9 +326,9 @@ export default function CrashDesignUI({
                     </div>
                   )
                 })}
-                <button type="button" className={styles.historyChartBtn} aria-label="History chart">
+                <span className={styles.historyChartBtn} aria-hidden>
                   <ChartTrendIcon />
-                </button>
+                </span>
               </div>
             </div>
 
@@ -337,17 +342,30 @@ export default function CrashDesignUI({
               <div className={styles.balanceBox}>
                 <PokerChipIcon className={styles.balanceChip} />
                 <span>{formatCompact(balance)}</span>
-                <button type="button" className={styles.plusBtn} aria-label="Add chips">
+                <button type="button" className={styles.plusBtn} aria-label="Add chips" onClick={onAddCash}>
                   +
                 </button>
               </div>
-              <button type="button" className={styles.addBtn}>
+              <button type="button" className={styles.addBtn} onClick={onAddCash}>
                 <span>ADD</span>
                 <CartWagonIcon className={styles.cartIcon} />
               </button>
-              <button type="button" className={styles.menuBtn} aria-label="Menu">
+              <button type="button" className={styles.menuBtn} aria-label="Menu" onClick={onToggleMenu}>
                 <MenuDiamondsIcon />
               </button>
+              {menuOpen && (
+                <div className={styles.menuPanel} role="menu">
+                  <button type="button" className={styles.menuItem} onClick={onHome}>
+                    Exit to lobby
+                  </button>
+                  <button type="button" className={styles.menuItem} onClick={onAddCash}>
+                    Add cash
+                  </button>
+                  <button type="button" className={styles.menuItem} onClick={onToggleMenu}>
+                    Close
+                  </button>
+                </div>
+              )}
             </div>
           </header>
 
@@ -359,9 +377,9 @@ export default function CrashDesignUI({
                 <ToggleSwitch vertical on={gameType === 'classic'} onClick={onGameTypeToggle} />
                 <span className={styles.toggleOption}>Classic</span>
               </div>
-              <button type="button" className={styles.socialBtn} aria-label="Players">
+              <span className={styles.socialBtn} aria-hidden>
                 <SocialGroupIcon />
-              </button>
+              </span>
               <div className={styles.vent}>
                 <SpeakerVentIcon />
               </div>

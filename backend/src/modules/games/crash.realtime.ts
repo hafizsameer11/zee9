@@ -6,6 +6,7 @@ import { logger } from '../../lib/logger.js'
 import { env } from '../../lib/env.js'
 import * as crash from './crash.service.js'
 import { registerGameWs } from './gameWsRouter.js'
+import { dispatchWsAction } from './wsActions.js'
 
 type Client = {
   ws: WebSocket
@@ -113,13 +114,30 @@ export function attachCrashRealtime(_server: HttpServer) {
       }
 
       ws.on('message', (raw) => {
-        try {
-          const msg = JSON.parse(String(raw))
-          if (msg?.type === 'ping') send(ws, { type: 'pong', t: Date.now() })
-          if (msg?.type === 'refresh') kickCrashRealtime()
-        } catch {
-          /* ignore */
-        }
+        void (async () => {
+          try {
+            const msg = JSON.parse(String(raw))
+            if (msg?.type === 'ping') {
+              send(ws, { type: 'pong', t: Date.now() })
+              return
+            }
+            if (msg?.type === 'refresh') {
+              kickCrashRealtime()
+              return
+            }
+            await dispatchWsAction(
+              ws,
+              msg,
+              {
+                bet: async (m) => crash.placeBet(client.userId, m.amount, m.slot ?? 0, m.autoAt),
+                cashout: async (m) => crash.cashOut(client.userId, m.betId),
+              },
+              { afterOk: () => kickCrashRealtime() },
+            )
+          } catch {
+            /* ignore */
+          }
+        })()
       })
 
       ws.on('close', () => {

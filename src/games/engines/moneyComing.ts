@@ -6,7 +6,7 @@ export type McNumber = (typeof MC_NUMBERS)[number]
 export const MC_MULTS = ['—', '2x', '5x', '10x', 'RESPIN'] as const
 export type McMult = (typeof MC_MULTS)[number]
 
-export const MC_BET_STEPS = [10, 20, 50, 100, 200, 500]
+export const MC_BET_STEPS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
 
 export const WHEEL_VALUES = [50, 100, 150, 200, 300, 500, 1000, 2000]
 

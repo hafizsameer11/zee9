@@ -48,7 +48,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       items: [
         { to: '/games', label: 'Games', icon: 'games' },
         { to: '/players', label: 'Players', icon: 'players' },
-        { to: '/agents', label: 'Agents', icon: 'agents' },
+        { to: '/c2c', label: 'C2C Merchants', icon: 'agents' },
+        { to: '/agents', label: 'Referral Agents', icon: 'referrals' },
         { to: '/referrals', label: 'Referrals & Commission', icon: 'referrals' },
         { to: '/channels', label: 'Channels & Mentors', icon: 'agents' },
       ],
@@ -57,7 +58,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       group: 'Finance',
       items: [
         { to: '/deposits', label: 'Deposits', icon: 'deposit', badge: () => pendingD || undefined },
-        { to: '/payment-channels', label: 'Payment Channels', icon: 'deposit' },
+        { to: '/payment-channels', label: 'C2C Float Banks', icon: 'deposit' },
         { to: '/withdrawals', label: 'Withdrawals', icon: 'withdraw', badge: () => pendingW || undefined },
       ],
     },
@@ -65,7 +66,9 @@ export default function Layout({ children }: { children: ReactNode }) {
       group: 'Engagement',
       items: [
         { to: '/bonuses', label: 'Bonuses & Wager', icon: 'bonus' },
-        { to: '/cashback', label: 'Cashback', icon: 'cashback' },
+        { to: '/vip', label: 'VIP Salary', icon: 'offers' },
+        { to: '/free-cash', label: 'Free Cash', icon: 'cashback' },
+        { to: '/cashback', label: 'Bet Rebate', icon: 'cashback' },
         { to: '/offers', label: 'Offers', icon: 'offers' },
         { to: '/wheel', label: 'Lucky Wheel', icon: 'wheel' },
       ],

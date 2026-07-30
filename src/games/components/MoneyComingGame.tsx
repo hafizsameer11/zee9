@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
+import { getAccess } from '../../api/client'
+import { preconnectSlot, serverSlotSpin } from '../lib/serverSpin'
 import {
   buildMultStrip,
   buildReelStrip,
@@ -12,17 +14,20 @@ import {
   type McMult,
   type McNumber,
 } from '../engines/moneyComing'
+import { MC_ASSETS, MC_AUDIO, preloadMoneyComingAssets } from '../engines/moneyComingAssets'
 import { useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
 import MoneyComingDesignUI from './MoneyComingDesignUI'
+import styles from './moneyComing.module.css'
+import AddCashModal from '../../components/s9/modals/AddCashModal'
 
 /** Money Coming reference canvas (fills 16:9 landscape without tall letterbox). */
 export const MC_DESIGN_W = 850
 export const MC_DESIGN_H = 480
 
 const SPIN_MS = 2200
-const MC_SPIN_SFX = '/games/money-coming/spin.mp3'
-const MC_CLICK_SFX = '/games/money-coming/click.mp3'
+const MC_SPIN_SFX = MC_AUDIO.spin
+const MC_CLICK_SFX = MC_AUDIO.click
 
 function playMcSfx(src: string, volume: number, fallback: () => void) {
   try {
@@ -36,14 +41,31 @@ function playMcSfx(src: string, volume: number, fallback: () => void) {
   }
 }
 
+function MoneyComingLoader({ progress }: { progress: number }) {
+  return (
+    <div className={styles.loader} aria-busy="true" aria-label="Loading Money Coming">
+      <img className={styles.loaderLogo} src={MC_ASSETS.logo} alt="" draggable={false} />
+      <div className={styles.loaderTitle}>MONEY COMING</div>
+      <div className={styles.loaderBarWrap}>
+        <div className={styles.loaderBar} style={{ width: `${progress}%` }} />
+      </div>
+      <div className={styles.loaderPct}>{progress}% · Preparing game</div>
+    </div>
+  )
+}
+
 export default function MoneyComingGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, MC_DESIGN_W, MC_DESIGN_H)
-  const { balance, debit, credit, canAfford } = useWallet()
+  const { balance, debit, credit, canAfford, refresh } = useWallet()
   const busyRef = useRef(false)
   const spinAudioRef = useRef<HTMLAudioElement | null>(null)
 
+  const [ready, setReady] = useState(false)
+  const [loadProgress, setLoadProgress] = useState(0)
+  const [showAddCash, setShowAddCash] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [betAmount, setBetAmount] = useState(10)
   const [reels, setReels] = useState<[McNumber, McNumber, McNumber]>([1, 1, 0])
   const [mult, setMult] = useState<McMult>('2x')
@@ -58,8 +80,21 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
   const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    preconnectSlot('money-coming')
+    let cancelled = false
+    void preloadMoneyComingAssets((loaded, total) => {
+      if (cancelled) return
+      setLoadProgress(Math.max(4, Math.round((loaded / total) * 100)))
+    }).then(() => {
+      if (cancelled) return
+      setLoadProgress(100)
+      setReady(true)
+    })
     void sound.unlock()
     void sound.preload(['spin', 'click', 'chip', 'win', 'lose', 'tap', 'whoosh'])
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const stopSpinAudio = () => {
@@ -77,15 +112,17 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
   const spin = useCallback(async (opts?: { free?: boolean }) => {
     if (busyRef.current || spinning) return
     const free = opts?.free === true
+    const live = !!getAccess()
+
     if (!free) {
       if (!canAfford(betAmount)) {
         sound.play('error')
         onMessage?.('Insufficient balance')
         return
       }
-      if (!debit(betAmount)) {
+      if (!live) {
         sound.play('error')
-        onMessage?.('Bet failed')
+        onMessage?.('Not authenticated')
         return
       }
     }
@@ -108,10 +145,48 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
     setMultStrip(buildMultStrip())
 
     const duration = turbo ? 1100 : SPIN_MS
-    await new Promise((r) => setTimeout(r, duration))
 
-    const next: [McNumber, McNumber, McNumber] = [randomNumber(), randomNumber(), randomNumber()]
-    const nextMult = randomMult()
+    let next: [McNumber, McNumber, McNumber]
+    let nextMult: McMult
+    let winAmount = 0
+    let kind: 'none' | 'match' | 'respin' = 'none'
+
+    try {
+      if (live && !free) {
+        const settled = await serverSlotSpin('money-coming', betAmount)
+        if (!settled) throw new Error('Not authenticated')
+        const payload = settled.payload || {}
+        next = (payload.reels as [McNumber, McNumber, McNumber]) ?? [
+          randomNumber(),
+          randomNumber(),
+          randomNumber(),
+        ]
+        nextMult = (payload.mult as McMult) ?? '—'
+        winAmount = Number(settled.win ?? 0)
+        kind = winAmount > 0 ? 'match' : 'none'
+        await refresh()
+        await new Promise((r) => setTimeout(r, Math.min(duration, 900)))
+      } else if (free) {
+        await new Promise((r) => setTimeout(r, duration))
+        next = [randomNumber(), randomNumber(), randomNumber()]
+        nextMult = randomMult()
+        const result = evaluateSpin(next, nextMult, betAmount)
+        winAmount = result.win
+        kind = result.kind
+      } else {
+        throw new Error('Not authenticated')
+      }
+    } catch (e: any) {
+      setSpinning(false)
+      setWheelSpinning(false)
+      setShine(false)
+      busyRef.current = false
+      stopSpinAudio()
+      sound.play('error')
+      onMessage?.(e?.message || 'Spin failed')
+      return
+    }
+
     setReels(next)
     setMult(nextMult)
     setSpinning(false)
@@ -119,8 +194,7 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
     stopSpinAudio()
     sound.play('tap', { volume: 0.35 })
 
-    const result = evaluateSpin(next, nextMult, betAmount)
-    if (result.kind === 'respin') {
+    if (kind === 'respin') {
       onMessage?.('RESPIN!')
       playMcSfx(MC_CLICK_SFX, 0.45, () => sound.play('bonus', { volume: 0.45 }))
       window.setTimeout(() => onMessage?.(null), 1200)
@@ -130,12 +204,12 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
       return
     }
 
-    if (result.win > 0) {
-      credit(result.win)
-      setLastWin(result.win)
+    if (winAmount > 0) {
+      if (!live) credit(winAmount)
+      setLastWin(winAmount)
       sound.play('win', { volume: 0.75 })
       sound.play('coin', { volume: 0.4 })
-      onMessage?.(`Won Rs ${result.win.toLocaleString()}!`)
+      onMessage?.(`Won Rs ${winAmount.toLocaleString()}!`)
       window.setTimeout(() => onMessage?.(null), 2000)
     } else {
       sound.play('lose', { volume: 0.35 })
@@ -143,7 +217,7 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
 
     setShine(false)
     busyRef.current = false
-  }, [betAmount, canAfford, credit, debit, onMessage, spinning, turbo])
+  }, [betAmount, canAfford, credit, debit, onMessage, refresh, spinning, turbo])
 
   useEffect(() => {
     if (!auto || spinning || busyRef.current) return
@@ -188,31 +262,54 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
     void spin()
   }
 
+  if (!ready) {
+    return (
+      <div className={styles.root} ref={viewportRef}>
+        <MoneyComingLoader progress={loadProgress} />
+      </div>
+    )
+  }
+
+  const goHome = () => {
+    playMcSfx(MC_CLICK_SFX, 0.35, () => sound.play('tap', { volume: 0.35 }))
+    navigate('/home')
+  }
+
   return (
-    <MoneyComingDesignUI
-      viewportRef={viewportRef}
-      layout={layout}
-      balance={balance}
-      betAmount={betAmount}
-      reels={reels}
-      mult={mult}
-      strips={strips}
-      multStrip={multStrip}
-      spinning={spinning}
-      shine={shine}
-      wheelSpinning={wheelSpinning}
-      lastWin={lastWin}
-      turbo={turbo}
-      auto={auto}
-      onHome={() => {
-        playMcSfx(MC_CLICK_SFX, 0.35, () => sound.play('tap', { volume: 0.35 }))
-        navigate('/')
-      }}
-      onSpin={onSpinClick}
-      onBetPlus={() => adjustBet(1)}
-      onBetMinus={() => adjustBet(-1)}
-      onToggleTurbo={toggleTurbo}
-      onToggleAuto={toggleAuto}
-    />
+    <>
+      <MoneyComingDesignUI
+        viewportRef={viewportRef}
+        layout={layout}
+        balance={balance}
+        betAmount={betAmount}
+        reels={reels}
+        mult={mult}
+        strips={strips}
+        multStrip={multStrip}
+        spinning={spinning}
+        shine={shine}
+        wheelSpinning={wheelSpinning}
+        lastWin={lastWin}
+        turbo={turbo}
+        auto={auto}
+        menuOpen={menuOpen}
+        onHome={goHome}
+        onAddCash={() => {
+          playMcSfx(MC_CLICK_SFX, 0.4, () => sound.play('click', { volume: 0.4 }))
+          setMenuOpen(false)
+          setShowAddCash(true)
+        }}
+        onToggleMenu={() => {
+          playMcSfx(MC_CLICK_SFX, 0.35, () => sound.play('tap', { volume: 0.35 }))
+          setMenuOpen((v) => !v)
+        }}
+        onSpin={onSpinClick}
+        onBetPlus={() => adjustBet(1)}
+        onBetMinus={() => adjustBet(-1)}
+        onToggleTurbo={toggleTurbo}
+        onToggleAuto={toggleAuto}
+      />
+      {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    </>
   )
 }

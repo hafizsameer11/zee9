@@ -40,8 +40,8 @@ export default function AddAccount() {
     }
     setBusy(true)
     try {
-      await addAccount({ method, holder: holder.trim(), number: number.trim(), on: false, awaiting: false })
-      showToast('Account added — turn Active to show it to players')
+      await addAccount({ method, holder: holder.trim(), number: number.trim(), on: false, awaiting: true })
+      showToast('Submitted — waiting for admin approval')
       nav('/accounts')
     } catch (e: any) {
       showToast(e?.message || 'Failed to add')

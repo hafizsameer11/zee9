@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../api/client'
 import { useConfig } from '../../../api/hooks'
 import { useWallet } from '../../../context/WalletContext'
@@ -6,6 +6,7 @@ import { METHOD_LABEL, maskAccountNumber, type PayoutAccount } from '../../../ap
 import { sound } from '../../../lib/sound'
 import ps from '../../../styles/premiumScreen.module.css'
 import styles from './WithdrawScreen.module.css'
+import MoneyRecordsModal from './MoneyRecordsModal'
 
 type Props = {
   onClose: () => void
@@ -58,13 +59,15 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
   const [amount, setAmount] = useState(chips[0] ?? 'Other')
   const [custom, setCustom] = useState(String(minW))
   const [busy, setBusy] = useState(false)
+  const submitLock = useRef(false)
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [history, setHistory] = useState<any[]>([])
 
   const rupees = parseAmount(amount, custom, minW, maxW)
   const eligibleRs = elig ? r(elig.eligibleAmount) : balance
+  const playMore = elig && !elig.wagerOk ? Math.max(0, r(elig.wagerRemaining)) : 0
+  const playToUnlock = Math.ceil(playMore)
 
   useEffect(() => {
     api
@@ -74,24 +77,25 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
   }, [])
 
   async function loadHistory() {
-    try {
-      const rows = await api.get('/withdrawals')
-      setHistory(rows.slice(0, 20))
-      setShowHistory(true)
-    } catch {
-      setErr('Could not load history')
-    }
+    setShowHistory(true)
   }
 
   async function submit() {
+    if (submitLock.current || busy || done) return
     setErr(null)
     if (!methodOk) return setErr(`${METHOD_LABEL[account.method]} withdrawals are disabled`)
     if (!rupees) return setErr('Enter a valid amount')
     if (rupees < minW) return setErr(`Minimum withdrawal is Rs ${minW}`)
     if (rupees > maxW) return setErr(`Maximum withdrawal is Rs ${maxW}`)
-    if (elig && !elig.canWithdraw) return setErr(elig.reason || 'Not eligible to withdraw yet')
+    if (elig && !elig.canWithdraw) {
+      if (playToUnlock > 0) {
+        return setErr(`Pehle ${playToUnlock.toLocaleString('en-PK')} chips game play karein, phir withdraw`)
+      }
+      return setErr(elig.reason || 'Abhi withdraw nahi ho sakta')
+    }
     if (rupees > eligibleRs) return setErr(`Max eligible is Rs ${eligibleRs.toLocaleString('en-PK')}`)
     if (rupees > balance) return setErr('Insufficient balance')
+    submitLock.current = true
     setBusy(true)
     try {
       await api.post('/withdrawals', {
@@ -110,6 +114,7 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
     } catch (e: any) {
       sound.play('error')
       setErr(e?.message || 'Withdrawal failed')
+      submitLock.current = false
       try {
         setElig(await api.get('/withdrawals/eligibility'))
       } catch { /* ignore */ }
@@ -149,14 +154,9 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
         </header>
 
         {err && <div style={{ background: '#c62828', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 700 }}>{err}</div>}
-        {elig && !elig.canWithdraw && elig.reason && (
+        {elig && !elig.canWithdraw && elig.reason && playToUnlock <= 0 && (
           <div style={{ background: '#5c3d00', color: '#ffd54f', padding: '8px 14px', fontSize: 12, fontWeight: 600 }}>
             {elig.reason}
-            {elig.depositWager > 0 && (
-              <div style={{ marginTop: 4, opacity: 0.9, fontWeight: 500 }}>
-                Played Rs {r(elig.wagered).toLocaleString('en-PK')} / need Rs {r(elig.wagerRequired).toLocaleString('en-PK')}
-              </div>
-            )}
           </div>
         )}
 
@@ -215,6 +215,22 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
                 style={{ width: '100%', marginTop: 8, padding: '10px 12px', borderRadius: 8, border: '1px solid #8b6914', background: '#1a0505', color: '#fff' }}
               />
             )}
+
+            {playToUnlock > 0 && (
+              <div className={styles.playInfo}>
+                <p>
+                  Game mein aur <b>{playToUnlock.toLocaleString('en-PK')} Chips</b> play karein — uske baad withdraw
+                  available hoga.
+                </p>
+                <p>
+                  Poora balance nikalne ke liye bhi itni play complete karni zaroori hai.
+                </p>
+                <p className={styles.playNote}>
+                  Har game ki bet is amount mein count hoti hai.
+                </p>
+              </div>
+            )}
+
             <div className={styles.rightFooter}>
               <span className={styles.fee}>Min Rs {minW} · Max Rs {maxW.toLocaleString('en-PK')}</span>
               <button
@@ -230,21 +246,7 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
         </div>
 
         {showHistory && (
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.7)', zIndex: 20, padding: 20, overflow: 'auto' }} onClick={() => setShowHistory(false)}>
-            <div style={{ background: '#1a0c00', border: '1px solid #8b6914', borderRadius: 12, padding: 16, maxWidth: 400, margin: '40px auto' }} onClick={(e) => e.stopPropagation()}>
-              <h3 style={{ color: '#ffd54f', margin: '0 0 12px' }}>Withdrawal History</h3>
-              {history.length === 0 ? (
-                <p style={{ color: '#c9a24a', fontSize: 13 }}>No withdrawals yet</p>
-              ) : (
-                history.map((w) => (
-                  <div key={w.id} style={{ borderBottom: '1px solid rgba(139,105,20,.2)', padding: '8px 0', fontSize: 12, color: '#e8d0a0' }}>
-                    <div>Rs {(Number(w.amount) / 100).toLocaleString('en-PK')} · {w.method} · <b>{w.status}</b></div>
-                    <small>{new Date(w.createdAt).toLocaleString('en-PK')}</small>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <MoneyRecordsModal kind="withdraw" onClose={() => setShowHistory(false)} />
         )}
       </div>
     </div>

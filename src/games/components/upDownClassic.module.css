@@ -93,6 +93,41 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  position: relative;
+}
+
+.menuPanel {
+  position: absolute;
+  top: 42px;
+  right: 0;
+  z-index: 120;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2a1810, #120a08);
+  border: 1.5px solid #c9a020;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menuItem {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #ffe9a8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.menuItem:hover,
+.menuItem:active {
+  background: rgba(255, 200, 80, 0.15);
 }
 
 .hudIconBtn {

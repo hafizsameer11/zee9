@@ -10,14 +10,14 @@ export default function Referrals() {
     <>
       <PageHead
         title="Referrals & Commission"
-        subtitle="Configure the 3-level agent commission structure and agentship rules"
+        subtitle="Configure referral Agent commission (L1–L3) and agentship rules"
         actions={<button className="btn btn-primary" onClick={() => patchSettings({})}>Save</button>}
       />
 
       <div className="grid grid-2" style={{ gridTemplateColumns: '1.2fr 1fr', alignItems: 'start' }}>
         <div className="card card-pad">
           <h3 className="section-title">Commission by level</h3>
-          <p className="section-sub">Only agents earn commission on their downline's activity.</p>
+          <p className="section-sub">Only approved referral Agents earn commission on their downline's activity.</p>
 
           {([
             ['Level 1 (direct)', 'commissionL1'],
@@ -58,7 +58,7 @@ export default function Referrals() {
 
           <div className="divider" />
 
-          <h3 className="section-title">C2C agent rewards</h3>
+          <h3 className="section-title">C2C merchant rewards</h3>
           <p className="section-sub">Collection / pay-on-behalf reward % and when earnings unlock.</p>
           <div className="form-grid">
             <div className="fld">
@@ -79,10 +79,12 @@ export default function Referrals() {
                 type="number"
                 min={0}
                 max={90}
-                value={s.agentEarnHoldDays ?? 7}
+                value={s.agentEarnHoldDays ?? 0}
                 onChange={(e) => patchSettings({ agentEarnHoldDays: Number(e.target.value) })}
               />
-              <div className="hint" style={{ marginTop: 6 }}>After this many days, agent can move rewards into float.</div>
+              <div className="hint" style={{ marginTop: 6 }}>
+                C2C deposit/withdraw rewards credit float instantly (hold = 0). Keep 0 unless you need a lock again.
+              </div>
             </div>
           </div>
 

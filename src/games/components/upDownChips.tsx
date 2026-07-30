@@ -21,9 +21,15 @@ const TRAY_CHIP_CLASS: Record<number, string> = {
   100: styles.trayChipGrey!,
   500: styles.trayChipBrown!,
   1000: styles.trayChipGold!,
+  2000: styles.trayChipGold!,
+  5000: styles.trayChipBlack!,
+  10000: styles.trayChipBrown!,
 }
 
 export function chipColorForValue(value: number): ChipColor {
+  if (value >= 10000) return 'black'
+  if (value >= 5000) return 'brown'
+  if (value >= 2000) return 'gold'
   if (value >= 1000) return 'black'
   if (value >= 500) return 'brown'
   if (value >= 100) return 'white'
@@ -32,7 +38,8 @@ export function chipColorForValue(value: number): ChipColor {
 }
 
 export function chipLabel(value: number): string {
-  return value >= 1000 ? '1K' : String(value)
+  if (value >= 1000) return `${value / 1000}K`
+  return String(value)
 }
 
 /** Round poker chip image for table / flying animation */

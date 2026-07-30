@@ -22,7 +22,7 @@ export default function Dashboard() {
         <StatCard icon="money" tone="violet" value={money(totalGGR)} label="Total Commission" />
         <StatCard icon="players" tone="green" value={compact(playerCount)} label="Registered Players" />
         <StatCard icon="deposit" tone="blue" value={money(totalDeposited)} label="Total Deposits" />
-        <StatCard icon="agents" tone="gold" value={`${activeAgents}/${dashboard?.agents ?? agents.length}`} label="Active Agents" />
+        <StatCard icon="agents" tone="gold" value={`${activeAgents}/${dashboard?.agents ?? agents.length}`} label="Active C2C merchants" />
       </div>
 
       <div className="grid grid-2 mt24" style={{ gridTemplateColumns: '1.6fr 1fr' }}>
@@ -113,8 +113,9 @@ export default function Dashboard() {
           <div className="card-pad" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {[
               ['Registration bonus', money(settings.registrationBonus)],
-              ['Daily open bonus', money(settings.dailyOpenBonus)],
-              ['Wheel deposit / spin', money(settings.wheelDepositPerSpin ?? 1000)],
+              ['Daily rewards', (settings.dailyRewards?.length === 7 ? settings.dailyRewards : [4, 9, 3, 5, 8, 6, 10]).map((n) => `Rs ${n}`).join(' · ')],
+              ['Wheel deposit tiers', `${(settings.wheelDepositTiers ?? []).length} levels`],
+              ['Wheel bet tiers', `${(settings.wheelBetTiers ?? []).length} levels`],
               ['Commission (L1/L2/L3)', `${settings.commissionL1}/${settings.commissionL2}/${settings.commissionL3}%`],
               ['Withdraw range', `${money(settings.minWithdraw)} – ${money(settings.maxWithdraw)}`],
               ['Deposit range', `${money(settings.minDeposit)} – ${money(settings.maxDeposit)}`],

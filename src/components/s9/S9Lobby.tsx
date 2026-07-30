@@ -6,6 +6,8 @@ import { useConfig, useNotifications } from '../../api/hooks'
 import { useWallet } from '../../context/WalletContext'
 import { usePlayerAuth } from '../../api/auth'
 import { loadPayoutAccount, savePayoutAccount, type PayoutAccount } from '../../api/payoutAccount'
+import { ensureLobbyAssetsReady, startLobbyAssetWarmup } from '../../lib/lobbyAssetWarmup'
+import Zee9LoadingScreen from '../Zee9LoadingScreen'
 import S9Header from './S9Header'
 import S9Ticker from './S9Ticker'
 import S9Sidebar from './S9Sidebar'
@@ -17,6 +19,7 @@ import WithdrawScreen from './modals/WithdrawScreen'
 import LuckyWheelModal from './modals/LuckyWheelModal'
 import ReferEarnScreen from './modals/ReferEarnScreen'
 import UserProfileScreen from './modals/UserProfileScreen'
+import AccountRecordsModal from './modals/AccountRecordsModal'
 import NewsScreen from './modals/NewsScreen'
 import SupportScreen from './modals/SupportScreen'
 import MailScreen from './modals/MailScreen'
@@ -25,6 +28,10 @@ import WelcomeBonusModal from './modals/WelcomeBonusModal'
 import TransactionHistoryModal from './modals/TransactionHistoryModal'
 import GrabBonusModal from './modals/GrabBonusModal'
 import RebateModal from './modals/RebateModal'
+import VipSalaryModal from './modals/VipSalaryModal'
+import ReturnBonusModal from './modals/ReturnBonusModal'
+import CashBackCardsModal from './modals/CashBackCardsModal'
+import FreeCashModal from './modals/FreeCashModal'
 import styles from './S9Lobby.module.css'
 import './s9Animations.css'
 
@@ -48,13 +55,11 @@ export default function S9Lobby() {
   }
 
   const claimDaily = async () => {
-    try {
-      await api.post('/bonuses/daily-open/claim')
-      await Promise.all([refresh(), notif.refetch()])
-      showToast('Daily bonus claimed!')
-    } catch (e: any) {
-      showToast(e?.message || 'Already claimed today')
-    }
+    const res = await api.post('/bonuses/daily-open/claim') as { day?: number; amount?: number }
+    await Promise.all([refresh(), notif.refetch()])
+    const day = res?.day ?? ''
+    const amt = res?.amount != null ? `Rs ${res.amount}` : 'bonus'
+    showToast(day ? `Day ${day}: ${amt} claimed!` : 'Daily reward claimed!')
   }
 
   const spinWheelDone = async () => {
@@ -68,6 +73,7 @@ export default function S9Lobby() {
   const [showDepositWheel, setShowDepositWheel] = useState(false)
   const [showRefer, setShowRefer] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
+  const [showAccountRecords, setShowAccountRecords] = useState(false)
   const [showNews, setShowNews] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
   const [showMail, setShowMail] = useState(false)
@@ -76,8 +82,36 @@ export default function S9Lobby() {
   const [showHistory, setShowHistory] = useState(false)
   const [showGrabBonus, setShowGrabBonus] = useState(false)
   const [showRebate, setShowRebate] = useState(false)
+  const [showFreeCash, setShowFreeCash] = useState(false)
+  const [showCashCards, setShowCashCards] = useState(false)
+  const [depositPreset, setDepositPreset] = useState<number | undefined>(undefined)
+  const [showVip, setShowVip] = useState(false)
+  const [showReturnBonus, setShowReturnBonus] = useState(false)
+  const [lobbyReady, setLobbyReady] = useState(false)
+  const [lobbyProgress, setLobbyProgress] = useState(4)
 
-  const openDeposit = () => setShowAddCash(true)
+  const openDeposit = (amount?: number) => {
+    setDepositPreset(amount)
+    setShowAddCash(true)
+  }
+
+  const openCashCards = () => setShowCashCards(true)
+
+  useEffect(() => {
+    let cancelled = false
+    void ensureLobbyAssetsReady((pct) => {
+      if (!cancelled) setLobbyProgress(pct)
+    }).finally(() => {
+      if (!cancelled) {
+        setLobbyProgress(100)
+        setLobbyReady(true)
+        startLobbyAssetWarmup() // continue warming game packs in background
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (player?.id) setPayoutAccount(loadPayoutAccount(player.id))
@@ -102,14 +136,36 @@ export default function S9Lobby() {
   }
 
   useEffect(() => {
+    if (!lobbyReady || !player?.id) return
+    let cancelled = false
+    const key = `zee9:return-bonus:${player.id}`
+    try {
+      if (sessionStorage.getItem(key) === '1') return
+    } catch {
+      /* ignore */
+    }
+    api
+      .get('/bonuses/return/status')
+      .then((st: { eligible?: boolean }) => {
+        if (cancelled || !st?.eligible) return
+        setShowReturnBonus(true)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [lobbyReady, player?.id])
+
+  useEffect(() => {
     try {
       if (sessionStorage.getItem(LUCKY_WHEEL_SESSION_KEY) === '1') return
     } catch {
       /* ignore */
     }
+    if (showReturnBonus) return
     const timer = window.setTimeout(() => setShowWheel(true), 500)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [showReturnBonus])
 
   const closeWheel = () => {
     try {
@@ -122,15 +178,36 @@ export default function S9Lobby() {
 
   const openWheel = () => setShowWheel(true)
 
+  if (!lobbyReady) {
+    return (
+      <div className={styles.lobby}>
+        <Zee9LoadingScreen
+          progress={lobbyProgress}
+          title="Zee9"
+          subtitle="Loading game tiles…"
+        />
+      </div>
+    )
+  }
+
   return (
     <div className={styles.lobby}>
       <div className={styles.pattern} aria-hidden="true" />
       <S9Header
         onDeposit={openDeposit}
-        onProfile={() => setShowProfile((v) => !v)}
+        onProfile={() => {
+          if (player?.referralAgentActive) {
+            setShowAccountRecords(true)
+            return
+          }
+          setShowProfile((v) => !v)
+        }}
         onDailyBonus={() => setShowWelcome(true)}
+        onVip={() => setShowVip(true)}
         onMail={openMail}
         onSettings={() => setShowSettings(true)}
+        onSupport={() => setShowSupport(true)}
+        onAgent={() => setShowRefer(true)}
         mailUnread={notif.unread > 0 || supportUnread}
       />
       <S9Ticker text={config?.tickerText} />
@@ -147,6 +224,8 @@ export default function S9Lobby() {
             onDeposit={openDeposit}
             onWithdraw={openWithdraw}
             onHistory={() => setShowHistory(true)}
+            onBankDetails={() => setShowBindAccount(true)}
+            onVip={() => setShowVip(true)}
           />
         ) : (
           <S9CategoryScreen
@@ -160,15 +239,35 @@ export default function S9Lobby() {
       </div>
       <S9BottomBar
         onDeposit={openDeposit}
+        onWithdraw={openWithdraw}
         onWheel={openWheel}
         onRefer={() => setShowRefer(true)}
         onDailyBonus={() => setShowWelcome(true)}
         onBetWheel={() => setShowDepositWheel(true)}
-        onRecharge={openDeposit}
-        onCashback={() => setShowRebate(true)}
+        onRecharge={openCashCards}
+        onCashback={() => setShowFreeCash(true)}
+        isAgent={!!player?.referralAgentActive}
       />
 
-      {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+      {showAddCash && (
+        <AddCashModal
+          key={depositPreset ?? 'default'}
+          initialAmount={depositPreset}
+          onClose={() => {
+            setShowAddCash(false)
+            setDepositPreset(undefined)
+          }}
+        />
+      )}
+      {showCashCards && (
+        <CashBackCardsModal
+          onClose={() => setShowCashCards(false)}
+          onOtherChips={(amount) => {
+            setShowCashCards(false)
+            openDeposit(amount)
+          }}
+        />
+      )}
       {showBindAccount && (
         <BindWithdrawModal
           onClose={() => setShowBindAccount(false)}
@@ -209,12 +308,57 @@ export default function S9Lobby() {
         <ReferEarnScreen
           onClose={() => setShowRefer(false)}
           onWithdraw={openWithdraw}
+          onToast={showToast}
         />
       )}
-      {showNews && <NewsScreen onClose={() => setShowNews(false)} />}
-      {showSupport && <SupportScreen onClose={() => setShowSupport(false)} />}
-      {showMail && <MailScreen onClose={() => setShowMail(false)} items={notif.items} />}
-      {showSettings && <SettingsScreen onClose={() => setShowSettings(false)} />}
+      {showAccountRecords && (
+        <AccountRecordsModal
+          onClose={() => setShowAccountRecords(false)}
+          onHistory={() => {
+            setShowAccountRecords(false)
+            setShowHistory(true)
+          }}
+          onVip={() => {
+            setShowAccountRecords(false)
+            setShowVip(true)
+          }}
+          onToast={showToast}
+        />
+      )}
+      {showNews && (
+        <NewsScreen
+          onClose={() => setShowNews(false)}
+          onClaim={() => {
+            setShowNews(false)
+            openDeposit()
+          }}
+        />
+      )}
+      {showSupport && (
+        <SupportScreen
+          onClose={() => setShowSupport(false)}
+          onOpenNews={() => {
+            setShowSupport(false)
+            setShowNews(true)
+          }}
+        />
+      )}
+      {showMail && (
+        <MailScreen
+          onClose={() => setShowMail(false)}
+          items={notif.items}
+          onOpenDeposit={openDeposit}
+          onOpenWithdraw={openWithdraw}
+          onOpenWheel={openWheel}
+          onOpenWelcome={() => setShowWelcome(true)}
+        />
+      )}
+      {showSettings && (
+        <SettingsScreen
+          onClose={() => setShowSettings(false)}
+          onToast={showToast}
+        />
+      )}
       {showWelcome && (
         <WelcomeBonusModal
           onClose={() => setShowWelcome(false)}
@@ -227,8 +371,58 @@ export default function S9Lobby() {
           {toast}
         </div>
       )}
-      {showGrabBonus && <GrabBonusModal onClose={() => setShowGrabBonus(false)} />}
-      {showRebate && <RebateModal onClose={() => setShowRebate(false)} />}
+      {showGrabBonus && (
+        <GrabBonusModal
+          onClose={() => setShowGrabBonus(false)}
+          onClaim={claimDaily}
+        />
+      )}
+      {showFreeCash && (
+        <FreeCashModal
+          onClose={() => setShowFreeCash(false)}
+          onGoPlay={() => setShowFreeCash(false)}
+          onGoDeposit={() => {
+            setShowFreeCash(false)
+            openCashCards()
+          }}
+          onOpenRebate={() => setShowRebate(true)}
+        />
+      )}
+      {showRebate && (
+        <RebateModal
+          onClose={() => setShowRebate(false)}
+          onGoPlay={() => setShowRebate(false)}
+        />
+      )}
+      {showVip && (
+        <VipSalaryModal
+          onClose={() => setShowVip(false)}
+          onDeposit={() => {
+            setShowVip(false)
+            openDeposit()
+          }}
+        />
+      )}
+      {showReturnBonus && (
+        <ReturnBonusModal
+          onClose={() => {
+            try {
+              if (player?.id) sessionStorage.setItem(`zee9:return-bonus:${player.id}`, '1')
+            } catch {
+              /* ignore */
+            }
+            setShowReturnBonus(false)
+          }}
+          onClaimed={(amount) => {
+            showToast(`Welcome back! Rs ${amount} credited`)
+            try {
+              if (player?.id) sessionStorage.setItem(`zee9:return-bonus:${player.id}`, '1')
+            } catch {
+              /* ignore */
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

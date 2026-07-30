@@ -1,4 +1,5 @@
 import type { Tx } from '../lib/prisma.js'
+import { prisma } from '../lib/prisma.js'
 import { post } from './ledger.js'
 import { getSettings } from './settings.js'
 
@@ -57,19 +58,56 @@ export async function recordWagerAndRelease(tx: Tx, userId: string, betAmount: b
   }
 }
 
-/** True when total bets meet depositWager × approved deposits. */
-export async function depositWagerMet(tx: Tx, userId: string): Promise<boolean> {
+/** Effective deposit / bonus wager multipliers for a user (override or global). */
+export async function getEffectiveWager(userId: string, db: Tx | typeof prisma = prisma) {
   const s = await getSettings()
-  if (s.depositWager <= 0) return true
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { depositWagerOverride: true, bonusWagerOverride: true },
+  })
+  const depositWager =
+    user?.depositWagerOverride != null && Number.isFinite(user.depositWagerOverride)
+      ? Number(user.depositWagerOverride)
+      : s.depositWager
+  const bonusWager =
+    user?.bonusWagerOverride != null && Number.isFinite(user.bonusWagerOverride)
+      ? Number(user.bonusWagerOverride)
+      : s.bonusWager
+  return {
+    depositWager,
+    bonusWager,
+    depositOverride: user?.depositWagerOverride ?? null,
+    bonusOverride: user?.bonusWagerOverride ?? null,
+    globalDepositWager: s.depositWager,
+    globalBonusWager: s.bonusWager,
+  }
+}
 
-  const [depSum, betSum] = await Promise.all([
+/** Total GAME_BET volume (paisa) for a player — all games via ledger. */
+async function totalBetVolume(tx: Tx | typeof prisma, userId: string): Promise<bigint> {
+  const agg = await tx.ledgerEntry.aggregate({
+    where: {
+      direction: 'DEBIT',
+      account: { ownerId: userId, bucket: { in: ['MAIN', 'BONUS'] } },
+      transaction: { type: 'GAME_BET' },
+    },
+    _sum: { amount: true },
+  })
+  return agg._sum.amount ?? 0n
+}
+
+/** True when total bets meet (user deposit wager ×) approved deposits. */
+export async function depositWagerMet(tx: Tx, userId: string): Promise<boolean> {
+  const { depositWager } = await getEffectiveWager(userId, tx)
+  if (depositWager <= 0) return true
+
+  const [depSum, wagered] = await Promise.all([
     tx.deposit.aggregate({ where: { userId, status: 'APPROVED' }, _sum: { amount: true } }),
-    tx.gameRound.aggregate({ where: { userId }, _sum: { bet: true } }),
+    totalBetVolume(tx, userId),
   ])
   const deposited = depSum._sum.amount ?? 0n
   if (deposited <= 0n) return true
 
-  const wagered = betSum._sum.bet ?? 0n
-  const required = (deposited * BigInt(Math.round(s.depositWager * 100))) / 100n
+  const required = (deposited * BigInt(Math.round(depositWager * 100))) / 100n
   return wagered >= required
 }

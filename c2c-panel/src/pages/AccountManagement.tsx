@@ -5,11 +5,26 @@ import { useStore } from '../data/store'
 
 export default function AccountManagement() {
   const nav = useNavigate()
-  const { accounts, toggleAccount, deleteAccount } = useStore()
+  const { accounts, toggleAccount, deleteAccount, showToast } = useStore()
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
 
   const jazz = useMemo(() => accounts.filter((a) => a.method === 'Jazzcash'), [accounts])
   const easy = useMemo(() => accounts.filter((a) => a.method === 'Easypaisa'), [accounts])
+
+  function tryToggle(id: string, awaiting: boolean) {
+    if (awaiting) {
+      showToast('Pending admin approval')
+      return
+    }
+    const acc = accounts.find((a) => a.id === id)
+    if (acc && !acc.on) {
+      const otherOn = accounts.find((a) => a.on && a.id !== id)
+      if (otherOn) {
+        showToast(`Turning on ${acc.number} — ${otherOn.number} will turn off`)
+      }
+    }
+    toggleAccount(id)
+  }
 
   function Section({ title, list, limit }: { title: string; list: typeof accounts; limit: number }) {
     return (
@@ -19,16 +34,21 @@ export default function AccountManagement() {
           <span className="muted" style={{ fontSize: 12 }}>{list.length}/{limit}</span>
         </div>
         <p className="muted" style={{ fontSize: 11, padding: '0 14px 8px', margin: 0 }}>
-          Only one {title} can be Active. Players only see the active number.
+          New numbers need admin approval. Only one number can collect at a time (JazzCash or Easypaisa).
         </p>
         {list.map((a) => (
           <div className="acct-item" key={a.id}>
             <div className="acct-main">
               <div className="acct-num">{a.number}</div>
               <div className="muted" style={{ fontSize: 12 }}>{a.holder}</div>
-              <div className="acct-onoff">
-                Active: <Toggle on={a.on} onChange={() => toggleAccount(a.id)} />
-              </div>
+              {a.awaiting ? (
+                <div className="acct-await">Pending admin approval</div>
+              ) : (
+                <div className="acct-onoff">
+                  Collection: <Toggle on={a.on} onChange={() => tryToggle(a.id, !!a.awaiting)} />
+                  <span className="muted">{a.on ? 'On' : 'Off'}</span>
+                </div>
+              )}
             </div>
             <div className="acct-right">
               <button className="btn btn-violet btn-sm" onClick={() => setPendingDelete(a.id)}>

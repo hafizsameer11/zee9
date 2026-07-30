@@ -33,6 +33,31 @@
   min-width: 0;
 }
 
+.agentBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  flex-shrink: 0;
+  min-width: 44px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 180, 180, 0.55);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #e53935 0%, #b71c1c 100%);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  box-shadow: 0 2px 8px rgba(180, 20, 20, 0.45);
+  cursor: pointer;
+}
+
+.agentIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .avatar {
   position: relative;
   width: 36px;

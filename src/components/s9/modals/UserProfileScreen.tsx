@@ -9,6 +9,8 @@ type Props = {
   onDeposit?: () => void
   onWithdraw?: () => void
   onHistory?: () => void
+  onBankDetails?: () => void
+  onVip?: () => void
 }
 
 type Bet = { id: string; game: string; bet: number; payout: number; state: string; multiplier: number; time: string }
@@ -20,7 +22,7 @@ const ACTIONS = [
   { key: 'bank', label: 'Bank Details', icon: '🏛', color: 'gold' },
 ] as const
 
-export default function UserProfileScreen({ onDeposit, onWithdraw, onHistory }: Props) {
+export default function UserProfileScreen({ onDeposit, onWithdraw, onHistory, onBankDetails, onVip }: Props) {
   const { balance, bonus } = useWallet()
   const { player } = usePlayerAuth()
   const [bets, setBets] = useState<Bet[]>([])
@@ -33,6 +35,7 @@ export default function UserProfileScreen({ onDeposit, onWithdraw, onHistory }: 
     if (key === 'deposit') onDeposit?.()
     if (key === 'withdraw') onWithdraw?.()
     if (key === 'history') onHistory?.()
+    if (key === 'bank') onBankDetails?.()
   }
 
   return (
@@ -45,10 +48,10 @@ export default function UserProfileScreen({ onDeposit, onWithdraw, onHistory }: 
         </div>
         <div className={styles.identityInfo}>
           <h2 className={styles.name}>{player?.name ?? '—'}</h2>
-          <p className={styles.id}>ID: {player?.id?.slice(-8) ?? '—'}</p>
+          <p className={styles.id}>ID: {player?.playerNo ?? '—'}</p>
           {player?.referralCode && <p className={styles.id}>Ref: {player.referralCode}</p>}
         </div>
-        <button type="button" className={styles.vipBtn}>
+        <button type="button" className={styles.vipBtn} onClick={() => onVip?.()}>
           <span className={styles.vipCrown} aria-hidden>👑</span>
           VIP {player?.vipLevel ?? 1}
         </button>

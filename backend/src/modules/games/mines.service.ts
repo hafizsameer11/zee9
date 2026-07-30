@@ -74,7 +74,7 @@ export async function start(userId: string, betRupees: number, minesCount: numbe
     if (bal.MAIN! < bet) throw unprocessable('Insufficient balance')
 
     await post(tx, {
-      type: 'ADMIN_ADJUST',
+      type: 'GAME_BET',
       referenceType: 'mines-bet',
       referenceId: userId,
       meta: { game: 'mines', kind: 'bet' },
@@ -182,7 +182,7 @@ async function cashoutInner(tx: any, roundId: string, userId: string, bet: bigin
   // Skip ledger when payout is zero (should be rare with fair mults after ≥1 gem)
   if (payout > 0n) {
     await post(tx, {
-      type: 'ADMIN_ADJUST',
+      type: 'GAME_WIN',
       referenceType: 'mines-win',
       referenceId: roundId,
       idempotencyKey: `mines-win:${roundId}`,

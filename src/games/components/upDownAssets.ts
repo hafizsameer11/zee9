@@ -53,7 +53,7 @@ export const UP_DOWN_SPRITES = {
   shaker: { atlas: UP_DOWN_IMG.uiAtlas, rect: [759, 127, 82, 82] },
 } as const satisfies Record<string, AtlasSpriteDef>
 
-export const CHIP_SELECTOR_VALUES = [10, 50, 100, 500, 1000] as const
+export const CHIP_SELECTOR_VALUES = [10, 50, 100, 500, 1000, 2000, 5000, 10000] as const
 
 export function historySpriteForSum(sum: number): AtlasSpriteDef {
   if (sum === 7) return UP_DOWN_SPRITES.histBlue

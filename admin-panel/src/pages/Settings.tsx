@@ -80,20 +80,81 @@ export default function Settings() {
             <label>Panel link <span className="hint">— activates panel from the same link</span></label>
             <input value={s.panelLink} onChange={(e) => patchSettings({ panelLink: e.target.value })} />
           </div>
+          <div className="fld" style={{ marginTop: 14 }}>
+            <label>C2C payment link <span className="hint">— separate pay site (order page)</span></label>
+            <input
+              value={s.c2cPayBaseUrl || 'https://pay.roadmaster.pro'}
+              onChange={(e) => patchSettings({ c2cPayBaseUrl: e.target.value })}
+            />
+          </div>
         </div>
 
         <div className="card card-pad">
-          <h3 className="section-title">Lucky wheel</h3>
-          <p className="section-sub">How much deposit earns one wheel spin ticket.</p>
-          <div className="fld">
-            <label>Deposit per spin (Rs)</label>
-            <input
-              type="number"
-              min={0}
-              value={s.wheelDepositPerSpin ?? 1000}
-              onChange={(e) => patchSettings({ wheelDepositPerSpin: Math.max(0, Number(e.target.value)) })}
-            />
-          </div>
+          <h3 className="section-title">Lucky wheel — Deposit tiers</h3>
+          <p className="section-sub">
+            Each approved deposit awards spins for the highest matching tier (e.g. Rs 4,000 → 1 spin, Rs 5,000 → 2 — not 5).
+          </p>
+          {(s.wheelDepositTiers ?? []).map((t: { amount: number; spins: number }, i: number) => (
+            <div className="fld" key={`dep-${i}`} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ minWidth: 70 }}>Rs</label>
+              <input
+                type="number"
+                min={0}
+                value={t.amount}
+                onChange={(e) => {
+                  const next = [...(s.wheelDepositTiers ?? [])]
+                  next[i] = { ...next[i]!, amount: Math.max(0, Number(e.target.value)) }
+                  patchSettings({ wheelDepositTiers: next })
+                }}
+              />
+              <span>=</span>
+              <input
+                type="number"
+                min={0}
+                value={t.spins}
+                onChange={(e) => {
+                  const next = [...(s.wheelDepositTiers ?? [])]
+                  next[i] = { ...next[i]!, spins: Math.max(0, Number(e.target.value)) }
+                  patchSettings({ wheelDepositTiers: next })
+                }}
+              />
+              <span>spins</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="card card-pad">
+          <h3 className="section-title">Lucky wheel — Betting tiers</h3>
+          <p className="section-sub">
+            Lifetime wager unlocks spins by highest matching tier (Rs 5,000 wagered → 1 spin, Rs 10,000 → 2, …).
+          </p>
+          {(s.wheelBetTiers ?? []).map((t: { amount: number; spins: number }, i: number) => (
+            <div className="fld" key={`bet-${i}`} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <label style={{ minWidth: 70 }}>Wager Rs</label>
+              <input
+                type="number"
+                min={0}
+                value={t.amount}
+                onChange={(e) => {
+                  const next = [...(s.wheelBetTiers ?? [])]
+                  next[i] = { ...next[i]!, amount: Math.max(0, Number(e.target.value)) }
+                  patchSettings({ wheelBetTiers: next })
+                }}
+              />
+              <span>=</span>
+              <input
+                type="number"
+                min={0}
+                value={t.spins}
+                onChange={(e) => {
+                  const next = [...(s.wheelBetTiers ?? [])]
+                  next[i] = { ...next[i]!, spins: Math.max(0, Number(e.target.value)) }
+                  patchSettings({ wheelBetTiers: next })
+                }}
+              />
+              <span>spins</span>
+            </div>
+          ))}
         </div>
 
         <div className="card card-pad">

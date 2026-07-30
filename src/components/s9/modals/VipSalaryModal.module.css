@@ -1,0 +1,235 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9300;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.panel {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: min(92vh, 720px);
+  overflow: auto;
+  padding: 16px 14px 18px;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 210, 90, 0.4), transparent 50%),
+    linear-gradient(165deg, #c62828 0%, #e65100 45%, #8b0000 100%);
+  border: 2px solid rgba(255, 215, 100, 0.7);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55);
+  color: #fff;
+}
+
+.closeX {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #e53935;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 900;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.title {
+  margin: 2px 0 14px;
+  text-align: center;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #ffe566;
+  text-shadow: 0 2px 0 #7a1a00, 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  min-height: 148px;
+}
+
+.cardPurple { background: linear-gradient(180deg, #7b1fa2, #4a148c); }
+.cardBlue { background: linear-gradient(180deg, #1976d2, #0d47a1); }
+.cardPink { background: linear-gradient(180deg, #ec407a, #ad1457); }
+
+.cardIcon { font-size: 28px; line-height: 1; }
+.cardLabel { font-size: 10px; font-weight: 800; opacity: 0.95; margin: 0; }
+.cardAmt { font-size: 14px; font-weight: 900; color: #ffe566; margin: 0 0 4px; }
+
+.getBtn {
+  position: relative;
+  margin-top: auto;
+  min-width: 72px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.getBtn:disabled { opacity: 0.55; cursor: default; }
+.getGreen { background: linear-gradient(180deg, #69f0ae, #00c853); color: #063; }
+.getYellow { background: linear-gradient(180deg, #ffe082, #ffb300); color: #4a2c00; }
+.getGrey { background: #9e9e9e; color: #333; }
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f44336;
+  color: #fff;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.timer {
+  margin: 2px 0 0;
+  font-size: 9px;
+  font-weight: 700;
+  color: #ffe082;
+}
+
+.previews {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.previewRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(80, 0, 0, 0.45);
+  border: 1px solid rgba(255, 180, 80, 0.25);
+}
+
+.lockPill {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffd54f;
+}
+
+.previewText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  text-align: left;
+  opacity: 0.92;
+}
+
+.previewText strong { font-size: 11px; color: #fff; }
+
+.footer {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 8px 10px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff8e7, #ffe0b2);
+  color: #4a2000;
+  margin-bottom: 8px;
+}
+
+.levelShield {
+  grid-row: 1 / 3;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, #42a5f5, #1565c0);
+  color: #fff;
+  font-weight: 900;
+  font-size: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.progressBlock { min-width: 0; }
+
+.barTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, #66bb6a, #2e7d32);
+}
+
+.barNums {
+  margin: 4px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.barHint {
+  margin: 2px 0 0;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8d4e00;
+}
+
+.benefits {
+  grid-column: 3;
+  grid-row: 1;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.levelUpBtn {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 2px solid #fff;
+  background: linear-gradient(180deg, #ffd54f, #ff9800);
+  color: #4a2000;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.msg {
+  text-align: center;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffe082;
+}

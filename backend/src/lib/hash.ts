@@ -18,3 +18,8 @@ const codeGen = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 8)
 export function referralCode(): string {
   return codeGen()
 }
+
+/** 7–8 digit public player ID for referral links. */
+export function randomPlayerNo(): number {
+  return 1_000_000 + Math.floor(Math.random() * 8_999_999) // 1000000–9999998
+}

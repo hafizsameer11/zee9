@@ -11,6 +11,14 @@ export interface CollectionOrder {
   status: OrderStatus
   method: 'Jazzcash' | 'Easypaisa'
   collectionAccount: string
+  collectionHolder?: string
+  playerName?: string
+  trxId?: string
+  /** ISO time when player submitted TID — starts merchant confirm window */
+  submittedAt?: string
+  createdAt?: string
+  /** Admin overrode merchant Fail — show Fail + Manual Done */
+  manualDone?: boolean
 }
 
 export interface BankAccount {

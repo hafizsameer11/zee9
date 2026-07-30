@@ -1,6 +1,7 @@
 import type { Bucket, LedgerTxType, SystemAccount } from '@prisma/client'
 import type { Tx } from '../lib/prisma.js'
 import { AppError } from './errors.js'
+import { trackWalletUser } from './walletPush.js'
 
 export type AccountRef =
   | { userId: string; bucket: Bucket }
@@ -109,6 +110,24 @@ export async function post(tx: Tx, input: PostInput): Promise<string> {
       const acc = await getOrCreateAccount(tx, ref)
       const bal = newBalances.get(acc.id) ?? acc.balance
       if (bal < 0n) throw new AppError(422, 'INSUFFICIENT_FUNDS', 'Insufficient balance')
+    }
+  }
+
+  // Queue realtime wallet push for players whose MAIN/BONUS moved (flushed after runMoneyTx commits).
+  for (const leg of input.legs) {
+    if ('userId' in leg.account && (leg.account.bucket === 'MAIN' || leg.account.bucket === 'BONUS')) {
+      trackWalletUser(leg.account.userId, input.type)
+    }
+  }
+
+  // Track last game activity for welcome-back / return bonus eligibility.
+  if (input.type === 'GAME_BET') {
+    const playerIds = new Set<string>()
+    for (const leg of input.legs) {
+      if ('userId' in leg.account) playerIds.add(leg.account.userId)
+    }
+    for (const userId of playerIds) {
+      await tx.user.update({ where: { id: userId }, data: { lastPlayedAt: new Date() } })
     }
   }
 

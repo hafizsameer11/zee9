@@ -6,13 +6,19 @@ interface Player {
   name: string
   phone: string
   referralCode?: string
+  playerNo?: number
   vipLevel?: number
   totalDeposited?: number
+  referralAgentActive?: boolean
+  birthday?: string | null
+  birthdaySet?: boolean
+  hasWithdrawPin?: boolean
 }
 
 export interface ReferralParams {
   referralCode?: string
   shareCode?: string
+  playerId?: string
   channel?: string
   bindCode?: string
 }
@@ -39,8 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       name: me.displayName,
       phone: me.phone,
       referralCode: me.referralCode,
+      playerNo: me.playerNo,
       vipLevel: me.vipLevel,
       totalDeposited: me.totalDeposited,
+      referralAgentActive: !!me.referralAgentActive,
+      birthday: me.birthday ?? null,
+      birthdaySet: !!me.birthdaySet,
+      hasWithdrawPin: !!me.hasWithdrawPin,
     })
   }
 
@@ -60,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(phone: string, password: string) {
     const data = await authRequest('login', { phone, password })
     setTokens(data.accessToken, data.refreshToken)
-    setPlayer({ id: data.user.id, name: data.user.displayName, phone: data.user.phone, referralCode: data.user.referralCode })
+    setPlayer({ id: data.user.id, name: data.user.displayName, phone: data.user.phone, referralCode: data.user.referralCode, playerNo: data.user.playerNo })
     await loadMe()
   }
 
@@ -71,11 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName,
       ...(ref?.referralCode ? { referralCode: ref.referralCode } : {}),
       ...(ref?.shareCode ? { shareCode: ref.shareCode } : {}),
+      ...(ref?.playerId ? { playerId: ref.playerId } : {}),
       ...(ref?.channel ? { channel: ref.channel } : {}),
       ...(ref?.bindCode ? { bindCode: ref.bindCode } : {}),
     })
     setTokens(data.accessToken, data.refreshToken)
-    setPlayer({ id: data.user.id, name: data.user.displayName, phone: data.user.phone, referralCode: data.user.referralCode })
+    setPlayer({ id: data.user.id, name: data.user.displayName, phone: data.user.phone, referralCode: data.user.referralCode, playerNo: data.user.playerNo })
     await loadMe()
   }
 

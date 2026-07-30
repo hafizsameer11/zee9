@@ -1,26 +1,42 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../../../api/client'
 import { useCashback } from '../../../api/hooks'
 import { useWallet } from '../../../context/WalletContext'
-import S9ModalShell from './S9ModalShell'
 import styles from './RebateModal.module.css'
 
-type Props = { onClose: () => void }
+type Props = {
+  onClose: () => void
+  onGoPlay?: () => void
+}
 
-export default function RebateModal({ onClose }: Props) {
+function fmt(n: number) {
+  return n.toLocaleString('en-PK', { maximumFractionDigits: 0 })
+}
+
+export default function RebateModal({ onClose, onGoPlay }: Props) {
   const { status, refetch } = useCashback()
   const { refresh } = useWallet()
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => window.clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    if (tick > 0) void refetch()
+  }, [tick, refetch])
 
   async function claim() {
-    if (!status || status.eligibleAmount <= 0 || status.claimedToday) return
+    if (!status?.canClaim || busy) return
     setBusy(true)
     setMsg(null)
     try {
-      await api.post('/bonuses/cashback/claim')
+      const res = await api.post('/bonuses/cashback/claim') as { amount?: number }
       await Promise.all([refetch(), refresh()])
-      setMsg('Cashback claimed!')
+      setMsg(`Claimed Rs ${res?.amount ?? status.rebetAmount ?? 600}`)
     } catch (e: any) {
       setMsg(e?.message || 'Claim failed')
     } finally {
@@ -28,41 +44,67 @@ export default function RebateModal({ onClose }: Props) {
     }
   }
 
-  const canClaim = status && status.eligibleAmount > 0 && !status.claimedToday
+  const minLoss = status?.minLoss ?? 50_000
+  const rebetAmt = status?.rebetAmount ?? 600
+  const delayH = status?.delayHours ?? 24
+  const loss = status?.todayLoss ?? 0
+  const todayBonus = status?.todayBonus ?? status?.eligibleAmount ?? 0
+  const pct = Math.min(100, (loss / Math.max(1, minLoss)) * 100)
+  const canClaim = !!status?.canClaim
 
   return (
-    <S9ModalShell title="Rebate" onClose={onClose} hideSupport>
-      <div className={styles.body}>
-        <div className={styles.hero}>
-          <span>🏺</span>
-          <h3>Daily Rebate</h3>
-          <p>Get cashback on your losses every day{status?.currentTier ? ` · ${status.currentTier} tier` : ''}</p>
+    <div className={styles.overlay} role="dialog" aria-modal="true">
+      <div className={styles.panel}>
+        <button type="button" className={styles.closeX} onClick={onClose} aria-label="Close">×</button>
+        <div className={styles.badge}>
+          <h2>BET REBATE</h2>
+          <span className={styles.info} title="Info">!</span>
         </div>
-        <div className={styles.stats}>
-          <div className={styles.stat}>
-            <strong>{status?.currentRate ?? 0}%</strong>
-            <small>Current Rate</small>
+
+        <div className={styles.potWrap}>
+          <div className={styles.pot} aria-hidden>🏺</div>
+          <div className={styles.todayBox}>
+            <span>Today Bonus:</span>
+            <strong>{fmt(todayBonus)}</strong>
           </div>
-          <div className={styles.stat}>
-            <strong>Rs {(status?.eligibleAmount ?? 0).toLocaleString('en-PK')}</strong>
-            <small>Available</small>
-          </div>
-          <div className={styles.stat}>
-            <strong>Rs {(status?.totalClaimed ?? 0).toLocaleString('en-PK')}</strong>
-            <small>Total Claimed</small>
-          </div>
+          <span className={styles.rebetPill}>ReBet: {fmt(rebetAmt)}</span>
         </div>
-        {status && status.todayLoss > 0 && (
-          <p style={{ textAlign: 'center', color: '#c9a24a', fontSize: 12, margin: '0 0 10px' }}>
-            Today&apos;s loss: Rs {status.todayLoss.toLocaleString('en-PK')}
+
+        <div className={styles.progressBlock}>
+          <div className={styles.progressTrack}>
+            <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+            <span className={styles.progressKnob} style={{ left: `calc(${pct}% - 14px)` }}>
+              ?
+            </span>
+          </div>
+          <p className={styles.progressLabel}>
+            Loss {fmt(Math.min(loss, minLoss))}/{fmt(minLoss)}
+            {status?.remainLabel ? ` · ${status.remainLabel}` : ''}
           </p>
+        </div>
+
+        {canClaim ? (
+          <button type="button" className={styles.goBtn} disabled={busy} onClick={() => void claim()}>
+            {busy ? '…' : `Claim Rs ${fmt(rebetAmt)}`}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={styles.goBtn}
+            onClick={() => {
+              onGoPlay?.()
+              onClose()
+            }}
+          >
+            Go To Play
+          </button>
         )}
-        {msg && <p style={{ textAlign: 'center', color: '#ffd54f', fontSize: 12 }}>{msg}</p>}
-        <button type="button" className={styles.claimBtn} disabled={!canClaim || busy} onClick={claim}>
-          {busy ? 'Claiming…' : status?.claimedToday ? 'CLAIMED TODAY' : 'CLAIM REBATE'}
-        </button>
-        <p className={styles.note}>Play games to earn rebate. Higher tiers unlock at greater daily losses.</p>
+
+        <p className={styles.note}>
+          Ye bonus sirf {fmt(minLoss)} loss ke baad milta hai — {delayH} ghante wait, phir Rs {fmt(rebetAmt)} ReBet.
+        </p>
+        {msg && <p className={styles.msg}>{msg}</p>}
       </div>
-    </S9ModalShell>
+    </div>
   )
 }

@@ -73,6 +73,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  position: relative;
 }
 
 .topCenter {
@@ -203,6 +204,40 @@
 .menuBtn svg {
   width: 100%;
   height: 100%;
+}
+
+.menuPanel {
+  position: absolute;
+  top: 42px;
+  right: 6px;
+  z-index: 80;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3a2818, #1a1008);
+  border: 1.5px solid #c9a020;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menuItem {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #ffe9a8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.menuItem:hover,
+.menuItem:active {
+  background: rgba(255, 200, 80, 0.15);
 }
 
 /* ── Main play area on wood ── */

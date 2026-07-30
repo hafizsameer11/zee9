@@ -10,7 +10,7 @@
 }
 
 .outerPortrait {
-  background: #b8ecc9;
+  background: #070403;
 }
 
 .device {
@@ -60,7 +60,8 @@
     height: min(844px, 100vh);
     max-height: 100dvh;
     border-radius: 16px;
-    background: #e8f8ef;
+    background: #070403;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(180, 130, 50, 0.2);
   }
 }
 

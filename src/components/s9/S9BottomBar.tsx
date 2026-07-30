@@ -5,30 +5,35 @@ import styles from './S9BottomBar.module.css'
 
 type Props = {
   onDeposit: () => void
+  onWithdraw: () => void
   onWheel: () => void
   onRefer: () => void
   onDailyBonus: () => void
   onBetWheel: () => void
   onRecharge: () => void
   onCashback: () => void
+  /** When true, Refer & Earn becomes Agent (referral agents only). */
+  isAgent?: boolean
 }
 
 const FEATURES = [
   { key: 'wheel' as const, label: 'Wheel', icon: <S9AssetIcon name="wheel" size={40} />, anim: 'wheel' },
-  { key: 'daily' as const, label: 'Daily Bonus', icon: <S9CalendarIcon day="07" size={40} />, anim: 'daily' },
-  { key: 'betWheel' as const, label: 'Bet Bonus', icon: <S9AssetIcon name="betWheel" size={40} />, anim: 'betWheel' },
+  { key: 'daily' as const, label: 'Daily', icon: <S9CalendarIcon day="07" size={40} />, anim: 'daily' },
+  { key: 'betWheel' as const, label: 'Bet', icon: <S9AssetIcon name="betWheel" size={40} />, anim: 'betWheel' },
   { key: 'recharge' as const, label: 'Recharge', icon: <S9AssetIcon name="recharge" size={40} />, dot: true, anim: 'recharge' },
-  { key: 'cashback' as const, label: 'Cashback', icon: <S9CalendarIcon day="30" size={40} />, anim: 'cashback' },
+  { key: 'cashback' as const, label: 'Free Cash', icon: <S9CalendarIcon day="30" size={40} />, anim: 'cashback' },
 ]
 
 export default function S9BottomBar({
   onDeposit,
+  onWithdraw,
   onWheel,
   onRefer,
   onDailyBonus,
   onBetWheel,
   onRecharge,
   onCashback,
+  isAgent = false,
 }: Props) {
   const handlers = {
     wheel: onWheel,
@@ -42,7 +47,7 @@ export default function S9BottomBar({
     <footer className={styles.bar}>
       <button type="button" className={styles.refer} onClick={onRefer}>
         <S9AssetIcon name="referShare" size={20} />
-        <span>Refer &amp; Earn</span>
+        <span>{isAgent ? 'Agent' : 'Refer & Earn'}</span>
         <span className={styles.referGlow} aria-hidden />
       </button>
 
@@ -58,13 +63,19 @@ export default function S9BottomBar({
         ))}
       </div>
 
-      <button type="button" className={styles.addCash} onClick={onDeposit}>
-        <span className={styles.addCashShine} aria-hidden />
-        <span className={styles.addPlus}>+</span>
-        <IconCart size={20} />
-        <span className={styles.addCashText}>ADD CASH</span>
-        <span className={styles.cashDot}>1</span>
-      </button>
+      <div className={styles.cashActions}>
+        <button type="button" className={styles.withdraw} onClick={onWithdraw}>
+          <span className={styles.withdrawArrow} aria-hidden>↑</span>
+          <span className={styles.addCashText}>WITHDRAW</span>
+        </button>
+        <button type="button" className={styles.addCash} onClick={onDeposit}>
+          <span className={styles.addCashShine} aria-hidden />
+          <span className={styles.addPlus}>+</span>
+          <IconCart size={20} />
+          <span className={styles.addCashText}>ADD CASH</span>
+          <span className={styles.cashDot}>1</span>
+        </button>
+      </div>
     </footer>
   )
 }

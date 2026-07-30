@@ -13,6 +13,7 @@ datasource db {
 enum Role {
   PLAYER
   AGENT
+  MENTOR
   ADMIN
 }
 
@@ -30,13 +31,50 @@ model User {
   status       UserStatus @default(ACTIVE)
   displayName  String
   vipLevel     Int        @default(1)
+  /// Game ID. C2C-only merchants do not have a Game ID.
+  playerNo     Int?       @unique
+  panelId      Int?       @unique
   referralCode String     @unique
+  /// Profile birthday — editable only once (Account Records).
+  birthday     DateTime?
+  birthdaySet  Boolean    @default(false)
+  /// Optional withdraw PIN (hashed). Null = not set.
+  withdrawPinHash String?
   referredById String?
   referredBy   User?      @relation("Referrals", fields: [referredById], references: [id])
   referrals    User[]     @relation("Referrals")
+  giftRedemptions GiftCodeRedemption[]
 
-  agentActive   Boolean @default(false)
-  walletsFilled Int     @default(0)
+  agentActive          Boolean @default(false) // C2C merchant active for orders
+  referralAgentActive  Boolean @default(false) // Referral salary Agent program
+  /// Admin opens "Transfer to balance" on agent salary UI (hidden when false).
+  salaryTransferOpen   Boolean @default(false)
+  /// Paisa amount of COMMISSION balance admin has approved for transfer (rest = hold).
+  salaryApprovedPaisa  BigInt  @default(0)
+  // Relative share of collection orders (e.g. 30/50/70). Normalized across active merchants.
+  orderSharePct        Int     @default(100)
+  walletsFilled        Int     @default(0)
+
+  /// Per-player overrides (null = use global settings). Multipliers e.g. 1 = 1×, 5 = 5×.
+  depositWagerOverride Float?
+  bonusWagerOverride   Float?
+
+  /// Consecutive daily-reward streak: last claimed day (1–7), 0 = never.
+  dailyClaimStreak Int       @default(0)
+  lastDailyClaimAt DateTime?
+
+  /// VIP salary claims
+  vipRewardClaimedLevel Int       @default(0)
+  lastVipWeeklyAt       DateTime?
+  lastVipMonthlyAt      DateTime?
+
+  /// Last game bet — used for 7-day return / welcome-back bonus
+  lastPlayedAt       DateTime?
+  lastReturnBonusAt  DateTime?
+
+  /// Bet Rebate: unlock timer after hitting min loss
+  rebetUnlockAt     DateTime?
+  lastRebetClaimAt  DateTime?
 
   // Sub-admin permission scopes. Empty for a full/super admin.
   adminScopes String[] @default([])
@@ -66,7 +104,12 @@ model User {
   gameRounds        GameRound[]
   crashBets         CrashBet[]
   wingoBets         WingoBet[]
+  lotteryBets       LotteryBet[]
+  rouletteBets      RouletteBet[]
+  dragonTigerBets   DragonTigerBet[]
+  sevenUpBets       SevenUpBet[]
   notifications     Notification[]
+  freeCashClaims    FreeCashClaim[]
 
   @@index([role])
   @@index([referredById])
@@ -134,6 +177,10 @@ enum LedgerTxType {
   WHEEL_PRIZE
   BONUS_RELEASE
   ADMIN_ADJUST
+  GAME_BET
+  GAME_WIN
+  GAME_REFUND
+  COLLECTION
 }
 
 enum LedgerTxStatus {
@@ -194,6 +241,8 @@ model PaymentChannel {
   bankName      String?
   instructions  String?
   enabled       Boolean       @default(true)
+  // When true: shown to C2C merchants for float top-up (bank accounts only).
+  agentFloat    Boolean       @default(false)
   minAmount     BigInt        @default(0)
   maxAmount     BigInt        @default(0)
   priority      Int           @default(0)
@@ -251,12 +300,16 @@ model Withdrawal {
   payoutProofUrl String?
   wagerOk        Boolean       @default(false)
   rejectReason   String?
+  /// When false, withdrawal stays on admin hold (not visible in C2C Pay On Behalf queue).
+  /// Admin must release to C2C pool, or pay/reject themselves.
+  c2cReleased    Boolean       @default(false)
   createdAt      DateTime      @default(now())
   processedById  String?
   processedAt    DateTime?
 
   @@index([userId])
   @@index([status])
+  @@index([c2cReleased, status])
 }
 
 enum MediaKind {
@@ -324,7 +377,12 @@ model CollectionOrder {
   status            OrderStatus   @default(PENDING)
   frozenAmount      BigInt        @default(0)
   createdAt         DateTime      @default(now())
+  // Set when player submits TID / proof — starts the merchant 1h confirm window
+  submittedAt       DateTime?
   resolvedAt        DateTime?
+
+  /// Admin overrode a merchant FAIL → credited player + cut float (shows as Manual Done).
+  manualDone        Boolean       @default(false)
 
   // Pay-on-behalf (WITHDRAW orders): link to the withdrawal + payee snapshot + agent proof
   withdrawalId  String?
@@ -378,6 +436,23 @@ model Commission {
   @@index([agentId])
 }
 
+/// One idempotent end-of-day commission calculation per player.
+/// Amounts are based on cumulative deposited principal loss, not individual bets.
+model DailyCommissionSettlement {
+  id             String   @id @default(cuid())
+  sourceUserId   String
+  settlementDate String
+  depositTarget  BigInt
+  wageredTarget  BigInt
+  wonTarget      BigInt
+  lossTarget     BigInt
+  lossDelta      BigInt
+  settledAt      DateTime @default(now())
+
+  @@unique([sourceUserId, settlementDate])
+  @@index([settlementDate])
+}
+
 // ------------------------------------------------------------------
 // Bonuses & engagement
 // ------------------------------------------------------------------
@@ -391,6 +466,9 @@ enum BonusType {
   REBET
   CASHBACK
   WHEEL
+  RETURN
+  FREE_CASH
+  GIFT_CODE
 }
 
 enum BonusStatus {
@@ -413,6 +491,19 @@ model Bonus {
   createdAt     DateTime    @default(now())
 
   @@index([userId])
+}
+
+model FreeCashClaim {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId   String
+  dayKey    String
+  amount    BigInt
+  createdAt DateTime @default(now())
+
+  @@unique([userId, questId, dayKey])
+  @@index([userId, dayKey])
 }
 
 model WheelPrize {
@@ -602,6 +693,188 @@ model WingoBet {
   @@index([roundId, userId])
 }
 
+// Landscape WinGo Lottery (dedicated table — separate from portrait WinGo).
+enum LotteryBetType {
+  number
+  green
+  red
+  violet
+}
+
+model LotteryRound {
+  id            String         @id @default(cuid())
+  period        String         @unique
+  phase         WingoPhase     @default(BETTING)
+  resultNumber  Int?
+  forcedResult  Int?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime       @default(now())
+  bets          LotteryBet[]
+
+  @@index([phase])
+  @@index([createdAt])
+}
+
+model LotteryBet {
+  id        String         @id @default(cuid())
+  roundId   String
+  round     LotteryRound   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  betType   LotteryBetType
+  value     Int?
+  amount    BigInt
+  payout    BigInt         @default(0)
+  state     RoundState     @default(ACTIVE)
+  createdAt DateTime       @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
+  @@index([createdAt])
+}
+
+// Shared multiplayer European roulette (server-authoritative).
+enum RouletteBetType {
+  straight
+  red
+  black
+  odd
+  even
+  low
+  high
+  dozen
+  column
+}
+
+model RouletteRound {
+  id            String        @id @default(cuid())
+  period        String        @unique
+  phase         WingoPhase    @default(BETTING)
+  resultNumber  Int?
+  forcedResult  Int?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime      @default(now())
+  bets          RouletteBet[]
+
+  @@index([phase])
+  @@index([createdAt])
+}
+
+model RouletteBet {
+  id        String          @id @default(cuid())
+  roundId   String
+  round     RouletteRound   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  betType   RouletteBetType
+  value     Int?
+  cellKey   String
+  amount    BigInt
+  payout    BigInt          @default(0)
+  state     RoundState      @default(ACTIVE)
+  createdAt DateTime        @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
+  @@index([createdAt])
+}
+
+// Shared multiplayer Dragon Tiger (dragon / tiger / tie).
+enum DragonTigerSide {
+  dragon
+  tiger
+  tie
+}
+
+model DragonTigerRound {
+  id            String           @id @default(cuid())
+  period        String           @unique
+  phase         WingoPhase       @default(BETTING)
+  winner        DragonTigerSide?
+  dragonRank    String?
+  dragonSuit    String?
+  tigerRank     String?
+  tigerSuit     String?
+  forcedWinner  DragonTigerSide?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime         @default(now())
+  bets          DragonTigerBet[]
+
+  @@index([phase])
+  @@index([createdAt])
+}
+
+model DragonTigerBet {
+  id        String           @id @default(cuid())
+  roundId   String
+  round     DragonTigerRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  side      DragonTigerSide
+  amount    BigInt
+  payout    BigInt           @default(0)
+  state     RoundState       @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
+}
+
+// Shared multiplayer 7 Up Down (down / seven / up).
+enum SevenUpSide {
+  down
+  seven
+  up
+}
+
+model SevenUpRound {
+  id            String       @id @default(cuid())
+  period        String       @unique
+  phase         WingoPhase   @default(BETTING)
+  die1          Int?
+  die2          Int?
+  sum           Int?
+  forcedSum     Int?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime     @default(now())
+  bets          SevenUpBet[]
+
+  @@index([phase])
+  @@index([createdAt])
+}
+
+model SevenUpBet {
+  id        String       @id @default(cuid())
+  roundId   String
+  round     SevenUpRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  side      SevenUpSide
+  amount    BigInt
+  payout    BigInt       @default(0)
+  state     RoundState   @default(ACTIVE)
+  createdAt DateTime     @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
+}
+
 // ------------------------------------------------------------------
 // Settings & audit
 // ------------------------------------------------------------------
@@ -650,4 +923,30 @@ model AuditLog {
 
   @@index([actorId])
   @@index([entityType, entityId])
+}
+
+/// One-time / limited gift codes (Account Records → GIFT CODE)
+model GiftCode {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  amount    BigInt
+  maxUses   Int      @default(1)
+  usedCount Int      @default(0)
+  enabled   Boolean  @default(true)
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  redemptions GiftCodeRedemption[]
+}
+
+model GiftCodeRedemption {
+  id         String   @id @default(cuid())
+  codeId     String
+  code       GiftCode @relation(fields: [codeId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  amount     BigInt
+  createdAt  DateTime @default(now())
+
+  @@unique([codeId, userId])
+  @@index([userId])
 }

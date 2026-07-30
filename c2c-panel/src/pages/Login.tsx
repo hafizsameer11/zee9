@@ -26,12 +26,12 @@ export default function Login() {
     <Shell>
       <StatusBar />
       <div className="scroll pad" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 30, fontWeight: 800, color: '#fff' }}>Agent Panel</div>
-          <div style={{ color: 'rgba(255,255,255,.75)', fontSize: 14, marginTop: 4 }}>Cash-to-cash collections</div>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>C2C Merchant Panel</div>
+          <div style={{ color: 'rgba(255,255,255,.75)', fontSize: 12, marginTop: 4 }}>Cash-to-cash collections</div>
         </div>
 
-        <form onSubmit={submit} className="card" style={{ padding: 22 }}>
+        <form onSubmit={submit} className="card" style={{ padding: 16 }}>
           <div className="field">
             <label>Phone number</label>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="03xxxxxxxxx" inputMode="tel" autoComplete="username" />
@@ -45,7 +45,7 @@ export default function Login() {
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
           <div className="muted" style={{ fontSize: 12, textAlign: 'center', marginTop: 14 }}>
-            Login is provided by the admin when you reach agent rank.
+            Merchants only. Players and referral agents cannot sign in here. Admin creates your merchant login.
           </div>
         </form>
       </div>

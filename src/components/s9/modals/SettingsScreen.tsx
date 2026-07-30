@@ -1,10 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePlayerAuth } from '../../../api/auth'
 import { useSound } from '../../../lib/sound'
 import S9ModalShell from './S9ModalShell'
 import styles from './SettingsScreen.module.css'
 
-type Props = { onClose: () => void }
+type Props = { onClose: () => void; onToast?: (msg: string) => void }
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -21,16 +22,50 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   )
 }
 
-export default function SettingsScreen({ onClose }: Props) {
+export default function SettingsScreen({ onClose, onToast }: Props) {
   const navigate = useNavigate()
   const { logout } = usePlayerAuth()
   const { prefs, setPrefs, play } = useSound()
+  const [repairing, setRepairing] = useState(false)
 
   const doLogout = () => {
     play('whoosh')
     logout()
     onClose()
     navigate('/login')
+  }
+
+  const repair = async () => {
+    if (repairing) return
+    setRepairing(true)
+    play('coin')
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.map((k) => caches.delete(k)))
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map((r) => r.unregister()))
+      }
+      onToast?.('App repaired — reloading…')
+      window.setTimeout(() => window.location.reload(), 600)
+    } catch {
+      onToast?.('Repair failed — try refreshing manually')
+      setRepairing(false)
+    }
+  }
+
+  const resetTutorial = () => {
+    play('whoosh')
+    try {
+      localStorage.removeItem('zee9-tutorial-done')
+      localStorage.removeItem('zee9-lucky-wheel-shown')
+      sessionStorage.removeItem('zee9-lucky-wheel-shown')
+    } catch {
+      /* ignore */
+    }
+    onToast?.('Tutorial reset')
   }
 
   return (
@@ -83,7 +118,12 @@ export default function SettingsScreen({ onClose }: Props) {
           </div>
           <div className={styles.row}>
             <span className={styles.label}>Language:</span>
-            <button type="button" className={styles.langBtn} data-sfx="select">
+            <button
+              type="button"
+              className={styles.langBtn}
+              data-sfx="select"
+              onClick={() => onToast?.('Only English is available')}
+            >
               English <span className={styles.chev}>›</span>
             </button>
           </div>
@@ -92,11 +132,21 @@ export default function SettingsScreen({ onClose }: Props) {
         <div className={styles.col}>
           <div className={styles.row}>
             <span className={styles.label}>Click to Repair:</span>
-            <button type="button" className={styles.greenBtn} data-sfx="coin">Start</button>
+            <button
+              type="button"
+              className={styles.greenBtn}
+              data-sfx="coin"
+              onClick={() => void repair()}
+              disabled={repairing}
+            >
+              {repairing ? '…' : 'Start'}
+            </button>
           </div>
           <div className={styles.row}>
             <span className={styles.label}>Reset Tutorial:</span>
-            <button type="button" className={styles.greenBtn} data-sfx="whoosh">Reset</button>
+            <button type="button" className={styles.greenBtn} data-sfx="whoosh" onClick={resetTutorial}>
+              Reset
+            </button>
           </div>
           <div className={styles.row}>
             <span className={styles.label}>Test sounds:</span>

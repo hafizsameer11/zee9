@@ -10,7 +10,7 @@ export interface PlayerConfig {
   limits: { minDeposit: number; maxDeposit: number; minWithdraw: number; maxWithdraw: number }
   methods: Record<string, boolean>
   depositPresets?: number[]
-  bonuses: { registration: number; dailyOpen: number; deposit: number[]; dailyDeposit: number }
+  bonuses: { registration: number; dailyOpen: number; dailyRewards?: number[]; deposit: number[]; dailyDeposit: number }
   wager: { bonus: number; deposit: number }
   wheel: { depositPerSpin: number }
   layout?: { csUpperRight?: boolean; wheelsLowerTop?: boolean }
@@ -60,8 +60,27 @@ export function useNotifications() {
 
   useEffect(() => {
     refetch()
-    const t = window.setInterval(refetch, 20000)
-    return () => window.clearInterval(t)
+    const t = window.setInterval(refetch, 60000)
+    const onNotif = (e: Event) => {
+      const detail = (e as CustomEvent).detail as Notif | undefined
+      if (!detail?.id) {
+        void refetch()
+        return
+      }
+      setItems((prev) => {
+        if (prev.some((n) => n.id === detail.id)) return prev
+        return [{ ...detail, read: detail.read ?? false }, ...prev]
+      })
+      setUnread((u) => u + 1)
+    }
+    const onWithdraw = () => void refetch()
+    window.addEventListener('zee9:notification', onNotif)
+    window.addEventListener('zee9:withdraw', onWithdraw)
+    return () => {
+      window.clearInterval(t)
+      window.removeEventListener('zee9:notification', onNotif)
+      window.removeEventListener('zee9:withdraw', onWithdraw)
+    }
   }, [refetch])
 
   return { items, unread, markRead, refetch }
@@ -102,6 +121,12 @@ export function useWithdrawals() {
 
   useEffect(() => { refetch() }, [refetch])
 
+  useEffect(() => {
+    const onWithdraw = () => void refetch()
+    window.addEventListener('zee9:withdraw', onWithdraw)
+    return () => window.removeEventListener('zee9:withdraw', onWithdraw)
+  }, [refetch])
+
   return { items, loading, refetch }
 }
 
@@ -132,11 +157,23 @@ export function useWheelStatus() {
 }
 
 export interface CashbackStatus {
+  enabled?: boolean
+  minLoss?: number
+  rebetAmount?: number
+  delayHours?: number
   todayLoss: number
+  lossProgress?: number
+  lossTarget?: number
   currentRate: number
   currentTier: string | null
   eligibleAmount: number
+  todayBonus?: number
   claimedToday: boolean
+  canClaim?: boolean
+  unlockAt?: string | null
+  remainMs?: number
+  remainLabel?: string
+  qualified?: boolean
   totalClaimed: number
 }
 

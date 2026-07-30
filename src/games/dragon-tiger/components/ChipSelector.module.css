@@ -1,0 +1,99 @@
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 54px;
+}
+
+.disabled {
+  opacity: 0.45;
+  filter: grayscale(0.25);
+  pointer-events: none;
+}
+
+.chipBtn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease;
+}
+
+.chipBtn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
+.selected {
+  transform: translateY(-7px) scale(1.1);
+}
+
+.selected::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 220, 100, 0.95);
+  box-shadow:
+    0 0 12px rgba(255, 200, 80, 0.65),
+    0 0 4px rgba(255, 240, 160, 0.8),
+    inset 0 0 8px rgba(255, 220, 100, 0.25);
+  pointer-events: none;
+  animation: selectPulse 1.4s ease-in-out infinite;
+}
+
+.selected img {
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)) brightness(1.08);
+}
+
+@keyframes selectPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgba(255, 200, 80, 0.55),
+      0 0 3px rgba(255, 240, 160, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(255, 200, 80, 0.85),
+      0 0 6px rgba(255, 240, 160, 0.95);
+  }
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.chipLabel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  min-width: 25px;
+  height: 18px;
+  padding: 0 2px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(250, 247, 234, 0.96);
+  box-shadow: 0 0 0 1px rgba(110, 78, 24, 0.55);
+  font-size: 9px;
+  font-weight: 900;
+  color: #271b0b;
+  text-shadow: none;
+  pointer-events: none;
+  white-space: nowrap;
+}

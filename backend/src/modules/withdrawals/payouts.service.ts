@@ -1,20 +1,20 @@
 import { prisma } from '../../lib/prisma.js'
 import { runMoneyTx } from '../../core/tx.js'
 import { post } from '../../core/ledger.js'
-import { getBalances } from '../../core/ledger.js'
 import { getSettings } from '../../core/settings.js'
 import { applyPct, toRupees } from '../../lib/money.js'
-import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
+import { badRequest, conflict, notFound } from '../../core/errors.js'
 import { notify } from '../../core/notify.js'
+import { queueWithdrawUpdate } from '../../core/walletPush.js'
 
 function orderNo() {
   return 'PB' + Date.now() + Math.floor(Math.random() * 1000)
 }
 
-/** Open withdrawal pool — any active agent can claim (first click wins). */
+/** Open withdrawal pool for C2C merchants (auto-released on create). */
 export function listAvailable() {
   return prisma.withdrawal.findMany({
-    where: { status: 'PENDING', agentId: null },
+    where: { status: 'PENDING', agentId: null, c2cReleased: true },
     orderBy: { createdAt: 'asc' },
     take: 50,
     include: { user: { select: { displayName: true, phone: true } } },
@@ -33,7 +33,7 @@ export function listAvailable() {
   })
 }
 
-/** First agent to claim locks the withdrawal. */
+/** First agent to claim locks the withdrawal (must already be released to C2C). */
 export async function claim(withdrawalId: string, agentId: string) {
   const [wd, agent, settings] = await Promise.all([
     prisma.withdrawal.findUnique({ where: { id: withdrawalId } }),
@@ -42,20 +42,13 @@ export async function claim(withdrawalId: string, agentId: string) {
   ])
   if (!wd) throw notFound('Withdrawal not found')
   if (wd.status !== 'PENDING') throw conflict('Withdrawal is not pending')
+  if (!wd.c2cReleased) throw conflict('Withdrawal is not available in the C2C pool')
   if (!agent || agent.role !== 'AGENT' || !agent.agentActive) throw badRequest('Not an active agent')
 
   const existing = await prisma.collectionOrder.findFirst({
     where: { withdrawalId, status: { in: ['PENDING', 'CHECKING', 'PROCESSING', 'SUCCESS'] } },
   })
   if (existing) throw conflict('Already claimed by another agent')
-
-  const bal = await getBalances(prisma as any, agentId).catch(() => null)
-  // getBalances expects Tx - use prisma directly via wallet service
-  const { balances } = await import('../wallet/wallet.service.js')
-  const agentBal = await balances(agentId)
-  if ((agentBal.MAIN ?? 0n) < wd.amount) {
-    throw unprocessable(`Insufficient agent float. Need Rs ${toRupees(wd.amount).toLocaleString('en-PK')}`)
-  }
 
   const payee = (wd.accountDetails as any) || {}
   const player = await prisma.user.findUnique({ where: { id: wd.userId }, select: { phone: true, displayName: true } })
@@ -85,90 +78,273 @@ export async function claim(withdrawalId: string, agentId: string) {
       },
     })
     await tx.withdrawal.update({ where: { id: withdrawalId }, data: { agentId } })
+    await notify(
+      tx,
+      wd.userId,
+      'withdrawal',
+      'Withdrawal approved',
+      `An agent has accepted your withdrawal of Rs ${toRupees(wd.amount).toLocaleString('en-PK')} and is processing payment.`,
+    )
     return order
   })
 }
 
 /** Admin assigns a pending withdrawal to a specific agent (optional override). */
 export async function assign(withdrawalId: string, agentId: string) {
+  await prisma.withdrawal.updateMany({
+    where: { id: withdrawalId, status: 'PENDING' },
+    data: { c2cReleased: true },
+  })
   return claim(withdrawalId, agentId)
 }
 
-/** Payout orders this agent has claimed / was assigned. */
+/** Open claimed payouts still waiting for merchant Transfer ID (not on-hold / done). */
 export function listForAgent(agentId: string) {
   return prisma.collectionOrder.findMany({
-    where: { agentId, type: 'WITHDRAW', status: { in: ['PENDING', 'PROCESSING', 'CHECKING'] } },
+    where: { agentId, type: 'WITHDRAW', status: { in: ['PENDING', 'PROCESSING'] } },
     orderBy: { createdAt: 'asc' },
   })
 }
 
+/** History: Fail, Success, and On-hold (CHECKING after Transfer ID submitted). */
+export function listHistory(agentId: string) {
+  return prisma.collectionOrder.findMany({
+    where: {
+      agentId,
+      type: 'WITHDRAW',
+      OR: [
+        { status: { in: ['SUCCESS', 'FAIL'] } },
+        { status: 'CHECKING', trxId: { not: null } },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    include: {
+      player: { select: { displayName: true, phone: true, playerNo: true } },
+    },
+  })
+}
+
+/** After merchant confirms Transfer ID, payout stays On-hold this long before Success + balance credit. */
+export const PAYOUT_HOLD_MS = 5 * 60 * 1000
+
 /**
- * Agent confirms they paid the player from their float:
- * - cut withdrawal amount from agent MAIN (float)
- * - clear player FROZEN
- * - credit agent COMMISSION with 2% reward only
- * - notify player
+ * Agent confirms they paid the player (Transfer ID):
+ * - status → CHECKING (UI: Onhold) for 5 minutes
+ * - player withdrawal settled immediately (FROZEN cleared)
+ * - agent MAIN credit (amount + reward) happens after hold → Success
  */
-export async function submitPay(orderId: string, agentId: string, trxId: string, senderAccount: string) {
+export async function submitPay(orderId: string, agentId: string, trxId: string, senderAccount = '') {
+  const tid = trxId.trim()
+  if (!tid) throw badRequest('Transfer ID is required')
+
   return runMoneyTx(async (tx) => {
     const order = await tx.collectionOrder.findUnique({ where: { id: orderId } })
     if (!order || order.agentId !== agentId || order.type !== 'WITHDRAW') throw notFound('Payout order not found')
     if (order.status === 'SUCCESS' || order.status === 'FAIL') throw conflict('Order already resolved')
+    if (order.status === 'CHECKING' && order.trxId) throw conflict('Payout already submitted — waiting on hold')
     if (!order.withdrawalId) throw badRequest('Order is not linked to a withdrawal')
 
     const wd = await tx.withdrawal.findUnique({ where: { id: order.withdrawalId } })
     if (!wd) throw notFound('Withdrawal not found')
     if (wd.status !== 'PENDING') throw conflict('Withdrawal already processed')
 
-    const bal = await getBalances(tx, agentId)
-    if ((bal.MAIN ?? 0n) < order.amount) throw unprocessable('Insufficient agent float to pay this withdrawal')
-
+    const paidAt = new Date()
     await tx.collectionOrder.update({
       where: { id: orderId },
-      data: { status: 'SUCCESS', trxId, senderAccount, resolvedAt: new Date() },
+      data: {
+        status: 'CHECKING',
+        trxId: tid,
+        senderAccount: senderAccount.trim() || null,
+        submittedAt: paidAt,
+      },
     })
     await tx.withdrawal.update({
       where: { id: wd.id },
-      data: { status: 'PAID', trxId, agentId, processedAt: new Date() },
+      data: { status: 'PAID', trxId: tid, agentId, processedAt: paidAt },
     })
 
-    // 1) Cut float from agent + settle player FROZEN into HOUSE
+    // Settle player FROZEN now — customer is paid. Agent float credit waits for hold.
     await post(tx, {
       type: 'WITHDRAWAL_PAID',
       referenceType: 'payout',
       referenceId: order.id,
-      idempotencyKey: `payout:${order.id}`,
-      assertNonNegative: [{ userId: agentId, bucket: 'MAIN' }, { userId: wd.userId, bucket: 'FROZEN' }],
+      idempotencyKey: `payout-player:${order.id}`,
+      assertNonNegative: [{ userId: wd.userId, bucket: 'FROZEN' }],
       legs: [
-        { account: { userId: agentId, bucket: 'MAIN' }, direction: 'DEBIT', amount: order.amount },
         { account: { userId: wd.userId, bucket: 'FROZEN' }, direction: 'DEBIT', amount: order.amount },
-        { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: order.amount },
         { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: order.amount },
       ],
     })
-
-    // 2) Agent earns only the reward % into COMMISSION (not the payout principal)
-    if (order.reward > 0n) {
-      await post(tx, {
-        type: 'COMMISSION',
-        referenceType: 'payout',
-        referenceId: order.id,
-        idempotencyKey: `payout-reward:${order.id}`,
-        legs: [
-          { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: order.reward },
-          { account: { userId: agentId, bucket: 'COMMISSION' }, direction: 'CREDIT', amount: order.reward },
-        ],
-      })
-    }
 
     await notify(
       tx,
       wd.userId,
       'withdrawal',
       'Withdrawal paid',
-      `Your withdrawal of Rs ${toRupees(order.amount).toLocaleString('en-PK')} has been paid. TRX: ${trxId}`,
+      `An agent has paid your withdrawal of Rs ${toRupees(order.amount).toLocaleString('en-PK')}. TRX: ${tid}`,
     )
 
+    queueWithdrawUpdate(wd.userId, {
+      id: wd.id,
+      status: 'PAID',
+      amount: Number(order.amount),
+      trxId: tid,
+    })
+
     return tx.collectionOrder.findUniqueOrThrow({ where: { id: orderId } })
+  })
+}
+
+/**
+ * After 5-minute on-hold: mark SUCCESS and credit agent MAIN with withdraw amount + reward.
+ * Example: 3000 + 60 → MAIN += 3060.
+ */
+export async function finalizePayoutHold(orderId: string) {
+  return runMoneyTx(async (tx) => {
+    const order = await tx.collectionOrder.findUnique({ where: { id: orderId } })
+    if (!order || order.type !== 'WITHDRAW') throw notFound('Payout order not found')
+    if (order.status === 'SUCCESS') return order
+    if (order.status !== 'CHECKING' || !order.trxId) throw conflict('Payout is not on hold')
+    if (!order.agentId) throw badRequest('Payout has no agent')
+
+    await tx.collectionOrder.update({
+      where: { id: orderId },
+      data: { status: 'SUCCESS', resolvedAt: new Date() },
+    })
+
+    const credit = order.amount + order.reward
+    if (credit > 0n) {
+      await post(tx, {
+        type: 'COMMISSION',
+        referenceType: 'payout',
+        referenceId: order.id,
+        idempotencyKey: `payout-settle:${order.id}`,
+        meta: { kind: 'payout_hold_release', amount: order.amount.toString(), reward: order.reward.toString() },
+        legs: [
+          { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: credit },
+          { account: { userId: order.agentId, bucket: 'MAIN' }, direction: 'CREDIT', amount: credit },
+        ],
+      })
+    }
+
+    return tx.collectionOrder.findUniqueOrThrow({ where: { id: orderId } })
+  })
+}
+
+/** Sweep on-hold payouts past 5 minutes → Success + MAIN credit. */
+export async function sweepPayoutHolds() {
+  const deadline = new Date(Date.now() - PAYOUT_HOLD_MS)
+  const rows = await prisma.collectionOrder.findMany({
+    where: {
+      type: 'WITHDRAW',
+      status: 'CHECKING',
+      trxId: { not: null },
+      OR: [
+        { submittedAt: { lt: deadline } },
+        { submittedAt: null, createdAt: { lt: deadline } },
+      ],
+    },
+    take: 30,
+    select: { id: true, orderNo: true },
+  })
+  const out: { id: string; orderNo: string; ok: boolean }[] = []
+  for (const row of rows) {
+    try {
+      await finalizePayoutHold(row.id)
+      out.push({ id: row.id, orderNo: row.orderNo, ok: true })
+    } catch {
+      out.push({ id: row.id, orderNo: row.orderNo, ok: false })
+    }
+  }
+  return out
+}
+
+/** Cancel claim — merchant cannot pay (no float); release so another merchant can take it. */
+export async function cancelPayout(orderId: string, agentId: string) {
+  return runMoneyTx(async (tx) => {
+    const order = await tx.collectionOrder.findUnique({ where: { id: orderId } })
+    if (!order || order.agentId !== agentId || order.type !== 'WITHDRAW') throw notFound('Payout order not found')
+    if (order.status === 'SUCCESS' || order.status === 'FAIL') throw conflict('Order already resolved')
+    if (order.status === 'CHECKING' && order.trxId) throw conflict('Payout is on hold — cannot cancel')
+    if (!order.withdrawalId) throw badRequest('Order is not linked to a withdrawal')
+
+    const wd = await tx.withdrawal.findUnique({ where: { id: order.withdrawalId } })
+    if (!wd) throw notFound('Withdrawal not found')
+    if (wd.status !== 'PENDING') throw conflict('Withdrawal already processed')
+
+    await tx.collectionOrder.update({
+      where: { id: orderId },
+      data: { status: 'FAIL', resolvedAt: new Date(), trxId: 'CANCELLED' },
+    })
+    // Keep withdrawal PENDING; clear agent so another merchant can claim
+    await tx.withdrawal.update({
+      where: { id: order.withdrawalId },
+      data: { agentId: null },
+    })
+    return { released: true }
+  })
+}
+
+/**
+ * Abnormal — payee account wrong / cannot pay this customer.
+ * Reject withdrawal and return FROZEN funds to customer's MAIN so they can withdraw again with a correct number.
+ */
+export async function reportAbnormalPayout(orderId: string, agentId: string, reason?: string) {
+  const note = (reason?.trim() || 'Wrong account number — please withdraw again with the correct details').slice(0, 200)
+
+  return runMoneyTx(async (tx) => {
+    const order = await tx.collectionOrder.findUnique({ where: { id: orderId } })
+    if (!order || order.agentId !== agentId || order.type !== 'WITHDRAW') throw notFound('Payout order not found')
+    if (order.status === 'SUCCESS' || order.status === 'FAIL') throw conflict('Order already resolved')
+    if (order.status === 'CHECKING' && order.trxId) throw conflict('Payout is on hold — cannot mark abnormal')
+    if (!order.withdrawalId) throw badRequest('Order is not linked to a withdrawal')
+
+    const wd = await tx.withdrawal.findUnique({ where: { id: order.withdrawalId } })
+    if (!wd) throw notFound('Withdrawal not found')
+    if (wd.status !== 'PENDING') throw conflict('Withdrawal already processed')
+
+    await tx.collectionOrder.update({
+      where: { id: orderId },
+      data: { status: 'FAIL', resolvedAt: new Date(), trxId: `ABNORMAL:${note.slice(0, 160)}` },
+    })
+    await tx.withdrawal.update({
+      where: { id: wd.id },
+      data: {
+        status: 'REJECTED',
+        rejectReason: note,
+        agentId,
+        processedAt: new Date(),
+      },
+    })
+
+    await post(tx, {
+      type: 'WITHDRAWAL_UNFREEZE',
+      referenceType: 'withdrawal',
+      referenceId: wd.id,
+      idempotencyKey: `wd-unfreeze:${wd.id}`,
+      assertNonNegative: [{ userId: wd.userId, bucket: 'FROZEN' }],
+      legs: [
+        { account: { userId: wd.userId, bucket: 'FROZEN' }, direction: 'DEBIT', amount: wd.amount },
+        { account: { userId: wd.userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: wd.amount },
+      ],
+    })
+
+    await notify(
+      tx,
+      wd.userId,
+      'withdrawal',
+      'Withdrawal returned',
+      `Your withdrawal of Rs ${toRupees(wd.amount).toLocaleString('en-PK')} was returned to your game balance. Reason: ${note}. You can withdraw again with the correct account number.`,
+    )
+
+    queueWithdrawUpdate(wd.userId, {
+      id: wd.id,
+      status: 'REJECTED',
+      amount: Number(wd.amount),
+      rejectReason: note,
+    })
+
+    return { refunded: true, reason: note, amount: toRupees(wd.amount) }
   })
 }

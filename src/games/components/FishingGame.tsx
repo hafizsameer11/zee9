@@ -138,7 +138,7 @@ export default function FishingGame({ bet: defaultBet, onMessage }: GameComponen
 
         <div className="shrink-0 bg-[#0a0603]/80 border border-white/10 rounded-xl p-3 flex items-center gap-3">
           <span className="text-[#a1a1a1] text-xs">Bet per shot</span>
-          {[50, 100, 500, 1000].map((s) => (
+          {[10, 20, 50, 100, 500, 1000, 2000, 5000, 10000].map((s) => (
             <button
               key={s}
               type="button"

@@ -23,7 +23,7 @@ import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } fro
 import { OxMascot, OxSymbolCell } from './fortuneOxGfx'
 import './zee9Premium.tw.css'
 
-const STAKES = [50, 100, 500, 1000]
+const STAKES = [10, 20, 50, 100, 500, 1000, 2000, 5000, 10000]
 
 function formatPkr(n: number) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })

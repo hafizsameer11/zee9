@@ -4,8 +4,25 @@ import { logger } from './lib/logger.js'
 import { prisma } from './lib/prisma.js'
 import { attachAviatorRealtime, stopAviatorRealtime } from './modules/games/aviator.realtime.js'
 import { attachCrashRealtime, stopCrashRealtime } from './modules/games/crash.realtime.js'
+import { attachAeroXRealtime, stopAeroXRealtime } from './modules/games/aeroX.realtime.js'
+import { attachDoubleCrashRealtime, stopDoubleCrashRealtime } from './modules/games/doubleCrash.realtime.js'
 import { attachWingoRealtime, stopWingoRealtime } from './modules/games/wingo.realtime.js'
+import { attachLotteryRealtime, stopLotteryRealtime } from './modules/games/wingoLottery.realtime.js'
+import { attachRouletteRealtime, stopRouletteRealtime } from './modules/games/roulette.realtime.js'
+import { attachDragonTigerRealtime, stopDragonTigerRealtime } from './modules/games/dragonTiger.realtime.js'
+import { attachSevenUpRealtime, stopSevenUpRealtime } from './modules/games/sevenUp.realtime.js'
+import { attachMinesRealtime, stopMinesRealtime } from './modules/games/mines.realtime.js'
+import { attachChickenRoadRealtime, stopChickenRoadRealtime } from './modules/games/chickenRoad.realtime.js'
+import { attachSlotRealtime, stopSlotRealtime } from './modules/games/slot.realtime.js'
 import { attachGameWsUpgrade } from './modules/games/gameWsRouter.js'
+import { attachAgentRealtime, stopAgentRealtime } from './modules/agents/agent.realtime.js'
+import { attachPlayerRealtime, stopPlayerRealtime } from './modules/wallet/player.realtime.js'
+import { startDepositExpirySweeper, stopDepositExpirySweeper } from './modules/deposits/deposits.expiry.js'
+import { startPayoutHoldSweeper, stopPayoutHoldSweeper } from './modules/withdrawals/payouts.expiry.js'
+import {
+  startDailyCommissionSweeper,
+  stopDailyCommissionSweeper,
+} from './modules/commission/commission.daily.js'
 
 async function main() {
   await prisma.$connect()
@@ -16,14 +33,42 @@ async function main() {
 
   attachAviatorRealtime(server)
   attachCrashRealtime(server)
+  attachAeroXRealtime(server)
+  attachDoubleCrashRealtime(server)
   attachWingoRealtime(server)
+  attachLotteryRealtime(server)
+  attachRouletteRealtime(server)
+  attachDragonTigerRealtime(server)
+  attachSevenUpRealtime(server)
+  attachMinesRealtime(server)
+  attachChickenRoadRealtime(server)
+  attachSlotRealtime(server)
+  attachAgentRealtime(server)
+  attachPlayerRealtime(server)
   attachGameWsUpgrade(server)
+  startDepositExpirySweeper()
+  startPayoutHoldSweeper()
+  startDailyCommissionSweeper()
 
   const shutdown = async (sig: string) => {
     logger.info(`${sig} received, shutting down`)
+    stopDepositExpirySweeper()
+    stopPayoutHoldSweeper()
+    stopDailyCommissionSweeper()
     stopAviatorRealtime()
     stopCrashRealtime()
+    stopAeroXRealtime()
+    stopDoubleCrashRealtime()
     stopWingoRealtime()
+    stopLotteryRealtime()
+    stopRouletteRealtime()
+    stopDragonTigerRealtime()
+    stopSevenUpRealtime()
+    stopMinesRealtime()
+    stopChickenRoadRealtime()
+    stopSlotRealtime()
+    stopAgentRealtime()
+    stopPlayerRealtime()
     server.close()
     await prisma.$disconnect()
     process.exit(0)

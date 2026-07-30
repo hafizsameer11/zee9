@@ -1,0 +1,925 @@
+{
+  "seed": 20260721,
+  "count": 153,
+  "assets": [
+    {
+      "file": "chips/chip-10-large.png",
+      "w": 132,
+      "h": 132,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-10-large@2x.png",
+      "w": 308,
+      "h": 329,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-10-small-a.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-10-small-b.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-10-small-c.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-10-small-d.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-10-selector.png",
+      "w": 110,
+      "h": 110,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-large.png",
+      "w": 132,
+      "h": 132,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-large@2x.png",
+      "w": 308,
+      "h": 329,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-small-a.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-small-b.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-small-c.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-small-d.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-50-selector.png",
+      "w": 110,
+      "h": 110,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-large.png",
+      "w": 132,
+      "h": 132,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-large@2x.png",
+      "w": 308,
+      "h": 329,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-small-a.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-small-b.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-small-c.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-small-d.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-100-selector.png",
+      "w": 110,
+      "h": 110,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-large.png",
+      "w": 132,
+      "h": 132,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-large@2x.png",
+      "w": 308,
+      "h": 329,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-small-a.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-small-b.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-small-c.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-small-d.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-500-selector.png",
+      "w": 110,
+      "h": 110,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-large.png",
+      "w": 132,
+      "h": 132,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-large@2x.png",
+      "w": 308,
+      "h": 329,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-small-a.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-small-b.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-small-c.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-small-d.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "chips/chip-1k-selector.png",
+      "w": 110,
+      "h": 110,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-0-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-0-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-0-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-0-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-0@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-1-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-1-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-1-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-1-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-1@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-2-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-2-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-2-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-2-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-2@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-3-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-3-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-3-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-3-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-3@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-4-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-4-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-4-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-4-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-4@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-5-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-5-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-5-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-5-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-5@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-6-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-6-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-6-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-6-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-6@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-7-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-7-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-7-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-7-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-7@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-8-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-8-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-8-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-8-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-8@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-9-history.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-9-cell.png",
+      "w": 72,
+      "h": 72,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-9-machine.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-9-reveal.png",
+      "w": 140,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "balls/ball-9@2x.png",
+      "w": 278,
+      "h": 280,
+      "format": "png"
+    },
+    {
+      "file": "navigation/btn-back.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "navigation/btn-menu.png",
+      "w": 84,
+      "h": 84,
+      "format": "png"
+    },
+    {
+      "file": "navigation/btn-add.png",
+      "w": 160,
+      "h": 58,
+      "format": "png"
+    },
+    {
+      "file": "navigation/badge-play.png",
+      "w": 168,
+      "h": 62,
+      "format": "png"
+    },
+    {
+      "file": "navigation/btn-history.png",
+      "w": 40,
+      "h": 40,
+      "format": "png"
+    },
+    {
+      "file": "navigation/icon-machine.png",
+      "w": 48,
+      "h": 48,
+      "format": "png"
+    },
+    {
+      "file": "controls/arrow-left.png",
+      "w": 36,
+      "h": 40,
+      "format": "png"
+    },
+    {
+      "file": "controls/arrow-right.png",
+      "w": 36,
+      "h": 40,
+      "format": "png"
+    },
+    {
+      "file": "controls/btn-rebet-normal.png",
+      "w": 168,
+      "h": 58,
+      "format": "png"
+    },
+    {
+      "file": "controls/btn-rebet-pressed.png",
+      "w": 168,
+      "h": 58,
+      "format": "png"
+    },
+    {
+      "file": "controls/btn-rebet-disabled.png",
+      "w": 168,
+      "h": 58,
+      "format": "png"
+    },
+    {
+      "file": "controls/btn-group.png",
+      "w": 56,
+      "h": 56,
+      "format": "png"
+    },
+    {
+      "file": "controls/btn-plus.png",
+      "w": 48,
+      "h": 48,
+      "format": "png"
+    },
+    {
+      "file": "controls/chip-halo.png",
+      "w": 110,
+      "h": 110,
+      "format": "png"
+    },
+    {
+      "file": "background/table-base.png",
+      "w": 850,
+      "h": 480,
+      "format": "png",
+      "webp": "background/table-base.webp"
+    },
+    {
+      "file": "background/table-base@2x.png",
+      "w": 1700,
+      "h": 960,
+      "format": "png"
+    },
+    {
+      "file": "background/table-texture.webp",
+      "w": 850,
+      "h": 480,
+      "format": "webp"
+    },
+    {
+      "file": "background/table-vignette.png",
+      "w": 850,
+      "h": 480,
+      "format": "png"
+    },
+    {
+      "file": "background/lower-corner-pattern.webp",
+      "w": 200,
+      "h": 120,
+      "format": "webp"
+    },
+    {
+      "file": "background/table-highlight.png",
+      "w": 850,
+      "h": 140,
+      "format": "png"
+    },
+    {
+      "file": "panels/panel-green.png",
+      "w": 210,
+      "h": 120,
+      "format": "png"
+    },
+    {
+      "file": "panels/panel-violet.png",
+      "w": 210,
+      "h": 120,
+      "format": "png"
+    },
+    {
+      "file": "panels/panel-red.png",
+      "w": 210,
+      "h": 120,
+      "format": "png"
+    },
+    {
+      "file": "panels/cell-small.png",
+      "w": 120,
+      "h": 100,
+      "format": "png"
+    },
+    {
+      "file": "panels/glow-cyan.png",
+      "w": 128,
+      "h": 128,
+      "format": "png"
+    },
+    {
+      "file": "panels/glow-gold.png",
+      "w": 128,
+      "h": 128,
+      "format": "png"
+    },
+    {
+      "file": "players/player-01.webp",
+      "w": 96,
+      "h": 96,
+      "format": "webp"
+    },
+    {
+      "file": "players/player-01.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "players/player-02.webp",
+      "w": 96,
+      "h": 96,
+      "format": "webp"
+    },
+    {
+      "file": "players/player-02.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "players/player-03.webp",
+      "w": 96,
+      "h": 96,
+      "format": "webp"
+    },
+    {
+      "file": "players/player-03.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "players/player-04.webp",
+      "w": 96,
+      "h": 96,
+      "format": "webp"
+    },
+    {
+      "file": "players/player-04.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "players/player-05.webp",
+      "w": 96,
+      "h": 96,
+      "format": "webp"
+    },
+    {
+      "file": "players/player-05.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "players/player-06.webp",
+      "w": 96,
+      "h": 96,
+      "format": "webp"
+    },
+    {
+      "file": "players/player-06.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "players/frame-normal.png",
+      "w": 104,
+      "h": 104,
+      "format": "png"
+    },
+    {
+      "file": "players/frame-gold.png",
+      "w": 104,
+      "h": 104,
+      "format": "png"
+    },
+    {
+      "file": "players/frame-winner.png",
+      "w": 104,
+      "h": 104,
+      "format": "png"
+    },
+    {
+      "file": "players/frame-lucky.png",
+      "w": 104,
+      "h": 104,
+      "format": "png"
+    },
+    {
+      "file": "players/nameplate.png",
+      "w": 120,
+      "h": 38,
+      "format": "png"
+    },
+    {
+      "file": "badges/badge-winner.png",
+      "w": 110,
+      "h": 36,
+      "format": "png"
+    },
+    {
+      "file": "badges/badge-lucky.png",
+      "w": 100,
+      "h": 36,
+      "format": "png"
+    },
+    {
+      "file": "badges/badge-victory.png",
+      "w": 120,
+      "h": 38,
+      "format": "png"
+    },
+    {
+      "file": "badges/badge-new.png",
+      "w": 89,
+      "h": 46,
+      "format": "png"
+    },
+    {
+      "file": "banners/banner-stop.png",
+      "w": 360,
+      "h": 90,
+      "format": "png"
+    },
+    {
+      "file": "banners/banner-start.png",
+      "w": 360,
+      "h": 90,
+      "format": "png"
+    },
+    {
+      "file": "banners/banner-win.png",
+      "w": 340,
+      "h": 86,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-back.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-chamber.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-glass.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-front.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-base.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-full.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-mini.png",
+      "w": 56,
+      "h": 70,
+      "format": "png"
+    },
+    {
+      "file": "machine/result-channel.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "machine/result-holder.png",
+      "w": 120,
+      "h": 120,
+      "format": "png"
+    },
+    {
+      "file": "machine/machine-highlight.png",
+      "w": 210,
+      "h": 260,
+      "format": "png"
+    },
+    {
+      "file": "effects/glow-gold.png",
+      "w": 160,
+      "h": 160,
+      "format": "png"
+    },
+    {
+      "file": "effects/glow-cyan.png",
+      "w": 160,
+      "h": 160,
+      "format": "png"
+    },
+    {
+      "file": "effects/glow-reveal.png",
+      "w": 160,
+      "h": 160,
+      "format": "png"
+    },
+    {
+      "file": "effects/sparkle.png",
+      "w": 64,
+      "h": 64,
+      "format": "png"
+    },
+    {
+      "file": "effects/chip-landing-ring.png",
+      "w": 96,
+      "h": 96,
+      "format": "png"
+    },
+    {
+      "file": "effects/payout-trail.png",
+      "w": 160,
+      "h": 40,
+      "format": "png"
+    },
+    {
+      "file": "effects/banner-shine.png",
+      "w": 320,
+      "h": 80,
+      "format": "png"
+    },
+    {
+      "file": "effects/result-burst.png",
+      "w": 200,
+      "h": 200,
+      "format": "png"
+    }
+  ]
+}

@@ -2,27 +2,8 @@ import type { RefObject } from 'react'
 import { ArrowLeft, Zap } from 'lucide-react'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, type DesignLayout } from '../hooks/useDesignScale'
 import { type McMult, type McNumber } from '../engines/moneyComing'
+import { MC_ASSETS as ASSETS } from '../engines/moneyComingAssets'
 import styles from './moneyComing.module.css'
-
-const UI = '/games/money-coming/ui'
-const ASSETS = {
-  bg: '/games/money-coming/bg.png',
-  frame: `${UI}/ys_frame_slot.png`,
-  logo: `${UI}/logo_en_1685597575.png`,
-  wheel: `${UI}/wheel_generated.png`,
-  spinBg: `${UI}/spin_bg.png`,
-  spinArrow: `${UI}/btn_ks2.png`,
-  spinWord: `${UI}/ty_img_Spin.png`,
-  auto: `${UI}/yx_img_btn_autospin.png`,
-  add: `${UI}/ty_btn_chipsadd.png`,
-  betCoin: `${UI}/btn_jb.png`,
-  infoBg: `${UI}/bet_img_frame.png`,
-  infoBg2: `${UI}/bet_img_frame1.png`,
-  scatterRow: `${UI}/yx_img_bet_50.png`,
-  unlock10: `${UI}/bet_img_10x.png`,
-  mult10: `${UI}/yx_img_bet_10.png`,
-  respin: `${UI}/yx_img_respin.png`,
-}
 
 function MoneyWheel({ spinning }: { spinning: boolean }) {
   return (
@@ -53,7 +34,10 @@ export type MoneyComingDesignUIProps = {
   lastWin: number
   turbo: boolean
   auto: boolean
+  menuOpen: boolean
   onHome: () => void
+  onAddCash: () => void
+  onToggleMenu: () => void
   onSpin: () => void
   onBetPlus: () => void
   onBetMinus: () => void
@@ -159,7 +143,10 @@ export default function MoneyComingDesignUI({
   lastWin,
   turbo,
   auto,
+  menuOpen,
   onHome,
+  onAddCash,
+  onToggleMenu,
   onSpin,
   onBetPlus,
   onBetMinus,
@@ -179,7 +166,7 @@ export default function MoneyComingDesignUI({
               <button type="button" className={styles.backBtn} onClick={onHome} aria-label="Back">
                 <ArrowLeft size={24} strokeWidth={3} />
               </button>
-              <div className={styles.promo}>
+              <div className={styles.promo} aria-hidden>
                 <span className={styles.promoOrb} />
                 <span className={styles.promoText}>
                   <span>Play Game</span>
@@ -191,16 +178,30 @@ export default function MoneyComingDesignUI({
             <img className={styles.logo} src={ASSETS.logo} alt="Money Coming" draggable={false} />
 
             <div className={styles.topRight}>
-              <button type="button" className={styles.addBtn} aria-label="Add funds">
+              <button type="button" className={styles.addBtn} onClick={onAddCash} aria-label="Add cash">
                 <img src={ASSETS.add} alt="" draggable={false} />
               </button>
-              <button type="button" className={styles.menuBtn} aria-label="Menu">
+              <button type="button" className={styles.menuBtn} onClick={onToggleMenu} aria-label="Menu">
                 <i />
                 <i />
                 <i />
                 <i />
               </button>
             </div>
+
+            {menuOpen && (
+              <div className={styles.menuPanel} role="menu">
+                <button type="button" className={styles.menuItem} onClick={onHome}>
+                  Exit to lobby
+                </button>
+                <button type="button" className={styles.menuItem} onClick={onAddCash}>
+                  Add cash
+                </button>
+                <button type="button" className={styles.menuItem} onClick={onToggleMenu}>
+                  Close
+                </button>
+              </div>
+            )}
           </header>
 
           <div className={styles.stage}>

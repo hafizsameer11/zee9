@@ -1,6 +1,7 @@
 // ---------- Types ----------
 export interface GameRow {
   id: string
+  slug?: string
   title: string
   emoji: string
   color: string
@@ -30,6 +31,10 @@ export interface Agent {
   id: string
   name: string
   phone: string
+  panelId?: number | null
+  playerNo?: number | null
+  /** Relative collection order share (normalized across active merchants). */
+  orderSharePct: number
   level: 1 | 2 | 3
   walletsFilled: number
   active: boolean
@@ -62,6 +67,10 @@ export interface Player {
   vip: number
   referredBy?: string
   joined: string
+  playerNo?: number | null
+  role?: string
+  /** Referral Agentship (salary) — NOT C2C merchant */
+  referralAgentActive?: boolean
 }
 
 export interface Txn {
@@ -72,6 +81,18 @@ export interface Txn {
   method: 'Jazzcash' | 'Easypaisa' | 'Bank'
   status: 'pending' | 'approved' | 'rejected'
   time: string
+  /** Player-facing order number (same as user / C2C payment panel). */
+  orderNo?: string | null
+  /** Collection order was merchant-rejected then admin Manual Done. */
+  manualDone?: boolean
+  orderStatus?: string | null
+  /** Player game ID (playerNo). */
+  playerNo?: number | null
+  /** C2C merchant panel ID handling this deposit (if assigned). */
+  panelId?: number | null
+  panelName?: string | null
+  /** Pending hold: false = admin hold, true = released to C2C pool. */
+  c2cReleased?: boolean
 }
 
 export interface Offer {
@@ -108,23 +129,31 @@ export interface Settings {
   whatsappEnabled: boolean
   shareLink: string
   panelLink: string
+  c2cPayBaseUrl: string
   csUpperRight: boolean
   wheelsLowerTop: boolean
   tickerText: string
   // bonuses
   registrationBonus: number
   dailyOpenBonus: number
+  dailyRewards: number[]
   dailyOpenNeedsDeposit: boolean
   depositBonus1: number
   depositBonus2: number
   depositBonus3: number
   dailyDepositBonus: number
   rebetBonus: boolean
+  rebetMinLoss?: number
+  rebetAmount?: number
+  rebetDelayHours?: number
   extraBonus: boolean
   // commission
   commissionL1: number
   commissionL2: number
   commissionL3: number
+  mentorCommissionL1: number
+  mentorCommissionL2: number
+  mentorCommissionL3: number
   walletsRequired: number
   minPerWallet: number
   // limits
@@ -136,6 +165,8 @@ export interface Settings {
   bonusWager: number
   depositWager: number
   wheelDepositPerSpin: number
+  wheelDepositTiers: Array<{ amount: number; spins: number }>
+  wheelBetTiers: Array<{ amount: number; spins: number }>
   // agent C2C
   payoutReward: number
   agentEarnHoldDays: number
@@ -144,6 +175,12 @@ export interface Settings {
   methodEasypaisa: boolean
   methodBank: boolean
   methodWegars: boolean
+  vipLevels?: import('./vip').VipLevelRow[]
+  returnBonusEnabled?: boolean
+  returnBonusInactiveDays?: number
+  returnBonusMin?: number
+  returnBonusMax?: number
+  freeCash?: import('./freeCash').FreeCashConfig
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -151,23 +188,31 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: 'PKR',
   whatsapp: '+92 300 1234567',
   whatsappEnabled: true,
-  shareLink: 'http://localhost:5174/',
-  panelLink: 'http://localhost:5300/',
+  shareLink: 'https://zee9.roadmaster.pro/',
+  panelLink: 'https://c2c.roadmaster.pro/',
+  c2cPayBaseUrl: 'https://pay.roadmaster.pro',
   csUpperRight: true,
   wheelsLowerTop: true,
   tickerText: '',
   registrationBonus: 150,
-  dailyOpenBonus: 5,
+  dailyOpenBonus: 4,
+  dailyRewards: [4, 9, 3, 5, 8, 6, 10],
   dailyOpenNeedsDeposit: true,
   depositBonus1: 10,
-  depositBonus2: 7,
+  depositBonus2: 5,
   depositBonus3: 5,
-  dailyDepositBonus: 7,
+  dailyDepositBonus: 5,
   rebetBonus: true,
+  rebetMinLoss: 50000,
+  rebetAmount: 600,
+  rebetDelayHours: 24,
   extraBonus: true,
   commissionL1: 30,
   commissionL2: 10,
   commissionL3: 10,
+  mentorCommissionL1: 30,
+  mentorCommissionL2: 10,
+  mentorCommissionL3: 10,
   walletsRequired: 5,
   minPerWallet: 1000,
   minWithdraw: 600,
@@ -177,23 +222,43 @@ export const DEFAULT_SETTINGS: Settings = {
   bonusWager: 5,
   depositWager: 1,
   wheelDepositPerSpin: 1000,
+  wheelDepositTiers: [
+    { amount: 1000, spins: 1 },
+    { amount: 5000, spins: 2 },
+    { amount: 10000, spins: 3 },
+    { amount: 20000, spins: 4 },
+    { amount: 50000, spins: 5 },
+    { amount: 100000, spins: 7 },
+    { amount: 200000, spins: 10 },
+    { amount: 500000, spins: 15 },
+  ],
+  wheelBetTiers: [
+    { amount: 5000, spins: 1 },
+    { amount: 10000, spins: 2 },
+    { amount: 50000, spins: 3 },
+    { amount: 100000, spins: 4 },
+    { amount: 500000, spins: 5 },
+  ],
   payoutReward: 2,
-  agentEarnHoldDays: 7,
+  agentEarnHoldDays: 0,
   methodJazzcash: true,
   methodEasypaisa: true,
   methodBank: true,
   methodWegars: true,
+  returnBonusEnabled: true,
+  returnBonusInactiveDays: 7,
+  returnBonusMin: 40,
+  returnBonusMax: 200,
 }
 
 // ---------- Games ----------
 export const GAMES: GameRow[] = [
-  { id: 'fortune-gems', title: 'Fortune Gems', emoji: '💎', color: '#7b1f2b', category: 'Slots', enabled: true, winPct: 92, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 1 },
+  { id: 'fortune-gems-2', title: 'Fortune Gems 2', emoji: '💎', color: '#7b1f2b', category: 'Slots', enabled: true, winPct: 92, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 1 },
   { id: 'aviator', title: 'Aviator', emoji: '✈️', color: '#2a1030', category: 'Crash', enabled: true, winPct: 95, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 2 },
   { id: 'wingo', title: 'Wingo Lottery', emoji: '🎯', color: '#0d8a5f', category: 'Lottery', enabled: true, winPct: 90, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 3 },
   { id: 'crash', title: 'Crash', emoji: '🚀', color: '#1b2a52', category: 'Crash', enabled: true, winPct: 94, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 4 },
   { id: 'mines', title: 'Mines', emoji: '💣', color: '#3a2a15', category: 'Mini', enabled: true, winPct: 91, tag: 'hot', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 5 },
-  { id: 'fortune-ox', title: 'Fortune Ox', emoji: '🐂', color: '#7a1414', category: 'Slots', enabled: true, winPct: 92, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 6 },
-  { id: '7up-down', title: '7 Up Down', emoji: '🎲', color: '#1d5c2e', category: 'Table', enabled: true, winPct: 89, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 7 },
+  { id: '7up-down', title: '7 Up Down', emoji: '🎲', color: '#1d5c2e', category: 'Table', enabled: true, winPct: 89, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 6 },
   { id: 'teen-patti', title: 'Teen Patti', emoji: '🃏', color: '#5a1130', category: 'Table', enabled: false, winPct: 90, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 8 },
   { id: 'dragon-tiger', title: 'Dragon Tiger', emoji: '🐉', color: '#8a2410', category: 'Table', enabled: true, winPct: 93, tag: 'new', plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 9 },
   { id: 'andar-bahar', title: 'Andar Bahar', emoji: '🎴', color: '#132a4a', category: 'Table', enabled: true, winPct: 92, plays: 0, wagered: 0, playerWins: 0, playerLosses: 0, playerWonAmount: 0, playerLostAmount: 0, houseProfit: 0, ggr: 0, order: 10 },
@@ -204,12 +269,12 @@ export const GAMES: GameRow[] = [
 const A = (n: number) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
 
 export const AGENTS: Agent[] = [
-  { id: 'AG1001', name: 'Adnan Ali', phone: '0319-4426446', level: 1, walletsFilled: 5, active: true, referrals: 128, commission: 184500, commissionBalance: 0, joined: A(210) },
-  { id: 'AG1002', name: 'Bilal Ahmed', phone: '0300-7781122', level: 1, walletsFilled: 5, active: true, referrals: 94, commission: 132000, commissionBalance: 0, joined: A(180) },
-  { id: 'AG1003', name: 'Zeeshan Khan', phone: '0321-5566778', level: 2, walletsFilled: 3, active: false, referrals: 41, commission: 38900, commissionBalance: 0, joined: A(90) },
-  { id: 'AG1004', name: 'Usman Tariq', phone: '0333-2233445', level: 1, walletsFilled: 5, active: true, referrals: 76, commission: 98700, commissionBalance: 0, joined: A(150) },
-  { id: 'AG1005', name: 'Amir Sohail', phone: '0345-9988776', level: 3, walletsFilled: 2, active: false, referrals: 12, commission: 8400, commissionBalance: 0, joined: A(30) },
-  { id: 'AG1006', name: 'Hamza Raza', phone: '0312-4455667', level: 2, walletsFilled: 4, active: true, referrals: 55, commission: 61200, commissionBalance: 0, joined: A(120) },
+  { id: 'AG1001', name: 'Adnan Ali', phone: '0319-4426446', orderSharePct: 100, level: 1, walletsFilled: 5, active: true, referrals: 128, commission: 184500, commissionBalance: 0, joined: A(210) },
+  { id: 'AG1002', name: 'Bilal Ahmed', phone: '0300-7781122', orderSharePct: 100, level: 1, walletsFilled: 5, active: true, referrals: 94, commission: 132000, commissionBalance: 0, joined: A(180) },
+  { id: 'AG1003', name: 'Zeeshan Khan', phone: '0321-5566778', orderSharePct: 100, level: 2, walletsFilled: 3, active: false, referrals: 41, commission: 38900, commissionBalance: 0, joined: A(90) },
+  { id: 'AG1004', name: 'Usman Tariq', phone: '0333-2233445', orderSharePct: 100, level: 1, walletsFilled: 5, active: true, referrals: 76, commission: 98700, commissionBalance: 0, joined: A(150) },
+  { id: 'AG1005', name: 'Amir Sohail', phone: '0345-9988776', orderSharePct: 100, level: 3, walletsFilled: 2, active: false, referrals: 12, commission: 8400, commissionBalance: 0, joined: A(30) },
+  { id: 'AG1006', name: 'Hamza Raza', phone: '0312-4455667', orderSharePct: 100, level: 2, walletsFilled: 4, active: true, referrals: 55, commission: 61200, commissionBalance: 0, joined: A(120) },
 ]
 
 export const PLAYERS: Player[] = [

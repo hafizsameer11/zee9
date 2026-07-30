@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import type { UpDownChoice } from '../engines/dice'
 import styles from './upDownClassic.module.css'
 
-export const CHIP_DENOMS = [10, 50, 100, 500, 1000] as const
+export const CHIP_DENOMS = [10, 50, 100, 500, 1000, 2000, 5000, 10000] as const
 export type ChipDenom = (typeof CHIP_DENOMS)[number]
 
 const CHIP_COLOR: Record<ChipDenom, string> = {
@@ -11,6 +11,9 @@ const CHIP_COLOR: Record<ChipDenom, string> = {
   100: styles.pokerChipChip100!,
   500: styles.pokerChipChip500!,
   1000: styles.pokerChipChip1k!,
+  2000: styles.pokerChipChip1k!,
+  5000: styles.pokerChipChip500!,
+  10000: styles.pokerChipChip50!,
 }
 
 const CHIP_SIZE: Record<string, string> = {
@@ -21,7 +24,8 @@ const CHIP_SIZE: Record<string, string> = {
 }
 
 export function chipLabel(value: number): string {
-  return value >= 1000 ? '1K' : String(value)
+  if (value >= 1000) return `${value / 1000}K`
+  return String(value)
 }
 
 export function zoneForSum(sum: number): UpDownChoice {

@@ -1,0 +1,116 @@
+.rail {
+  position: absolute;
+  top: 148px;
+  bottom: 58px;
+  width: 70px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.left {
+  left: 4px;
+}
+
+.right {
+  right: 4px;
+}
+
+.card {
+  position: relative;
+  width: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.badge {
+  position: absolute;
+  top: -10px;
+  z-index: 2;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #2a1808;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.winner {
+  background: linear-gradient(180deg, #ffe08a, #d4a020);
+}
+
+.lucky {
+  background: linear-gradient(180deg, #ff9a4a, #e05020);
+  color: #fff8f0;
+}
+
+.avatarWrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px rgba(220, 180, 90, 0.75),
+    0 0 0 4px rgba(80, 20, 24, 0.85),
+    0 3px 8px rgba(0, 0, 0, 0.45);
+}
+
+.avatar {
+  position: absolute;
+  inset: 3px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatarFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.name {
+  font-size: 9px;
+  color: #f0e6d0;
+  max-width: 62px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bal {
+  font-size: 9px;
+  font-weight: 700;
+  color: #f0c860;
+}
+
+.empty {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(220, 180, 90, 0.5);
+  background: rgba(30, 8, 12, 0.65);
+  display: grid;
+  place-items: center;
+  color: #e8c76a;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.35);
+}

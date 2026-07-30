@@ -83,7 +83,7 @@ export default function FortuneOxGame({ bet: defaultBet, onMessage }: GameCompon
 
   const adjustBet = (delta: number) => {
     if (spinning) return
-    setBetAmount((b) => Math.max(50, Math.min(5000, b + delta)))
+    setBetAmount((b) => Math.max(10, Math.min(10000, b + delta)))
   }
 
   useEffect(() => () => {}, [])

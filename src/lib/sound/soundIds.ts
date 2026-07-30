@@ -26,6 +26,9 @@ export const SFX = {
   spin: '/sfx/spin.mp3',
   bonus: '/sfx/bonus.mp3',
   levelUp: '/sfx/level-up.mp3',
+  dragonRoar: '/sfx/dragon-roar.mp3',
+  tigerRoar: '/sfx/tiger-roar.mp3',
+  chipAdd: '/sfx/chip-add.mp3',
 } as const
 
 export type SfxId = keyof typeof SFX

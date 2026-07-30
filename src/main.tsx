@@ -17,3 +17,11 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 )
+
+// Hand off from HTML boot splash to React (Splash / game loaders take over)
+requestAnimationFrame(() => {
+  const boot = document.getElementById('zee9-boot')
+  if (!boot) return
+  boot.style.opacity = '0'
+  window.setTimeout(() => boot.remove(), 320)
+})

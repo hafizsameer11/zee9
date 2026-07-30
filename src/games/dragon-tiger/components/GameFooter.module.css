@@ -1,0 +1,124 @@
+.footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 62px;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 4px;
+  background: linear-gradient(180deg, transparent, rgba(20, 4, 8, 0.85) 40%);
+  box-sizing: border-box;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.avatarWrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.avatar {
+  position: absolute;
+  inset: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.name {
+  font-size: 10px;
+  color: #e8d8b0;
+}
+
+.bal {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffe08a;
+}
+
+.bal img {
+  width: 14px;
+  height: 14px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.smallBtn {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid rgba(220, 180, 90, 0.45);
+  background: linear-gradient(180deg, rgba(70, 24, 28, 0.95), rgba(30, 8, 12, 0.95));
+  color: #e8d0a0;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.15);
+}
+
+.smallBtn:disabled,
+.rebet:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rebet {
+  height: 34px;
+  min-width: 76px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #e8ecef 0%, #9aa0a8 55%, #6a7078 100%);
+  color: #1a1c20;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.stakeHint {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: rgba(240, 220, 170, 0.55);
+  pointer-events: none;
+}

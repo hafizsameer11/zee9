@@ -8,26 +8,32 @@ type Channel = {
   method: string
   accountNumber: string
   accountTitle: string
+  bankName?: string | null
   instructions?: string | null
+  minAmount?: number
+  maxAmount?: number
 }
 
+const FLOAT_MIN = 10_000
+
 export default function Balance() {
-  const { balance, freeze, transactions, earnings, withdrawEarnings, showToast, reload } = useStore()
+  const { balance, freeze, transactions, earnings, showToast, reload } = useStore()
   const [busy, setBusy] = useState(false)
-  const [method, setMethod] = useState<'JAZZCASH' | 'EASYPAISA'>('JAZZCASH')
   const [channels, setChannels] = useState<Channel[]>([])
   const [channelId, setChannelId] = useState('')
-  const [amount, setAmount] = useState(1000)
+  const [amount, setAmount] = useState(FLOAT_MIN)
   const [sender, setSender] = useState('')
   const [trxId, setTrxId] = useState('')
   const [topups, setTopups] = useState<any[]>([])
 
   useEffect(() => {
     api
-      .get(`/agent/float/channels?method=${method}`)
+      .get('/agent/float/channels')
       .then((list: Channel[]) => {
         setChannels(list)
         setChannelId(list[0]?.id ?? '')
+        const min = Math.max(FLOAT_MIN, list[0]?.minAmount ?? FLOAT_MIN)
+        setAmount(min)
       })
       .catch(() => {
         setChannels([])
@@ -37,33 +43,26 @@ export default function Balance() {
       .get('/agent/float/topups')
       .then((list: any[]) => setTopups(list.slice(0, 8)))
       .catch(() => setTopups([]))
-  }, [method])
-
-  async function unlock() {
-    setBusy(true)
-    try {
-      await withdrawEarnings()
-    } catch (e: any) {
-      showToast(e?.message || 'Nothing unlocked yet')
-    } finally {
-      setBusy(false)
-    }
-  }
+  }, [])
 
   async function submitTopup() {
     if (!channelId) {
-      showToast('No platform account available — ask admin')
+      showToast('No bank account available — ask admin')
       return
     }
-    if (amount < 300 || sender.trim().length < 3 || !trxId.trim()) {
-      showToast('Enter amount, your number, and Transfer ID')
+    const min = Math.max(FLOAT_MIN, selected?.minAmount ?? FLOAT_MIN)
+    if (amount < min) {
+      showToast(`Minimum top-up is Rs ${min.toLocaleString('en-PK')}`)
+      return
+    }
+    if (sender.trim().length < 3 || !trxId.trim()) {
+      showToast('Enter your account number and Transfer ID')
       return
     }
     setBusy(true)
     try {
       await api.post('/agent/float/topup', {
         amount,
-        method,
         channelId,
         senderAccount: sender.trim(),
         trxId: trxId.trim(),
@@ -81,6 +80,7 @@ export default function Balance() {
   }
 
   const selected = channels.find((c) => c.id === channelId)
+  const minAmt = Math.max(FLOAT_MIN, selected?.minAmount ?? FLOAT_MIN)
 
   return (
     <Shell>
@@ -88,88 +88,88 @@ export default function Balance() {
       <TopBar title="Balance" />
       <div className="scroll pad">
         <div className="card deposit-balance">
-          <div style={{ fontSize: 12, opacity: 0.85 }}>Agent float (working balance)</div>
+          <div style={{ fontSize: 12, opacity: 0.85 }}>Merchant float (working balance)</div>
           <div className="db-num">{fmt(balance)}</div>
           <div className="db-freeze">Freeze: {fmt(freeze)}</div>
         </div>
 
         <div className="card" style={{ marginTop: 16, padding: 16 }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>Earnings (2% rewards)</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, fontSize: 13 }}>
-            <div>
-              <div className="muted">Total</div>
-              <b>{fmt(earnings.total)}</b>
-            </div>
-            <div>
-              <div className="muted">Locked</div>
-              <b>{fmt(earnings.locked)}</b>
-            </div>
-            <div>
-              <div className="muted">Available</div>
-              <b style={{ color: '#2fbf5b' }}>{fmt(earnings.available)}</b>
-            </div>
+          <div style={{ fontSize: 13 }}>
+            <div className="muted">Lifetime rewards (already in float)</div>
+            <b style={{ fontSize: 20 }}>{fmt(earnings.total)}</b>
           </div>
-          <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
-            Earnings unlock after {earnings.holdDays} day(s) (admin setting). Unlocked amount moves to your float.
+          <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
+            Deposit / withdraw rewards credit your <b>main float instantly</b> — no lock, no wait.
           </p>
-          <button
-            className="btn btn-violet btn-block"
-            style={{ marginTop: 12 }}
-            disabled={busy || earnings.available <= 0}
-            onClick={unlock}
-          >
-            {busy ? '…' : earnings.available > 0 ? `Withdraw ${fmt(earnings.available)} to float` : 'Nothing unlocked yet'}
-          </button>
         </div>
 
         <div className="card" style={{ marginTop: 16, padding: 16 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Top up float</div>
           <p className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
-            Send money to the platform account below, then submit. Admin confirms and credits your float.
-            Player deposits you collect never increase this balance — only your 2% reward does.
+            Send a bank transfer to the account below (minimum Rs {minAmt.toLocaleString('en-PK')}), then submit.
+            Admin confirms and credits your float. JazzCash / Easypaisa are not used for float top-up.
           </p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            {(['JAZZCASH', 'EASYPAISA'] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={'btn btn-sm ' + (method === m ? 'btn-violet' : 'btn-light')}
-                onClick={() => setMethod(m)}
+
+          {channels.length > 1 && (
+            <div style={{ marginBottom: 10 }}>
+              <label className="muted" style={{ fontSize: 12 }}>Bank account</label>
+              <select
+                value={channelId}
+                onChange={(e) => {
+                  setChannelId(e.target.value)
+                  const ch = channels.find((c) => c.id === e.target.value)
+                  setAmount(Math.max(FLOAT_MIN, ch?.minAmount ?? FLOAT_MIN))
+                }}
+                style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #ddd' }}
               >
-                {m === 'JAZZCASH' ? 'JazzCash' : 'Easypaisa'}
-              </button>
-            ))}
-          </div>
+                {channels.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {(c.bankName || 'Bank') + ' · ' + c.accountTitle + ' · ' + c.accountNumber}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {selected ? (
             <div style={{ background: '#f6f6fb', borderRadius: 10, padding: 12, marginBottom: 12, fontSize: 13 }}>
+              <div className="muted" style={{ fontSize: 11 }}>Bank account</div>
+              {selected.bankName && <div style={{ marginTop: 2 }}>{selected.bankName}</div>}
               <div>
                 <b>{selected.accountTitle}</b>
               </div>
               <div style={{ fontFamily: 'monospace', fontSize: 16, marginTop: 4 }}>{selected.accountNumber}</div>
-              {selected.instructions && <div className="muted" style={{ marginTop: 6 }}>{selected.instructions}</div>}
+              {selected.instructions && (
+                <div className="muted" style={{ marginTop: 6 }}>
+                  {selected.instructions}
+                </div>
+              )}
             </div>
           ) : (
-            <p className="muted" style={{ fontSize: 12 }}>No platform {method} account configured yet.</p>
+            <p className="muted" style={{ fontSize: 12 }}>No bank account configured yet — ask admin.</p>
           )}
-          <label className="muted" style={{ fontSize: 12 }}>Amount (Rs)</label>
+
+          <label className="muted" style={{ fontSize: 12 }}>Amount (Rs) — min {minAmt.toLocaleString('en-PK')}</label>
           <input
             type="number"
+            min={minAmt}
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
             style={{ width: '100%', marginBottom: 8, padding: 10, borderRadius: 8, border: '1px solid #ddd' }}
           />
-          <label className="muted" style={{ fontSize: 12 }}>Your account number</label>
+          <label className="muted" style={{ fontSize: 12 }}>Your account number (sender)</label>
           <input
             value={sender}
             onChange={(e) => setSender(e.target.value)}
-            placeholder="03XXXXXXXXX"
+            placeholder="Your bank account / IBAN"
             style={{ width: '100%', marginBottom: 8, padding: 10, borderRadius: 8, border: '1px solid #ddd' }}
           />
-          <label className="muted" style={{ fontSize: 12 }}>Transfer ID</label>
+          <label className="muted" style={{ fontSize: 12 }}>Transfer ID / Reference</label>
           <input
             value={trxId}
             onChange={(e) => setTrxId(e.target.value)}
-            placeholder="TID / TID"
+            placeholder="Bank transfer reference"
             style={{ width: '100%', marginBottom: 12, padding: 10, borderRadius: 8, border: '1px solid #ddd' }}
           />
           <button className="btn btn-violet btn-block" disabled={busy || !channelId} onClick={submitTopup}>
@@ -206,7 +206,9 @@ export default function Balance() {
           ))}
           {transactions.length === 0 && (
             <div className="trow">
-              <div className="muted" style={{ textAlign: 'center', width: '100%' }}>No records</div>
+              <div className="muted" style={{ textAlign: 'center', width: '100%' }}>
+                No records
+              </div>
             </div>
           )}
         </div>

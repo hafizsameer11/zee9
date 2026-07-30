@@ -1,14 +1,15 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { api, clearTokens, getAccess, loginRequest, setTokens } from './client'
+import { ApiError, api, clearTokens, getAccess, loginRequest, setTokens } from './client'
 
-interface Agent {
+interface Merchant {
   id: string
   name: string
   phone: string
+  panelId: number
 }
 
 interface AuthCtx {
-  agent: Agent | null
+  agent: Merchant | null
   ready: boolean
   login: (phone: string, password: string) => Promise<void>
   logout: () => void
@@ -16,31 +17,59 @@ interface AuthCtx {
 
 const Ctx = createContext<AuthCtx | null>(null)
 
+function isC2cMerchant(me: { role?: string; panelId?: number | null }) {
+  return me.role === 'AGENT' && me.panelId != null && Number(me.panelId) > 0
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [agent, setAgent] = useState<Agent | null>(null)
+  const [agent, setAgent] = useState<Merchant | null>(null)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     ;(async () => {
       if (getAccess()) {
         try {
           const me = await api.get('/me')
-          if (me.role === 'AGENT') setAgent({ id: me.id, name: me.displayName, phone: me.phone })
-          else clearTokens()
-        } catch {
-          clearTokens()
+          if (cancelled) return
+          if (isC2cMerchant(me)) {
+            setAgent({ id: me.id, name: me.displayName, phone: me.phone, panelId: me.panelId })
+          } else {
+            clearTokens()
+            setAgent(null)
+          }
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 401) {
+            clearTokens()
+            if (!cancelled) setAgent(null)
+          }
         }
       }
-      setReady(true)
+      if (!cancelled) setReady(true)
     })()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   async function login(phone: string, password: string) {
     const data = await loginRequest(phone, password)
-    if (data.user.role !== 'AGENT') throw new Error('This login is not an agent account')
+    // Players / referral agents / mentors use other panels — never C2C
+    if (data.user.role !== 'AGENT') {
+      throw new Error('Merchant login only. Players and referral agents cannot use this panel.')
+    }
     setTokens(data.accessToken, data.refreshToken)
-    const me = await api.get('/me')
-    setAgent({ id: me.id, name: me.displayName, phone: me.phone })
+    try {
+      const me = await api.get('/me')
+      if (!isC2cMerchant(me)) {
+        clearTokens()
+        throw new Error('Merchant login only. This account is not a C2C merchant.')
+      }
+      setAgent({ id: me.id, name: me.displayName, phone: me.phone, panelId: me.panelId })
+    } catch (e) {
+      clearTokens()
+      throw e
+    }
   }
 
   function logout() {

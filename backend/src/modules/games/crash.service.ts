@@ -5,13 +5,24 @@ import { post, getBalances } from '../../core/ledger.js'
 import { toPaisa, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { recordWagerAndRelease } from '../../core/wager.js'
-import { accrueForLoss } from '../commission/commission.service.js'
+import { accrueForLoss, clawbackForWin } from '../commission/commission.service.js'
 
 const GAME_SLUG = 'crash'
 const WAITING_MS = 5_000
 const CRASHED_MS = 3_000
 const GROWTH = 0.00006
 const HISTORY_LIMIT = 20
+
+let pendingNextForce: number | null = null
+
+function resolveCrashPoint(winPct: number): number {
+  if (pendingNextForce != null) {
+    const v = pendingNextForce
+    pendingNextForce = null
+    return Math.min(Math.max(1, Math.floor(v * 100) / 100), 100)
+  }
+  return generateCrashPoint(winPct)
+}
 
 export function multiplierAtElapsed(elapsedMs: number): number {
   const m = Math.exp(GROWTH * Math.max(0, elapsedMs))
@@ -63,7 +74,12 @@ async function settleBustBets(tx: any, roundId: string) {
       where: { id: bet.id },
       data: { state: 'BUST', endedAt: new Date(), cashoutAt: null, payout: 0n },
     })
-    await accrueForLoss(tx, bet.userId, bet.bet)
+    await accrueForLoss(tx, {
+      userId: bet.userId,
+      lossAmount: bet.bet,
+      referenceType: 'crashBet',
+      referenceId: bet.id,
+    })
   }
   if (active.length) {
     const lost = active.reduce((s: bigint, b: { bet: bigint }) => s + b.bet, 0n)
@@ -91,7 +107,7 @@ export async function tickRound() {
       data: {
         gameSlug: GAME_SLUG,
         phase: 'WAITING',
-        crashPoint: generateCrashPoint(game.winPct),
+        crashPoint: resolveCrashPoint(game.winPct),
         waitingEndsAt: new Date(now + WAITING_MS),
       },
     })
@@ -125,7 +141,7 @@ export async function tickRound() {
         data: {
           gameSlug: GAME_SLUG,
           phase: 'WAITING',
-          crashPoint: generateCrashPoint(game.winPct),
+          crashPoint: resolveCrashPoint(game.winPct),
           waitingEndsAt: new Date(now + WAITING_MS),
         },
       })
@@ -302,6 +318,11 @@ export async function placeBet(
       : null
 
   return runMoneyTx(async (tx) => {
+    const roundClaim = await tx.crashRound.updateMany({
+      where: { id: round.id, phase: 'WAITING', waitingEndsAt: { gt: new Date() } },
+      data: { phase: 'WAITING' },
+    })
+    if (roundClaim.count !== 1) throw conflict('Bets are closed — wait for next round')
     const existing = await tx.crashBet.findUnique({
       where: { roundId_userId_slot: { roundId: round.id, userId, slot } },
     })
@@ -311,7 +332,7 @@ export async function placeBet(
     if (bal.MAIN! < bet) throw unprocessable('Insufficient balance')
 
     await post(tx, {
-      type: 'ADMIN_ADJUST',
+      type: 'GAME_BET',
       referenceType: 'crash-bet',
       referenceId: `${round.id}:${userId}:${slot}`,
       meta: { game: GAME_SLUG, kind: 'bet', roundId: round.id, slot },
@@ -378,7 +399,7 @@ export async function cashOut(userId: string, betId: string) {
     const payout = (bet.bet * BigInt(Math.round(finalMult * 100))) / 100n
 
     await post(tx, {
-      type: 'ADMIN_ADJUST',
+      type: 'GAME_WIN',
       referenceType: 'crash-win',
       referenceId: bet.id,
       meta: { game: GAME_SLUG, kind: 'cashout', mult: finalMult, roundId: round.id },
@@ -397,6 +418,16 @@ export async function cashOut(userId: string, betId: string) {
         endedAt: new Date(),
       },
     })
+
+    const profit = payout > bet.bet ? payout - bet.bet : 0n
+    if (profit > 0n) {
+      await clawbackForWin(tx, {
+        userId,
+        winAmount: profit,
+        referenceType: 'crash-win',
+        referenceId: bet.id,
+      })
+    }
 
     const ggrDelta = bet.bet - payout
     await tx.game.update({ where: { slug: GAME_SLUG }, data: { ggr: { increment: ggrDelta } } })
@@ -471,4 +502,70 @@ export async function processAllAutoCashouts() {
     }
   }
   return results
+}
+
+export async function forceNextCrashPoint(mult: number) {
+  if (!Number.isFinite(mult) || mult < 1 || mult > 100) throw badRequest('Multiplier must be 1-100')
+  const point = Math.floor(mult * 100) / 100
+  await getGame()
+  const round = await tickRound()
+  if (round && round.phase === 'WAITING') {
+    await prisma.crashRound.update({
+      where: { id: round.id },
+      data: { crashPoint: point },
+    })
+    pendingNextForce = null
+    return { applied: 'current' as const, crashPoint: point, roundId: round.id }
+  }
+  pendingNextForce = point
+  return { applied: 'next' as const, crashPoint: point, roundId: round?.id ?? null }
+}
+
+export async function clearForce() {
+  pendingNextForce = null
+  return { cleared: true }
+}
+
+export async function getLiveAdmin() {
+  const round = await tickRound()
+  const game = await prisma.game.findUnique({ where: { slug: GAME_SLUG } })
+  if (!round) {
+    return {
+      enabled: !!game?.enabled,
+      winPct: game?.winPct ?? 97,
+      roundId: null,
+      phase: null,
+      multiplier: 1,
+      waitingMsLeft: 0,
+      crashPoint: null,
+      forcedCrashPoint: pendingNextForce,
+      pendingForce: pendingNextForce != null,
+      betCount: 0,
+    }
+  }
+
+  const now = Date.now()
+  let mult = 1
+  if (round.phase === 'FLYING' && round.startedAt) {
+    mult = Math.min(multiplierAtElapsed(now - round.startedAt.getTime()), round.crashPoint)
+  } else if (round.phase === 'CRASHED') {
+    mult = round.crashPoint
+  }
+
+  const betCount = await prisma.crashBet.count({ where: { roundId: round.id } })
+  const waitingMsLeft =
+    round.phase === 'WAITING' ? Math.max(0, round.waitingEndsAt.getTime() - now) : 0
+
+  return {
+    enabled: !!game?.enabled,
+    winPct: game?.winPct ?? 97,
+    roundId: round.id,
+    phase: publicPhase(round),
+    multiplier: mult,
+    waitingMsLeft,
+    crashPoint: round.phase === 'CRASHED' ? round.crashPoint : null,
+    forcedCrashPoint: pendingNextForce,
+    pendingForce: pendingNextForce != null,
+    betCount,
+  }
 }

@@ -71,12 +71,12 @@ export function BetSidebar({
             −
           </button>
           <span className={styles.betAmount}>{bet}</span>
-          <button type="button" onClick={() => setBet(bet + 10)} aria-label="Increase bet">
+          <button type="button" onClick={() => setBet(Math.min(10000, bet + 10))} aria-label="Increase bet">
             +
           </button>
         </div>
         <div className={styles.quick}>
-          {[10, 50, 100, 500].map((v) => (
+          {[10, 20, 50, 100, 500, 1000, 2000, 5000, 10000].map((v) => (
             <button
               key={v}
               type="button"

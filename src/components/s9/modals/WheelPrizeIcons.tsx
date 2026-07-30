@@ -68,13 +68,15 @@ export function IconPrizeTicket({ size = 40, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden>
       <path
-        d="M12 10h40a6 6 0 0 1 6 6v8a8 8 0 0 0 0 16v8a6 6 0 0 1-6 6H12a6 6 0 0 1-6-6v-8a8 8 0 0 0 0-16v-8a6 6 0 0 1 6-6z"
+        d="M10 18h44a5 5 0 0 1 5 5v6a7 7 0 0 0 0 14v6a5 5 0 0 1-5 5H10a5 5 0 0 1-5-5v-6a7 7 0 0 0 0-14v-6a5 5 0 0 1 5-5z"
         fill="#ffb300"
         stroke="#fff8e1"
         strokeWidth="2"
       />
-      <path d="M32 18v28" stroke="#fff" strokeWidth="2.5" strokeDasharray="4 3" />
-      <text x="22" y="38" fontSize="11" fill="#fff" fontWeight="bold">×1</text>
+      <path d="M32 22v28" stroke="#fff" strokeWidth="2" strokeDasharray="3 3" />
+      <text x="32" y="38" textAnchor="middle" fontSize="9" fill="#5d4037" fontWeight="bold">
+        AGAIN
+      </text>
     </svg>
   )
 }
@@ -113,11 +115,11 @@ export function IconPrizePhone({ size = 40, className }: IconProps) {
 export function IconPrizeCoins({ size = 40, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden>
-      <ellipse cx="26" cy="50" rx="16" ry="5" fill="rgba(0,0,0,0.25)" />
-      <circle cx="24" cy="38" r="14" fill="#ffb300" stroke="#fff8e1" strokeWidth="2" />
-      <circle cx="40" cy="30" r="14" fill="#ffa000" stroke="#fff8e1" strokeWidth="2" />
-      <text x="24" y="43" textAnchor="middle" fontSize="14" fill="#5d4037" fontWeight="bold">Rs </text>
-      <text x="40" y="35" textAnchor="middle" fontSize="14" fill="#5d4037" fontWeight="bold">Rs </text>
+      <ellipse cx="32" cy="56" rx="18" ry="4" fill="rgba(0,0,0,0.28)" />
+      <rect x="14" y="34" width="14" height="18" rx="2" fill="#2e7d32" stroke="#a5d6a7" strokeWidth="1.5" />
+      <rect x="25" y="26" width="14" height="22" rx="2" fill="#43a047" stroke="#c8e6c9" strokeWidth="1.5" />
+      <rect x="36" y="30" width="14" height="20" rx="2" fill="#1b5e20" stroke="#a5d6a7" strokeWidth="1.5" />
+      <path d="M17 38h8M28 30h8M39 34h8" stroke="#fff" strokeWidth="1" opacity="0.5" />
     </svg>
   )
 }
@@ -125,11 +127,11 @@ export function IconPrizeCoins({ size = 40, className }: IconProps) {
 export function IconPrizeLose({ size = 40, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden>
-      <circle cx="32" cy="32" r="26" fill="#fce4ec" stroke="#f48fb1" strokeWidth="2.5" />
-      <circle cx="22" cy="28" r="3.5" fill="#4a148c" />
-      <circle cx="42" cy="28" r="3.5" fill="#4a148c" />
-      <path d="M20 42c4-5 20-5 24 0" fill="none" stroke="#4a148c" strokeWidth="3" strokeLinecap="round" />
-      <path d="M18 18l6 6M46 18l-6 6" stroke="#e91e63" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="32" cy="32" r="26" fill="#ffeb3b" stroke="#f9a825" strokeWidth="2.5" />
+      <circle cx="22" cy="28" r="3.5" fill="#5d4037" />
+      <circle cx="42" cy="28" r="3.5" fill="#5d4037" />
+      <path d="M22 44c3 4 17 4 20 0" fill="none" stroke="#5d4037" strokeWidth="3" strokeLinecap="round" />
+      <path d="M18 20c2 3 6 3 8 0M38 20c2 3 6 3 8 0" fill="none" stroke="#5d4037" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
 }

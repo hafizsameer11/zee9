@@ -79,6 +79,9 @@ export type UpDownDesignUIProps = {
   onZoneBet: (zone: UpDownChoice) => void
   onRebet: () => void
   onHome: () => void
+  onAddCash: () => void
+  menuOpen: boolean
+  onToggleMenu: () => void
   registerSeatRef: (playerId: string, el: HTMLDivElement | null) => void
   registerZoneRef: (zone: UpDownChoice, el: HTMLDivElement | null) => void
   registerSelfRef: (el: HTMLDivElement | null) => void
@@ -208,6 +211,9 @@ export default function UpDownDesignUI({
   onZoneBet,
   onRebet,
   onHome,
+  onAddCash,
+  menuOpen,
+  onToggleMenu,
   registerSeatRef,
   registerZoneRef,
   registerSelfRef,
@@ -245,8 +251,21 @@ export default function UpDownDesignUI({
               </div>
 
               <div className={styles.hudTopRight}>
-                <HudImgBtn src={UP_DOWN_HUD.add} alt="Add chips" />
-                <HudImgBtn src={UP_DOWN_HUD.menu} alt="Menu" />
+                <HudImgBtn src={UP_DOWN_HUD.add} alt="Add chips" onClick={onAddCash} />
+                <HudImgBtn src={UP_DOWN_HUD.menu} alt="Menu" onClick={onToggleMenu} />
+                {menuOpen && (
+                  <div className={styles.menuPanel} role="menu">
+                    <button type="button" className={styles.menuItem} onClick={onHome}>
+                      Exit to lobby
+                    </button>
+                    <button type="button" className={styles.menuItem} onClick={onAddCash}>
+                      Add cash
+                    </button>
+                    <button type="button" className={styles.menuItem} onClick={onToggleMenu}>
+                      Close
+                    </button>
+                  </div>
+                )}
               </div>
             </header>
 
@@ -397,7 +416,16 @@ export default function UpDownDesignUI({
               </div>
 
               <div className={styles.chipTray}>
-                <button type="button" className={styles.trayArrow} aria-label="Previous">
+                <button
+                  type="button"
+                  className={styles.trayArrow}
+                  aria-label="Previous"
+                  onClick={() => {
+                    const idx = CHIP_SELECTOR_VALUES.indexOf(betAmount as (typeof CHIP_SELECTOR_VALUES)[number])
+                    const i = idx <= 0 ? CHIP_SELECTOR_VALUES.length - 1 : idx - 1
+                    onBetAmount(CHIP_SELECTOR_VALUES[i]!)
+                  }}
+                >
                   ‹
                 </button>
                 <div className={styles.chipPickRow}>
@@ -410,7 +438,16 @@ export default function UpDownDesignUI({
                     />
                   ))}
                 </div>
-                <button type="button" className={styles.trayArrow} aria-label="Next">
+                <button
+                  type="button"
+                  className={styles.trayArrow}
+                  aria-label="Next"
+                  onClick={() => {
+                    const idx = CHIP_SELECTOR_VALUES.indexOf(betAmount as (typeof CHIP_SELECTOR_VALUES)[number])
+                    const i = idx < 0 || idx >= CHIP_SELECTOR_VALUES.length - 1 ? 0 : idx + 1
+                    onBetAmount(CHIP_SELECTOR_VALUES[i]!)
+                  }}
+                >
                   ›
                 </button>
               </div>

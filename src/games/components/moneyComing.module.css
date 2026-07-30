@@ -25,6 +25,70 @@
   background: #1a0608;
 }
 
+/* —— Boot loader —— */
+.loader {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(120, 40, 20, 0.55), transparent 55%),
+    linear-gradient(180deg, #3a120e 0%, #1a0608 55%, #0c0404 100%);
+}
+
+.loaderLogo {
+  width: min(280px, 62%);
+  height: auto;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.65));
+  animation: mcLoaderFloat 2.2s ease-in-out infinite;
+}
+
+.loaderTitle {
+  font-family: 'McBahn', 'Arial Narrow', Arial, sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.22em;
+  color: #f0d48a;
+  font-weight: 700;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.loaderBarWrap {
+  width: min(260px, 70%);
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(232, 199, 106, 0.45);
+  overflow: hidden;
+}
+
+.loaderBar {
+  height: 100%;
+  background: linear-gradient(90deg, #8a4a18, #f0d48a, #8a4a18);
+  background-size: 200% 100%;
+  animation: mcLoaderShine 1.1s linear infinite;
+  transition: width 0.15s ease;
+}
+
+.loaderPct {
+  font-size: 12px;
+  color: rgba(255, 236, 200, 0.82);
+  letter-spacing: 0.04em;
+}
+
+@keyframes mcLoaderFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes mcLoaderShine {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 .canvas {
   position: relative;
   width: var(--design-width);
@@ -64,7 +128,7 @@
   top: 10px;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: 70;
   height: 58px;
   pointer-events: none;
 }
@@ -103,6 +167,9 @@
   display: grid;
   place-items: center;
   cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
   box-shadow:
     0 3px 10px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
@@ -194,6 +261,9 @@
   flex-shrink: 0;
   display: grid;
   place-items: center;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
 }
 
 .addBtn img {
@@ -202,6 +272,7 @@
   max-width: 100%;
   object-fit: contain;
   display: block;
+  pointer-events: none;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.55));
 }
 
@@ -217,6 +288,9 @@
   gap: 4px;
   padding: 10px;
   flex-shrink: 0;
+  pointer-events: auto;
+  position: relative;
+  z-index: 2;
   box-shadow:
     0 3px 10px rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
@@ -229,6 +303,43 @@
   transform: rotate(45deg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   border-radius: 1px;
+  pointer-events: none;
+}
+
+.menuPanel {
+  position: absolute;
+  top: 58px;
+  right: 14px;
+  z-index: 80;
+  min-width: 148px;
+  padding: 6px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #3a1810, #1a0806);
+  border: 1.5px solid #d4a848;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menuItem {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: #ffe9a8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.menuItem:active,
+.menuItem:hover {
+  background: rgba(255, 200, 80, 0.15);
 }
 
 /* ═══════════════ STAGE ═══════════════ */

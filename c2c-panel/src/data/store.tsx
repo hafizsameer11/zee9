@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
+import { startAlertSound, stopAlertSound } from '../api/alertSound'
+import { useMerchantRealtime, type MerchantDepositEvent } from '../api/realtime'
 import type { BankAccount, CollectionOrder } from './mock'
 
 export interface StatGroup {
@@ -52,7 +54,7 @@ interface Store {
   setCollectionsOn: (v: boolean) => void
   addAccount: (a: Omit<BankAccount, 'id'>) => Promise<void>
   orders: CollectionOrder[]
-  resolveOrder: (id: string, status: CollectionOrder['status'], trxId?: string) => void
+  resolveOrder: (id: string, status: CollectionOrder['status'], trxId?: string) => Promise<void>
   acceptOrder: (id: string) => Promise<void>
   toggleAccount: (id: string) => void
   deleteAccount: (id: string) => void
@@ -60,14 +62,20 @@ interface Store {
   payouts: PayoutOrder[]
   availablePayouts: AvailableWithdrawal[]
   claimPayout: (withdrawalId: string) => Promise<void>
-  submitPayout: (id: string, trxId: string, senderAccount: string) => Promise<void>
+  submitPayout: (id: string, trxId: string) => Promise<void>
+  cancelPayout: (id: string) => Promise<void>
+  abnormalPayout: (id: string, reason?: string) => Promise<void>
   earnings: { total: number; locked: number; available: number; holdDays: number }
-  withdrawEarnings: () => Promise<void>
   stats: AgentStats
   transactions: AgentTxn[]
   reload: () => void
   toast: string | null
   showToast: (m: string) => void
+  depositAlert: MerchantDepositEvent | null
+  /** Snooze current alert ~10s then show again (TRX checking reminders). */
+  snoozeDepositAlert: () => void
+  /** Open order — keep reminder until resolve, but hide briefly. */
+  openDepositAlert: () => void
 }
 
 const StoreCtx = createContext<Store | null>(null)
@@ -95,27 +103,26 @@ function mapOrder(o: any): CollectionOrder {
     status: ORDER_STATUS[o.status] ?? 'pending',
     method: (METHOD[o.method] ?? 'Jazzcash') as CollectionOrder['method'],
     collectionAccount: o.collectionAccount ?? '',
+    collectionHolder: o.collectionHolder ?? undefined,
+    playerName: o.playerName ?? o.player?.displayName ?? undefined,
+    trxId: o.trxId ?? undefined,
+    submittedAt: o.submittedAt ? String(o.submittedAt) : undefined,
+    createdAt: o.createdAt ? String(o.createdAt) : undefined,
+    manualDone: !!o.manualDone,
   }
 }
 
-const TXN_LABEL: Record<string, string> = {
-  DEPOSIT: 'Deposit',
-  WITHDRAWAL_FREEZE: 'Withdrawal (freeze)',
-  WITHDRAWAL_PAID: 'Withdrawal (paid)',
-  WITHDRAWAL_UNFREEZE: 'Withdrawal (unfreeze)',
-  DEPOSIT_BONUS: 'Deposit bonus',
-  REGISTRATION_BONUS: 'Registration bonus',
-  DAILY_BONUS: 'Daily bonus',
-  COMMISSION: 'Commission',
-  WHEEL_PRIZE: 'Wheel prize',
-  BONUS_RELEASE: 'Bonus release',
-  ADMIN_ADJUST: 'Adjustment',
-}
 function mapStat(s: any): StatGroup {
   return { colAmount: r(s?.colAmount), colReward: r(s?.colReward), payAmount: r(s?.payAmount), payReward: r(s?.payReward) }
 }
 function mapTxn(t: any): AgentTxn {
-  return { id: t.id, type: TXN_LABEL[t.type] ?? t.type, amount: r(t.amount), signed: r(t.signed), time: String(t.time).replace('T', ' ').slice(0, 19) }
+  return {
+    id: t.id,
+    type: typeof t.type === 'string' ? t.type : 'Transaction',
+    amount: r(t.amount),
+    signed: r(t.signed),
+    time: String(t.time).replace('T', ' ').slice(0, 19),
+  }
 }
 function mapPayout(o: any): PayoutOrder {
   return {
@@ -144,6 +151,22 @@ function mapAvailable(w: any): AvailableWithdrawal {
 }
 
 const CO_KEY = 'c2c-collections-on'
+const CHECKING_SNOOZE_MS = 10_000
+
+function alertFromOrder(o: CollectionOrder): MerchantDepositEvent {
+  return {
+    type: 'deposit_submitted',
+    title: 'Checking required',
+    body: `Player paid Rs ${o.amount.toLocaleString('en-PK')} — confirm this order.`,
+    orderId: o.id,
+    orderNo: o.orderNo,
+    amount: o.amount,
+    method: o.method,
+    collectionAccount: o.collectionAccount || null,
+    trxId: o.trxId ?? null,
+    playerName: o.playerName ?? null,
+  }
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [balance, setBalance] = useState(0)
@@ -159,11 +182,82 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [collectionsOn, setCollectionsOnState] = useState(localStorage.getItem(CO_KEY) !== '0')
   const [toast, setToast] = useState<string | null>(null)
+  /** One-shot new-order alerts (dismiss forever for that event). */
+  const [newOrderAlerts, setNewOrderAlerts] = useState<MerchantDepositEvent[]>([])
+  /** Orders waiting for merchant confirm after player TRX — keep alerting until resolved. */
+  const [checkingById, setCheckingById] = useState<Record<string, MerchantDepositEvent>>({})
+  /** orderId → snooze until timestamp */
+  const [snoozeUntil, setSnoozeUntil] = useState<Record<string, number>>({})
+  const [tick, setTick] = useState(Date.now())
 
   const showToast = useCallback((m: string) => {
     setToast(m)
     window.setTimeout(() => setToast(null), 1800)
   }, [])
+
+  useEffect(() => {
+    const t = window.setInterval(() => setTick(Date.now()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
+
+  const syncCheckingFromOrders = useCallback((ords: CollectionOrder[]) => {
+    setCheckingById((prev) => {
+      const next: Record<string, MerchantDepositEvent> = {}
+      for (const o of ords) {
+        if (o.type !== 'DEPOSIT') continue
+        if (!(o.status === 'checking' || o.status === 'processing' || o.status === 'pending')) continue
+        if (!(o.submittedAt || (o.trxId && o.trxId.trim()))) continue
+        next[o.id] = prev[o.id] ?? alertFromOrder(o)
+      }
+      return next
+    })
+    // Drop snooze for orders that are gone / resolved
+    setSnoozeUntil((prev) => {
+      const keep: Record<string, number> = {}
+      for (const [id, until] of Object.entries(prev)) {
+        const o = ords.find((x) => x.id === id)
+        if (o && (o.status === 'checking' || o.status === 'processing' || o.status === 'pending') && (o.submittedAt || o.trxId)) {
+          keep[id] = until
+        }
+      }
+      return keep
+    })
+  }, [])
+
+  const depositAlert = useMemo(() => {
+    const now = tick
+    if (newOrderAlerts[0]) return newOrderAlerts[0]!
+    const waiting = Object.values(checkingById).filter((a) => (snoozeUntil[a.orderId] ?? 0) <= now)
+    return waiting[0] ?? null
+  }, [newOrderAlerts, checkingById, snoozeUntil, tick])
+
+  useEffect(() => {
+    if (depositAlert) startAlertSound()
+    else stopAlertSound()
+  }, [depositAlert])
+
+  const snoozeDepositAlert = useCallback(() => {
+    const cur = depositAlert
+    if (!cur) return
+    stopAlertSound()
+    if (cur.type === 'deposit_new') {
+      setNewOrderAlerts((q) => q.slice(1))
+      return
+    }
+    setSnoozeUntil((prev) => ({ ...prev, [cur.orderId]: Date.now() + CHECKING_SNOOZE_MS }))
+  }, [depositAlert])
+
+  const openDepositAlert = useCallback(() => {
+    const cur = depositAlert
+    if (!cur) return
+    stopAlertSound()
+    if (cur.type === 'deposit_new') {
+      setNewOrderAlerts((q) => q.slice(1))
+      return
+    }
+    // Brief snooze so modal closes while merchant is on the order page; pops again in 10s if still open
+    setSnoozeUntil((prev) => ({ ...prev, [cur.orderId]: Date.now() + CHECKING_SNOOZE_MS }))
+  }, [depositAlert])
 
   const reload = useCallback(async () => {
     const safe = async <T,>(fn: () => Promise<T>, fallback: T) => {
@@ -174,7 +268,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       safe(() => api.get('/agent/accounts'), []),
       safe(() => api.get('/agent/orders'), []),
       safe(() => api.get('/agent/stats'), { today: EMPTY_STAT, week: EMPTY_STAT, month: EMPTY_STAT }),
-      safe(() => api.get('/me/wallet/transactions'), []),
+      safe(() => api.get('/agent/transactions'), []),
       safe(() => api.get('/agent/payouts'), []),
       safe(() => api.get('/agent/payouts/available'), []),
       safe(() => api.get('/agent/earnings'), { total: 0, locked: 0, available: 0, holdDays: 7 }),
@@ -183,8 +277,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setFreeze(r(summary.frozen))
     if (summary.agentActive !== undefined) setCollectionsOnState(!!summary.agentActive)
     const mappedAccs = accs.map(mapAccount)
+    const mappedOrders = ords.map(mapOrder)
     setAccounts(mappedAccs)
-    setOrders(ords.map(mapOrder))
+    setOrders(mappedOrders)
+    syncCheckingFromOrders(mappedOrders)
     setStats({ today: mapStat(agentStats.today), week: mapStat(agentStats.week), month: mapStat(agentStats.month) })
     setTransactions(txns.map(mapTxn))
     setPayouts(pays.map(mapPayout))
@@ -197,16 +293,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
     setWalletAccount(mappedAccs.find((a: BankAccount) => a.on)?.number ?? mappedAccs[0]?.number ?? '—')
     setLoading(false)
-  }, [])
+  }, [syncCheckingFromOrders])
 
   useEffect(() => {
     reload().catch((e) => { showToast(e?.message || 'Failed to load'); setLoading(false) })
   }, [reload, showToast])
 
+  // Live deposit alerts from players
+  useMerchantRealtime(true, (ev: MerchantDepositEvent) => {
+    void reload()
+    if (ev.type === 'deposit_submitted' && ev.orderId) {
+      setCheckingById((prev) => ({ ...prev, [ev.orderId]: ev }))
+      setSnoozeUntil((prev) => {
+        const next = { ...prev }
+        delete next[ev.orderId]
+        return next
+      })
+      return
+    }
+    setNewOrderAlerts((q) => [...q, ev])
+  })
+
+  // Periodically refresh so checking reminders stay in sync with order status
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      void reload()
+    }, 15_000)
+    return () => window.clearInterval(t)
+  }, [reload])
+
   const setCollectionsOn = useCallback((v: boolean) => {
     setCollectionsOnState(v)
     localStorage.setItem(CO_KEY, v ? '1' : '0')
-  }, [])
+    api
+      .patch('/agent/active', { active: v })
+      .then(() => reload())
+      .catch((e) => {
+        showToast(e?.message || 'Failed to update collections')
+        reload()
+      })
+  }, [reload, showToast])
 
   const value = useMemo<Store>(
     () => ({
@@ -240,13 +366,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await api.post(`/agent/orders/${id}/accept`)
         await reload()
       },
-      resolveOrder: (id, status, trxId) => {
+      resolveOrder: async (id, status, trxId) => {
         const be = status === 'success' ? 'SUCCESS' : 'FAIL'
-        api
-          .post(`/agent/orders/${id}/resolve`, { status: be, trxId })
-          .then(() => reload())
-          .catch((e) => { showToast(e?.message || 'Failed'); reload() })
-        showToast(status === 'success' ? 'Order completed' : 'Order updated')
+        try {
+          await api.post(`/agent/orders/${id}/resolve`, { status: be, trxId })
+          showToast(status === 'success' ? 'Marked received' : 'Marked not received')
+          setCheckingById((prev) => {
+            const next = { ...prev }
+            delete next[id]
+            return next
+          })
+          await reload()
+        } catch (e: any) {
+          showToast(e?.message || 'Failed')
+          await reload()
+          throw e
+        }
       },
       payouts,
       availablePayouts,
@@ -255,22 +390,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         showToast('Claimed — pay the player now')
         await reload()
       },
-      submitPayout: async (id, trxId, senderAccount) => {
-        await api.post(`/agent/payouts/${id}/pay`, { trxId, senderAccount })
-        showToast('Payment submitted — float deducted, reward earned')
+      submitPayout: async (id, trxId) => {
+        await api.post(`/agent/payouts/${id}/pay`, { trxId })
+        showToast('On hold — after 5 min: Success, amount + reward added to balance')
+        await reload()
+      },
+      cancelPayout: async (id) => {
+        await api.post(`/agent/payouts/${id}/cancel`)
+        showToast('Cancelled — another merchant can pay this withdraw')
+        await reload()
+      },
+      abnormalPayout: async (id, reason) => {
+        await api.post(`/agent/payouts/${id}/abnormal`, reason ? { reason } : {})
+        showToast('Abnormal — amount returned to customer game balance')
         await reload()
       },
       earnings,
-      withdrawEarnings: async () => {
-        await api.post('/agent/earnings/withdraw', {})
-        showToast('Unlocked earnings moved to float')
-        await reload()
-      },
       reload: () => { reload().catch(() => {}) },
       toast,
       showToast,
+      depositAlert,
+      snoozeDepositAlert,
+      openDepositAlert,
     }),
-    [balance, freeze, walletAccount, stats, transactions, payouts, availablePayouts, earnings, loading, collectionsOn, setCollectionsOn, accounts, orders, toast, showToast, reload],
+    [balance, freeze, walletAccount, stats, transactions, payouts, availablePayouts, earnings, loading, collectionsOn, setCollectionsOn, accounts, orders, toast, showToast, reload, depositAlert, snoozeDepositAlert, openDepositAlert],
   )
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>

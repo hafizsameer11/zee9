@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { usePlayerAuth } from '../../api/auth'
-import { api } from '../../api/client'
 import { sound } from '../../lib/sound'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
@@ -17,6 +16,7 @@ import {
   ShieldFairIcon,
 } from './aviatorClassicGfx'
 import styles from './aviatorGame.module.css'
+import AddCashModal from '../../components/s9/modals/AddCashModal'
 
 type ServerPhase = 'waiting' | 'flying' | 'crashed'
 type SlotPhase = 'idle' | 'active' | 'cashed' | 'lost'
@@ -30,6 +30,7 @@ type BetSlot = {
   phase: SlotPhase
   wager: number
   betId: string | null
+  pendingNext: boolean
 }
 
 type LiveBet = {
@@ -43,7 +44,21 @@ type LiveBet = {
   isMe?: boolean
 }
 
-const QUICK_AMOUNTS = [100, 200, 500, 1000]
+/** +/- and quick chips */
+const BET_STEPS = [10, 20, 50, 100, 500, 1000, 2000, 5000, 10000] as const
+
+const QUICK_AMOUNTS = BET_STEPS
+
+function stepBet(current: number, delta: number) {
+  const idx = BET_STEPS.findIndex((s) => s >= current)
+  const i = idx === -1 ? BET_STEPS.length - 1 : idx
+  if (delta > 0) {
+    if (BET_STEPS[i] > current) return BET_STEPS[i]
+    return BET_STEPS[Math.min(BET_STEPS.length - 1, i + 1)]
+  }
+  if (BET_STEPS[i] > current) return BET_STEPS[Math.max(0, i - 1)]
+  return BET_STEPS[Math.max(0, i - 1)]
+}
 
 function formatCompact(n: number) {
   return n.toLocaleString('en-PK', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
@@ -78,16 +93,38 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
   const [liveBets, setLiveBets] = useState<LiveBet[]>([])
   const [betCount, setBetCount] = useState(0)
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('all')
+  const [showAddCash, setShowAddCash] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [flightStartPerf, setFlightStartPerf] = useState<number | null>(null)
   const [crashCap, setCrashCap] = useState<number | null>(null)
   const [slots, setSlots] = useState<BetSlot[]>([
-    { bet: defaultBet || 100, autoEnabled: false, autoAt: 2.0, phase: 'idle', wager: 0, betId: null },
-    { bet: defaultBet || 100, autoEnabled: false, autoAt: 2.0, phase: 'idle', wager: 0, betId: null },
+    {
+      bet: defaultBet || 10,
+      autoEnabled: false,
+      autoAt: 2.0,
+      phase: 'idle',
+      wager: 0,
+      betId: null,
+      pendingNext: false,
+    },
+    {
+      bet: defaultBet || 10,
+      autoEnabled: false,
+      autoAt: 2.0,
+      phase: 'idle',
+      wager: 0,
+      betId: null,
+      pendingNext: false,
+    },
   ])
 
   const prevPhase = useRef<string>('idle')
-  const busyRef = useRef(false)
+  const busySlotsRef = useRef([false, false])
   const flightStartPerfRef = useRef<number | null>(null)
+  const slotsRef = useRef(slots)
+  const socketRef = useRef<ReturnType<typeof connectAviatorSocket> | null>(null)
+  const placeBetOnServerRef = useRef<(index: number) => Promise<boolean>>(async () => false)
+  slotsRef.current = slots
 
   const alignFlightStart = useCallback((startedAtIso: string | null, serverTimeIso: string | null) => {
     const serverNow = serverTimeIso ? Date.parse(serverTimeIso) : Date.now()
@@ -172,10 +209,28 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
           onMessage?.('💥 Crashed!')
           void refresh()
         }
-        if (nextPhase === 'waiting' && prevPhase.current === 'crashed') {
+        if (nextPhase === 'waiting') {
           onMessage?.(null)
-          setSlots((s) => s.map((slot) => ({ ...slot, phase: 'idle', wager: 0, betId: null })))
+          const pendingIndexes = slotsRef.current
+            .map((slot, i) => (slot.pendingNext ? i : -1))
+            .filter((i) => i >= 0)
+          setSlots((s) =>
+            s.map((slot) => ({
+              ...slot,
+              phase: 'idle' as const,
+              wager: 0,
+              betId: null,
+              pendingNext: false,
+            })),
+          )
           void refresh()
+          if (pendingIndexes.length) {
+            window.setTimeout(() => {
+              void (async () => {
+                for (const i of pendingIndexes) await placeBetOnServerRef.current(i)
+              })()
+            }, 80)
+          }
         }
         prevPhase.current = nextPhase
       }
@@ -183,7 +238,52 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
     [alignFlightStart, onMessage, refresh],
   )
 
-  const socketRef = useRef<ReturnType<typeof connectAviatorSocket> | null>(null)
+  const placeBetOnServer = useCallback(
+    async (index: number) => {
+      if (busySlotsRef.current[index]) return false
+      const slot = slotsRef.current[index]
+      if (slot.phase === 'active' && slot.betId) return false
+      if (!canAfford(slot.bet)) {
+        sound.play('error')
+        onMessage?.('Insufficient balance')
+        return false
+      }
+      busySlotsRef.current[index] = true
+      try {
+        const sock = socketRef.current
+        if (!sock) throw new Error('Not connected')
+        sound.play('bet')
+        const res = await sock.request<{ betId: string }>('bet', {
+          amount: slot.bet,
+          slot: index,
+          autoAt: slot.autoEnabled ? slot.autoAt : null,
+        })
+        setSlots((s) => {
+          const next = [...s]
+          next[index] = {
+            ...next[index],
+            phase: 'active',
+            wager: slot.bet,
+            betId: res.betId,
+            pendingNext: false,
+          }
+          return next
+        })
+        onMessage?.(null)
+        void refresh()
+        socketRef.current?.refresh()
+        return true
+      } catch (e: any) {
+        sound.play('error')
+        onMessage?.(e?.message || 'Bet failed')
+        return false
+      } finally {
+        busySlotsRef.current[index] = false
+      }
+    },
+    [canAfford, onMessage, refresh],
+  )
+  placeBetOnServerRef.current = placeBetOnServer
 
   useEffect(() => {
     const sock = connectAviatorSocket({
@@ -207,49 +307,43 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
   }, [phase])
 
   const placeBet = async (index: number) => {
-    if (busyRef.current) return
-    if (phase !== 'waiting') {
-      sound.play('error')
-      return onMessage?.('Wait for next round to bet')
+    const slot = slotsRef.current[index]
+    if (slot.pendingNext) {
+      updateSlot(index, { pendingNext: false })
+      onMessage?.(null)
+      return
     }
-    const slot = slots[index]
-    if (slot.phase !== 'idle' || slot.betId) return
+    if (slot.phase === 'active' && slot.betId) return
+
+    if (phase === 'waiting') {
+      await placeBetOnServer(index)
+      return
+    }
+
+    // Flying / crashed — queue for next round (controls stay unlocked)
     if (!canAfford(slot.bet)) {
       sound.play('error')
-      return onMessage?.('Insufficient balance')
+      onMessage?.('Insufficient balance')
+      return
     }
-    busyRef.current = true
-    try {
-      sound.play('bet')
-      const res = await api.post('/games/aviator/bet', {
-        amount: slot.bet,
-        slot: index,
-        autoAt: slot.autoEnabled ? slot.autoAt : null,
-      })
-      setSlots((s) => {
-        const next = [...s]
-        next[index] = { ...next[index], phase: 'active', wager: slot.bet, betId: res.betId }
-        return next
-      })
-      onMessage?.(null)
-      void refresh()
-      socketRef.current?.refresh()
-    } catch (e: any) {
-      sound.play('error')
-      onMessage?.(e?.message || 'Bet failed')
-    } finally {
-      busyRef.current = false
-    }
+    sound.play('bet')
+    updateSlot(index, { pendingNext: true })
+    onMessage?.('Bet queued for next round')
+    window.setTimeout(() => onMessage?.(null), 1800)
   }
 
   const manualCashOut = async (index: number) => {
-    if (busyRef.current) return
+    if (busySlotsRef.current[index]) return
     if (phase !== 'flying') return
-    const slot = slots[index]
+    const slot = slotsRef.current[index]
     if (slot.phase !== 'active' || !slot.betId) return
-    busyRef.current = true
+    busySlotsRef.current[index] = true
     try {
-      const res = await api.post('/games/aviator/cashout', { betId: slot.betId })
+      const sock = socketRef.current
+      if (!sock) throw new Error('Not connected')
+      const res = await sock.request<{ payout: number; cashoutAt: number }>('cashout', {
+        betId: slot.betId,
+      })
       sound.play('cashout')
       sound.play('coin', { volume: 0.6 })
       setSlots((s) => {
@@ -265,7 +359,7 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
       onMessage?.(e?.message || 'Cash out failed')
       socketRef.current?.refresh()
     } finally {
-      busyRef.current = false
+      busySlotsRef.current[index] = false
     }
   }
 
@@ -287,6 +381,7 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
   })()
 
   return (
+    <>
     <div className={styles.root} ref={viewportRef}>
       <div style={getDesignScaleShellStyle(layout)}>
         <div className={styles.canvas} style={getDesignCanvasStyle(layout)}>
@@ -324,13 +419,47 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
             </div>
 
             <div className={styles.topRight}>
-              <button type="button" className={styles.addBtn} data-sfx="tap">
+              <button
+                type="button"
+                className={styles.addBtn}
+                data-sfx="tap"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setShowAddCash(true)
+                }}
+              >
                 <span>ADD</span>
                 <CartWagonIcon className={styles.cartIcon} />
               </button>
-              <button type="button" className={styles.menuBtn} aria-label="Menu" data-sfx="tap">
+              <button
+                type="button"
+                className={styles.menuBtn}
+                aria-label="Menu"
+                data-sfx="tap"
+                onClick={() => setMenuOpen((v) => !v)}
+              >
                 <MenuDiamondsIcon />
               </button>
+              {menuOpen && (
+                <div className={styles.menuPanel} role="menu">
+                  <button type="button" className={styles.menuItem} onClick={() => navigate('/home')}>
+                    Exit to lobby
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.menuItem}
+                    onClick={() => {
+                      setMenuOpen(false)
+                      setShowAddCash(true)
+                    }}
+                  >
+                    Add cash
+                  </button>
+                  <button type="button" className={styles.menuItem} onClick={() => setMenuOpen(false)}>
+                    Close
+                  </button>
+                </div>
+              )}
             </div>
           </header>
 
@@ -355,10 +484,10 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
                   <strong>ALL BETS</strong>
                   <span>{betCount}</span>
                 </div>
-                <button type="button" className={styles.prevHandBtn} data-sfx="tap">
+                <span className={styles.prevHandBtn} aria-hidden>
                   <ClockRewindIcon />
                   Live round
-                </button>
+                </span>
               </div>
 
               <div className={styles.betTableHead}>
@@ -440,6 +569,8 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
         </div>
       </div>
     </div>
+    {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    </>
   )
 }
 
@@ -461,19 +592,14 @@ function BetPanel({
   onUpdate: (patch: Partial<BetSlot>) => void
 }) {
   const [panelTab, setPanelTab] = useState<PanelTab>('bet')
-  const locked = !waiting || slot.phase === 'active'
   const active = slot.phase === 'active'
-  const done = slot.phase === 'cashed' || slot.phase === 'lost'
+  /** Amount stays editable unless this slot’s bet is live in the air */
+  const amountLocked = active
+  const queued = slot.pendingNext
 
   const adjustBet = (delta: number) => {
     sound.play('chip', { volume: 0.45 })
-    const idx = QUICK_AMOUNTS.findIndex((a) => a >= slot.bet)
-    const i = idx === -1 ? QUICK_AMOUNTS.length - 1 : idx
-    if (delta > 0) {
-      onUpdate({ bet: QUICK_AMOUNTS[Math.min(QUICK_AMOUNTS.length - 1, i + 1)] })
-    } else {
-      onUpdate({ bet: Math.max(10, i > 0 ? QUICK_AMOUNTS[i - 1] : 10) })
-    }
+    onUpdate({ bet: stepBet(slot.bet, delta) })
   }
 
   return (
@@ -505,7 +631,7 @@ function BetPanel({
                 <button
                   type="button"
                   className={styles.amountBtn}
-                  disabled={locked || active}
+                  disabled={amountLocked}
                   onClick={() => adjustBet(-1)}
                 >
                   −
@@ -514,7 +640,7 @@ function BetPanel({
                 <button
                   type="button"
                   className={styles.amountBtn}
-                  disabled={locked || active}
+                  disabled={amountLocked}
                   onClick={() => adjustBet(1)}
                 >
                   +
@@ -525,14 +651,14 @@ function BetPanel({
                   <button
                     key={amt}
                     type="button"
-                    className={styles.quickBtn}
-                    disabled={locked || active}
+                    className={`${styles.quickBtn} ${slot.bet === amt ? styles.quickBtnActive : ''}`}
+                    disabled={amountLocked}
                     onClick={() => {
                       sound.play('chip', { volume: 0.4 })
                       onUpdate({ bet: amt })
                     }}
                   >
-                    {formatAmount(amt)}
+                    {amt >= 1000 ? `${amt / 1000}k` : formatAmount(amt)}
                   </button>
                 ))}
               </div>
@@ -546,7 +672,7 @@ function BetPanel({
                   role="switch"
                   aria-checked={slot.autoEnabled}
                   className={`${styles.switch} ${slot.autoEnabled ? styles.switchOn : ''}`}
-                  disabled={locked || active}
+                  disabled={amountLocked}
                   onClick={() => onUpdate({ autoEnabled: !slot.autoEnabled })}
                   data-sfx="tap"
                 />
@@ -558,7 +684,7 @@ function BetPanel({
                   min={1.1}
                   step={0.1}
                   value={slot.autoAt}
-                  disabled={locked || active || !slot.autoEnabled}
+                  disabled={amountLocked || !slot.autoEnabled}
                   onChange={(e) => onUpdate({ autoAt: Number(e.target.value) || 2 })}
                   className={styles.autoInput}
                 />
@@ -576,27 +702,32 @@ function BetPanel({
             data-sfx="cashout"
           >
             <span className={styles.betActionLabel}>CASH OUT</span>
-            <span className={styles.betActionAmount}>{mult.toFixed(2)}x</span>
+            <span className={styles.betActionAmount}>
+              {formatAmount(Math.floor((slot.wager || slot.bet) * mult * 100) / 100)}
+            </span>
           </button>
         ) : active && flying ? (
           <button type="button" className={`${styles.betActionBtn} ${styles.doneBtn}`} disabled>
             <span className={styles.betActionLabel}>FLYING…</span>
           </button>
-        ) : done ? (
-          <button type="button" className={`${styles.betActionBtn} ${styles.doneBtn}`} disabled>
-            <span className={styles.betActionLabel}>
-              {slot.phase === 'cashed' ? 'WON' : 'LOST'}
-            </span>
+        ) : queued ? (
+          <button
+            type="button"
+            className={`${styles.betActionBtn} ${styles.queuedBtn}`}
+            onClick={onPlaceBet}
+            data-sfx="tap"
+          >
+            <span className={styles.betActionLabel}>QUEUED</span>
+            <span className={styles.betActionAmount}>{slot.bet} · tap cancel</span>
           </button>
         ) : (
           <button
             type="button"
             className={styles.betActionBtn}
             onClick={onPlaceBet}
-            disabled={!waiting || active}
             data-sfx="bet"
           >
-            <span className={styles.betActionLabel}>BET</span>
+            <span className={styles.betActionLabel}>{waiting ? 'BET' : 'BET (NEXT)'}</span>
             <span className={styles.betActionAmount}>{slot.bet}</span>
           </button>
         )}

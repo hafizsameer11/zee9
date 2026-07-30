@@ -1,0 +1,91 @@
+/** Premium Dragon Tiger visual asset map — drop-in WebP layers. */
+
+export const CHAR = {
+  dragon: {
+    base: '/games/dragon-tiger/characters/dragon/dragon-base.webp?v=5',
+    head: '/games/dragon-tiger/characters/dragon/dragon-head.webp',
+    jaw: '/games/dragon-tiger/characters/dragon/dragon-jaw.webp',
+    eyes: '/games/dragon-tiger/characters/dragon/dragon-eyes.webp',
+    whiskers: '/games/dragon-tiger/characters/dragon/dragon-whiskers.webp',
+    claw: '/games/dragon-tiger/characters/dragon/dragon-claw.webp',
+    body: '/games/dragon-tiger/characters/dragon/dragon-body.webp',
+    tail: '/games/dragon-tiger/characters/dragon/dragon-tail.webp',
+    mistFront: '/games/dragon-tiger/characters/dragon/dragon-mist-front.webp?v=5',
+    mistBack: '/games/dragon-tiger/characters/dragon/dragon-mist-back.webp?v=5',
+    glow: '/games/dragon-tiger/characters/dragon/dragon-glow.webp',
+    winPose: '/games/dragon-tiger/characters/dragon/dragon-win-pose.webp?v=5',
+  },
+  tiger: {
+    base: '/games/dragon-tiger/characters/tiger/tiger-base.webp?v=5',
+    head: '/games/dragon-tiger/characters/tiger/tiger-head.webp',
+    jaw: '/games/dragon-tiger/characters/tiger/tiger-jaw.webp',
+    eyes: '/games/dragon-tiger/characters/tiger/tiger-eyes.webp',
+    paws: '/games/dragon-tiger/characters/tiger/tiger-paws.webp',
+    body: '/games/dragon-tiger/characters/tiger/tiger-body.webp',
+    tail: '/games/dragon-tiger/characters/tiger/tiger-tail.webp',
+    smokeFront: '/games/dragon-tiger/characters/tiger/tiger-smoke-front.webp?v=5',
+    smokeBack: '/games/dragon-tiger/characters/tiger/tiger-smoke-back.webp?v=5',
+    fireGlow: '/games/dragon-tiger/characters/tiger/tiger-fire-glow.webp',
+    winPose: '/games/dragon-tiger/characters/tiger/tiger-win-pose.webp?v=5',
+  },
+} as const
+
+export const SCENE = {
+  bgBase: '/games/dragon-tiger/backgrounds/bg-base.webp',
+  bgTemple: '/games/dragon-tiger/backgrounds/bg-temple.webp',
+  bgAtmosphere: '/games/dragon-tiger/backgrounds/bg-atmosphere.webp',
+  bgPlatform: '/games/dragon-tiger/backgrounds/bg-platform.webp',
+  loadingLite: '/games/dragon-tiger/backgrounds/loading-lite.webp',
+  felt: '/games/dragon-tiger/table/felt.webp',
+  corner: '/games/dragon-tiger/table/corner-ornament.webp',
+  emblem: '/games/dragon-tiger/effects/battle-emblem.webp',
+  particleEmber: '/games/dragon-tiger/effects/particle-ember.webp',
+  particleCyan: '/games/dragon-tiger/effects/particle-cyan.webp',
+  particleGold: '/games/dragon-tiger/effects/particle-gold.webp',
+} as const
+
+/** Assets required before the table is shown (must include visible characters + scene). */
+export const BOOT_ASSETS = [
+  SCENE.bgBase,
+  SCENE.bgTemple,
+  SCENE.bgAtmosphere,
+  SCENE.bgPlatform,
+  SCENE.loadingLite,
+  SCENE.emblem,
+  SCENE.felt,
+  SCENE.corner,
+  CHAR.dragon.base,
+  CHAR.dragon.head,
+  CHAR.dragon.mistBack,
+  CHAR.dragon.mistFront,
+  CHAR.dragon.glow,
+  CHAR.tiger.base,
+  CHAR.tiger.head,
+  CHAR.tiger.smokeBack,
+  CHAR.tiger.smokeFront,
+  CHAR.tiger.fireGlow,
+  CHAR.dragon.winPose,
+  CHAR.tiger.winPose,
+  SCENE.particleCyan,
+  SCENE.particleEmber,
+] as const
+
+/** Heavier win-pose layers — also boot-warmed for first win. */
+export const GAMEPLAY_ASSETS = [
+  CHAR.dragon.winPose,
+  CHAR.dragon.body,
+  CHAR.dragon.tail,
+  CHAR.dragon.claw,
+  CHAR.dragon.eyes,
+  CHAR.dragon.whiskers,
+  CHAR.dragon.jaw,
+  CHAR.tiger.winPose,
+  CHAR.tiger.body,
+  CHAR.tiger.tail,
+  CHAR.tiger.paws,
+  CHAR.tiger.eyes,
+  CHAR.tiger.jaw,
+  SCENE.particleEmber,
+  SCENE.particleCyan,
+  SCENE.particleGold,
+] as const

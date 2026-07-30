@@ -1,0 +1,130 @@
+.cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(12, 48, 34, 0.42);
+  color: #fff;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 3px;
+  transition: filter 0.12s ease, transform 0.08s ease, box-shadow 0.12s ease;
+}
+
+.cell:hover:not(:disabled) {
+  filter: brightness(1.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.cell:active:not(:disabled) {
+  transform: scale(0.97);
+  filter: brightness(0.95);
+}
+
+.cell:disabled {
+  cursor: default;
+  opacity: 0.88;
+}
+
+/* Semi-transparent number cells — felt shows through */
+.red {
+  background: linear-gradient(180deg, rgba(210, 48, 52, 0.78), rgba(140, 22, 28, 0.72));
+  box-shadow: inset 0 1px 0 rgba(255, 180, 180, 0.16);
+}
+.black {
+  background: linear-gradient(180deg, rgba(42, 42, 52, 0.72), rgba(12, 12, 16, 0.68));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.green {
+  background: linear-gradient(180deg, rgba(36, 170, 88, 0.78), rgba(12, 110, 48, 0.72));
+  box-shadow: inset 0 1px 0 rgba(180, 255, 200, 0.16);
+}
+.felt {
+  background: linear-gradient(180deg, rgba(28, 90, 58, 0.48), rgba(10, 42, 28, 0.42));
+  color: #f4f0e4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+}
+.gold {
+  background: linear-gradient(180deg, rgba(70, 50, 22, 0.55), rgba(28, 18, 8, 0.5));
+  color: #f0d78a;
+  letter-spacing: 0.04em;
+  font-size: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 230, 160, 0.18);
+}
+
+.label {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.chipStack {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.chipVisual {
+  position: relative;
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+}
+
+.chipVisual img {
+  position: absolute;
+  inset: 0;
+  width: 23px;
+  height: 23px;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.5));
+}
+
+.chipValue {
+  position: relative;
+  z-index: 1;
+  min-width: 14px;
+  padding: 1px;
+  border-radius: 50%;
+  background: rgba(18, 12, 7, 0.82);
+  color: #fff7d2;
+  font-size: 7px;
+  font-weight: 900;
+  line-height: 12px;
+  text-align: center;
+  text-shadow: 0 1px 2px #000;
+}
+
+.hasChip {
+  box-shadow: inset 0 0 0 1px rgba(230, 190, 90, 0.4);
+}
+
+.winning {
+  box-shadow: inset 0 0 0 2px #f0d078, 0 0 10px rgba(240, 200, 100, 0.35);
+  z-index: 2;
+  animation: winCell 0.8s ease-in-out infinite alternate;
+}
+
+.losing {
+  filter: brightness(0.55) saturate(0.7);
+}
+
+@keyframes winCell {
+  from { box-shadow: inset 0 0 0 2px #f0d078, 0 0 6px rgba(240, 200, 100, 0.25); }
+  to { box-shadow: inset 0 0 0 2px #ffe7a0, 0 0 14px rgba(240, 200, 100, 0.45); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winning { animation: none; }
+}
