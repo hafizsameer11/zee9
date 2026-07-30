@@ -1,0 +1,40 @@
+.bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 30;
+  box-sizing: border-box;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  color: #eef1f6;
+  background: rgba(34, 36, 42, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.left,.right,.live { display: flex; align-items: center; gap: 7px; }
+.logoMark {
+  width: 31px; height: 31px; overflow: hidden; border-radius: 50%;
+  background: #ffc733;
+}
+.logoMark img { width: 100%; height: 100%; object-fit: contain; }
+.brand { font-size: 13px; white-space: nowrap; }
+.brand em { color: #ffc33a; font-style: normal; }
+.live {
+  height: 27px; padding: 0 9px; border-radius: 8px; font-size: 9px;
+  background: #292c32; color: #b8bec8;
+}
+.live i { width: 6px; height: 6px; border-radius: 50%; background: #4ee482; }
+.live small { color: #808793; }
+.live b { color: #72e59a; }
+.right button {
+  height: 29px; min-width: 29px; border: 0; border-radius: 7px;
+  color: #dce0e6; background: #292c32; cursor: pointer;
+}
+.right button img { width: 16px; height: 16px; object-fit: contain; }
+.right .how { padding: 0 10px; color: #b8bec8; }
+.balance {
+  min-width: 83px; padding: 6px 9px; border-radius: 7px; text-align: right;
+  color: #fff; font-size: 12px; font-weight: 800; background: #202329;
+}
+.balance span { color: #ffc33a; font-size: 9px; }
