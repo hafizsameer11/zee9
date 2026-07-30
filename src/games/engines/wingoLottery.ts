@@ -68,13 +68,13 @@ export function chipTag(d: ChipDenom): string {
 
 export function chipSrc(d: ChipDenom, variant: 'large' | 'selector' | 'small' = 'large'): string {
   const tag = chipTag(d)
-  if (variant === 'selector') return `${CT}/chips/chip-${tag}-selector.png`
-  if (variant === 'small') return `${CT}/chips/chip-${tag}-small-a.png`
-  return `${CT}/chips/chip-${tag}-large.png`
+  if (variant === 'selector') return `${CT}/chips/chip-${tag}-selector.png?v=2`
+  if (variant === 'small') return `${CT}/chips/chip-${tag}-small-a.png?v=2`
+  return `${CT}/chips/chip-${tag}-large.png?v=2`
 }
 
 export function chipBoardSrc(d: ChipDenom, variant: 'a' | 'b' | 'c' | 'd' = 'a'): string {
-  return `${CT}/chips/chip-${chipTag(d)}-small-${variant}.png`
+  return `${CT}/chips/chip-${chipTag(d)}-small-${variant}.png?v=2`
 }
 
 export const CASINO_ASSETS = {
