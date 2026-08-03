@@ -360,29 +360,7 @@ export async function create(userId: string, input: {
     }
   })
 
-  // Realtime: merchant gets a live alert as soon as the player opens a C2C deposit
-  if (result.agentId && result.orderNo) {
-    try {
-      const player = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { displayName: true },
-      })
-      pushDepositToMerchant(result.agentId, {
-        type: 'deposit_new',
-        title: 'New deposit order',
-        body: `${player?.displayName || 'Player'} started a Rs ${Number(result.amount).toLocaleString('en-PK')} ${result.method} deposit`,
-        orderId: collectionOrderId ?? result.id,
-        orderNo: result.orderNo,
-        amount: Number(result.amount),
-        method: String(result.method),
-        collectionAccount: result.account?.number ?? null,
-        playerName: player?.displayName ?? null,
-      })
-    } catch {
-      /* non-fatal */
-    }
-  }
-
+  // Merchant is notified when the player submits TRX (see submitProof) — not on order create.
   return result
 }
 

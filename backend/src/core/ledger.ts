@@ -47,15 +47,16 @@ async function getOrCreateAccount(tx: Tx, ref: AccountRef): Promise<{ id: string
 /**
  * The ONLY way money moves. Posts a balanced double-entry transaction inside
  * an existing SERIALIZABLE tx. Debits must equal credits.
- * Returns the ledger transaction id, or the existing one if idempotencyKey repeats.
+ * Returns the ledger transaction id and whether a new row was created.
+ * Repeating idempotencyKey returns the existing transaction with created=false.
  */
-export async function post(tx: Tx, input: PostInput): Promise<string> {
+export async function post(tx: Tx, input: PostInput): Promise<{ id: string; created: boolean }> {
   if (input.idempotencyKey) {
     const existing = await tx.ledgerTransaction.findUnique({
       where: { idempotencyKey: input.idempotencyKey },
       select: { id: true },
     })
-    if (existing) return existing.id
+    if (existing) return { id: existing.id, created: false }
   }
 
   // Validate legs
@@ -131,7 +132,7 @@ export async function post(tx: Tx, input: PostInput): Promise<string> {
     }
   }
 
-  return ledgerTx.id
+  return { id: ledgerTx.id, created: true }
 }
 
 /** Read a user's bucket balances (creates missing accounts lazily as 0). */

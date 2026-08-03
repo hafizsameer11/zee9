@@ -41,6 +41,7 @@ export type Fg2GameApi = {
   canAfford: (n: number) => boolean
   debit: (n: number) => boolean
   credit: (n: number) => void
+  getBalance?: () => number
   refresh?: () => Promise<void> | void
   play: (id: Fg2Sfx, volume?: number) => void
   onMessage?: (msg: string | null) => void
@@ -90,6 +91,8 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
   const [autoLeft, setAutoLeft] = useState(0)
   const [extraBet, setExtraBet] = useState(false)
   const [busy, setBusy] = useState(false)
+  /** Live play: mask wallet WS updates until win/loss presentation finishes */
+  const [balanceHold, setBalanceHold] = useState<number | null>(null)
 
   const baseBetAmount = BET_AMOUNTS[betIndex]
   const betAmount = extraBet ? baseBetAmount * 1.5 : baseBetAmount
@@ -143,10 +146,16 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
       setWinCells(cells)
 
       if (res.payout > 0) {
-        if (!isLivePlayer()) a.credit(res.payout)
-        else void a.refresh?.()
         setLastWin(res.payout)
-        countUp(res.payout, Math.min(1800, 600 + res.payout * 2))
+        const countMs = Math.min(1800, 600 + res.payout * 2)
+        countUp(res.payout, countMs)
+        later(() => {
+          if (!isLivePlayer()) a.credit(res.payout)
+          else {
+            setBalanceHold(null)
+            void a.refresh?.()
+          }
+        }, countMs)
         if (res.fullBoard) {
           setBanner('Full-board reward!')
           a.play('bigwin', 0.7)
@@ -177,7 +186,12 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
         setDisplayWin(0)
         setBanner('Spin again for fortune')
         a.onMessage?.(roundLossMessage(betAmount))
-        if (isLivePlayer()) void a.refresh?.()
+        if (isLivePlayer()) {
+          later(() => {
+            setBalanceHold(null)
+            void a.refresh?.()
+          }, WIN_HOLD_MS)
+        }
       }
 
       later(() => {
@@ -239,12 +253,14 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
     let serverGrid: Fg2Symbol[] | null = null
     let serverSpecial: SpecialToken | null = null
 
+    const balanceBeforeSpin = a.getBalance?.() ?? 0
+
     if (isLivePlayer()) {
       try {
         const settled = await serverSlotSpin('fortune-gems-2', betAmount)
         serverGrid = coerceGrid(settled?.payload?.grid)
         if (settled?.payload?.special) serverSpecial = coerceSpecial(settled.payload.special)
-        void a.refresh?.()
+        setBalanceHold(Math.round((balanceBeforeSpin - betAmount) * 100) / 100)
       } catch (e: any) {
         a.play('error')
         a.onMessage?.(e?.message || 'Spin failed')
@@ -395,6 +411,7 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
     auto,
     autoLeft,
     busy,
+    balanceHold,
     spin,
     betPlus,
     betMinus,

@@ -7,6 +7,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { DESIGN_H, DESIGN_W, SCENE_H } from './constants/gameConfig'
 import { useChickenRoadGame } from './hooks/useChickenRoadGame'
 import { useChickenRoadSound } from './hooks/useChickenRoadSound'
@@ -15,7 +16,6 @@ import ControlBar from './components/ControlBar'
 import GameCanvas, { type SceneHandle } from './components/GameCanvas'
 import {
   HowToPlay,
-  LeaveConfirm,
   LoadingScreen,
   LossOverlay,
   SideMenu,
@@ -35,7 +35,6 @@ export default function ChickenRoadGame({ onMessage }: GameComponentProps) {
   const { muted, musicOn, toggleMute, toggleMusic, play } = useChickenRoadSound()
   const [howtoOpen, setHowtoOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [leaveOpen, setLeaveOpen] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
   /** Pixi scene finished boot — keep loader up until this is true. */
   const [sceneReady, setSceneReady] = useState(false)
@@ -171,28 +170,20 @@ export default function ChickenRoadGame({ onMessage }: GameComponentProps) {
     play('button')
   }, [play])
 
-  const goLobby = useCallback(() => {
-    setLeaveOpen(false)
-    navigate('/home')
-  }, [navigate])
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.roundActive,
+    stakeAmount: game.betAmount,
+    canCashOut: game.canCashOut,
+    cashOutAmount: game.potentialPayout,
+    onCashOut: async () => {
+      if (game.canCashOut) await game.cashOutNow()
+    },
+  })
 
   const onBack = useCallback(() => {
     play('button')
-    // Mid-round with stake on the table — warn before leaving.
-    if (game.roundActive) {
-      setLeaveOpen(true)
-      return
-    }
-    goLobby()
-  }, [game.roundActive, goLobby, play])
-
-  const onCashOutAndLeave = useCallback(async () => {
-    play('button')
-    if (game.canCashOut) {
-      await game.cashOutNow()
-    }
-    goLobby()
-  }, [game, goLobby, play])
+    requestLeave()
+  }, [play, requestLeave])
 
   // Loader covers chrome until images + Pixi scene are both ready.
   const showLoading = game.state === 'LOADING' || !sceneReady
@@ -308,23 +299,7 @@ export default function ChickenRoadGame({ onMessage }: GameComponentProps) {
               setHowtoOpen(false)
             }}
           />
-          <LeaveConfirm
-            open={leaveOpen}
-            canCashOut={game.canCashOut}
-            potentialPayout={game.potentialPayout}
-            betAmount={game.betAmount}
-            onStay={() => {
-              play('button')
-              setLeaveOpen(false)
-            }}
-            onCashOutAndLeave={() => {
-              void onCashOutAndLeave()
-            }}
-            onLeaveAnyway={() => {
-              play('button')
-              goLobby()
-            }}
-          />
+          {LeaveModal}
           <SideMenu
             open={menuOpen}
             muted={muted}

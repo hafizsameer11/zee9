@@ -7,6 +7,7 @@ import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
 import { type UpDownChoice } from '../engines/dice'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { connectSevenUpSocket } from '../lib/sevenUpSocket'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import type { GameComponentProps } from '../types'
@@ -379,6 +380,11 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
   const myStake = myBets.down + myBets.seven + myBets.up
   const lastStake = lastBets.down + lastBets.seven + lastBets.up
 
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: myStake > 0 && phase !== 'result',
+    stakeAmount: myStake,
+  })
+
   const handleRebet = useCallback(() => {
     if (phase !== 'betting' || lastStake <= 0) return
     if (balance < lastStake) {
@@ -504,7 +510,7 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
               {/* Top bar */}
               <header className={styles.topBar}>
                 <div className={styles.topLeft}>
-                  <IconButton src={IMG.btnBack} label="Back to lobby" onClick={() => navigate('/home')} />
+                  <IconButton src={IMG.btnBack} label="Back to lobby" onClick={requestLeave} />
                   <Logo period={period} />
                 </div>
                 <div className={styles.topRight}>
@@ -526,7 +532,7 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
 
               {menuOpen && (
                 <div className={styles.menu} role="menu">
-                  <button type="button" className={styles.menuItem} onClick={() => navigate('/home')}>
+                  <button type="button" className={styles.menuItem} onClick={requestLeave}>
                     Exit to lobby
                   </button>
                   <button
@@ -643,6 +649,7 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
         </div>
       </div>
       {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+      {LeaveModal}
     </>
   )
 }

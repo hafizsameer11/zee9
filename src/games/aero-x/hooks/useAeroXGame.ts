@@ -549,6 +549,14 @@ export function useAeroXGame({ canAfford, debit: _debit, credit, onMessage, play
 
   const waitProgress = phase === 'waiting' ? 1 - waitLeft / WAIT_MS : 0
 
+  const cashOutAllActive = useCallback(async () => {
+    for (const index of [0, 1] as const) {
+      if (slotsRef.current[index]?.phase === 'active') {
+        await placeOrCashLive(index)
+      }
+    }
+  }, [placeOrCashLive])
+
   return {
     phase,
     loadProgress,
@@ -565,6 +573,7 @@ export function useAeroXGame({ canAfford, debit: _debit, credit, onMessage, play
     setTab,
     setAuto,
     placeOrCash,
+    cashOutAllActive,
     isLive,
   }
 }

@@ -9,6 +9,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import {
   ANIMALS,
   ASSET,
@@ -125,6 +126,11 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
     onWalletChange: () => void refresh(),
   })
   const game = isPreview ? demoGame : liveGame
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.stake > 0,
+    stakeAmount: game.stake,
+  })
 
   useEffect(() => {
     if (game.insufficient) setDismissInsufficient(false)
@@ -426,7 +432,7 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
               aria-label="Back"
               onClick={() => {
                 play('click')
-                navigate('/home')
+                requestLeave()
               }}
             >
               <img src={ASSET.ui('ico-back')} alt="" draggable={false} />
@@ -567,6 +573,7 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
           <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }

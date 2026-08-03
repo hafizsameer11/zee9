@@ -73,7 +73,7 @@ export async function releaseStuckDepositBonuses() {
   const stuck = await prisma.bonus.findMany({
     where: {
       status: 'ACTIVE',
-      type: { in: ['DEPOSIT_1', 'DEPOSIT_2', 'DEPOSIT_3', 'DAILY_DEPOSIT', 'REGISTRATION'] },
+      type: { in: ['DEPOSIT_1', 'DEPOSIT_2', 'DEPOSIT_3', 'DAILY_DEPOSIT', 'REGISTRATION', 'WHEEL'] },
     },
     select: { id: true },
     take: 200,

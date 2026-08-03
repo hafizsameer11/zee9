@@ -1,0 +1,71 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.panel {
+  position: relative;
+  box-sizing: border-box;
+  width: min(360px, 100%);
+  padding: 22px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, #2e3239 0%, #1f2228 100%);
+  color: #e9edf2;
+  text-align: center;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+}
+
+.panel h2 {
+  margin: 0 0 10px;
+  color: #f4bd37;
+  font-size: 18px;
+}
+
+.panel p {
+  margin: 0 0 16px;
+  color: #bec4cd;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actions button {
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #3b3f48;
+}
+
+.primary {
+  background: linear-gradient(180deg, #1aad58, #159b51);
+}
+
+.danger {
+  color: #ff9f9f;
+  background: #512b30;
+}

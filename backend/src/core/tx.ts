@@ -5,6 +5,7 @@ import {
   notifyPlayer,
   pushPlayerWallet,
 } from '../modules/wallet/player.realtime.js'
+import { flushCommissionSettlements } from '../modules/commission/commission.queue.js'
 
 /**
  * Run a money-critical transaction at SERIALIZABLE isolation, retrying on
@@ -62,6 +63,8 @@ export async function runMoneyTx<T>(fn: (tx: Tx) => Promise<T>, retries = 3): Pr
     for (const d of store.depositUpdates) {
       notifyPlayer(d.userId, { type: 'deposit.updated', data: d.data })
     }
+
+    flushCommissionSettlements()
 
     return result
   })

@@ -4,11 +4,10 @@ import { asyncHandler } from '../../lib/asyncHandler.js'
 import { ok } from '../../lib/respond.js'
 import { prisma } from '../../lib/prisma.js'
 import { runMoneyTx } from '../../core/tx.js'
-import { post } from '../../core/ledger.js'
 import { notify } from '../../core/notify.js'
 import { badRequest, unprocessable } from '../../core/errors.js'
 import { getSettings } from '../../core/settings.js'
-import { getEffectiveWager } from '../../core/wager.js'
+import { creditInstantBonus } from '../../core/wager.js'
 import {
   computeTickets,
   computeTicketsInsideTx,
@@ -109,19 +108,14 @@ async function executeSpin(userId: string, wheelType: WheelKind) {
       data: { userId, prizeId: picked.id, amount: cash, wheel: wheelType },
     })
     if (cash > 0n) {
-      await post(tx, {
-        type: 'WHEEL_PRIZE',
+      await creditInstantBonus(tx, {
+        userId,
+        amount: cash,
+        type: 'WHEEL',
+        ledgerType: 'WHEEL_PRIZE',
         referenceType: 'wheelSpin',
         referenceId: rec.id,
-        legs: [
-          { account: { system: 'BONUS_POOL' }, direction: 'DEBIT', amount: cash },
-          { account: { userId, bucket: 'BONUS' }, direction: 'CREDIT', amount: cash },
-        ],
-      })
-      const { bonusWager } = await getEffectiveWager(userId, tx)
-      const wagerRequired = (cash * BigInt(Math.round(bonusWager * 100))) / 100n
-      await tx.bonus.create({
-        data: { userId, type: 'WHEEL', amount: cash, wagerRequired, status: 'ACTIVE' },
+        idempotencyKey: `wheel-prize:${rec.id}`,
       })
     }
     const won = picked.isPhysical

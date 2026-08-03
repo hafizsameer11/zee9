@@ -7,6 +7,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import Zee9LoadingScreen from '../../components/Zee9LoadingScreen'
 import { ASSET, BET_AMOUNTS, DESIGN_H, DESIGN_W, formatMoney } from './constants/gameConfig'
 import {
@@ -73,6 +74,11 @@ export default function BountyTrailGame({ onMessage }: GameComponentProps) {
     playSfx: play,
     onMessage,
     reducedMotion,
+  })
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.spinning || game.inFreeSpins,
+    stakeAmount: game.bet,
   })
 
   useEffect(() => {
@@ -158,7 +164,7 @@ export default function BountyTrailGame({ onMessage }: GameComponentProps) {
                   style={{ left: BACK_X, top: BACK_Y, width: BACK_SIZE, height: BACK_SIZE }}
                   onClick={() => {
                     play('button', 0.35)
-                    navigate('/home')
+                    requestLeave()
                   }}
                   aria-label="Back to lobby"
                 >
@@ -365,7 +371,7 @@ export default function BountyTrailGame({ onMessage }: GameComponentProps) {
                   <HistoryModal rounds={game.history} onClose={game.closeModal} />
                 )}
                 {game.modal === 'quit' && (
-                  <QuitModal onClose={game.closeModal} onConfirm={() => navigate('/home')} />
+                  <QuitModal onClose={game.closeModal} onConfirm={requestLeave} />
                 )}
                 {game.modal === 'menu' && (
                   <UtilityMenu
@@ -374,7 +380,7 @@ export default function BountyTrailGame({ onMessage }: GameComponentProps) {
                       toggleMute()
                       play('button', 0.3)
                     }}
-                    onLobby={() => navigate('/home')}
+                    onLobby={requestLeave}
                     onPaytable={() => game.openModal('paytable')}
                     onRules={() => game.openModal('rules')}
                     onHistory={() => game.openModal('history')}
@@ -388,6 +394,7 @@ export default function BountyTrailGame({ onMessage }: GameComponentProps) {
           </div>
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }

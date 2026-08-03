@@ -9,6 +9,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import {
   ASSET,
   BOARD,
@@ -125,6 +126,11 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
     onWalletChange: () => void refresh(),
   })
   const game = isPreview ? demoGame : liveGame
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.stake > 0,
+    stakeAmount: game.stake,
+  })
 
   const deckBalance = useMemo(() => {
     if (isPreview || demoBal != null) return liveBalance
@@ -434,7 +440,7 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
               aria-label="Back"
               onClick={() => {
                 play('click')
-                navigate('/home')
+                requestLeave()
               }}
             >
               <img src={ASSET.ui('ico-back')} alt="" draggable={false} />
@@ -572,6 +578,7 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
           <HelpPanel open={helpOpen} onClose={() => setHelpOpen(false)} />
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }

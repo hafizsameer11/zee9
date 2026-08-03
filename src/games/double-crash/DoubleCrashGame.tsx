@@ -7,6 +7,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { AVATARS, CTRL, UI } from './constants/assetManifest'
 import Zee9LoadingScreen from '../../components/Zee9LoadingScreen'
 import {
@@ -81,6 +82,23 @@ export default function DoubleCrashGame({ onMessage }: GameComponentProps) {
     setShowAddCash(true)
   }
 
+  const hasActiveBet = game.slots.some((s) => s.phase === 'active' || s.phase === 'pending')
+  const activeStake = game.slots
+    .filter((s) => s.phase === 'active' || s.phase === 'pending')
+    .reduce((sum, s) => sum + (s.wager || s.amount), 0)
+  const canCashOutLeave = game.phase === 'flying' && game.slots.some((s) => s.phase === 'active')
+  const cashOutAmount = game.slots
+    .filter((s) => s.phase === 'active')
+    .reduce((sum, s) => sum + Math.floor(s.wager * game.mult * 100) / 100, 0)
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet,
+    stakeAmount: activeStake,
+    canCashOut: canCashOutLeave,
+    cashOutAmount,
+    onCashOut: game.cashOutAllActive,
+  })
+
   return (
     <>
     <div ref={viewportRef} className={styles.root}>
@@ -105,7 +123,7 @@ export default function DoubleCrashGame({ onMessage }: GameComponentProps) {
                 aria-label="Back"
                 onClick={() => {
                   play('click')
-                  navigate(-1)
+                  requestLeave()
                 }}
               >
                 <img src={CTRL.back} alt="" />
@@ -333,6 +351,7 @@ export default function DoubleCrashGame({ onMessage }: GameComponentProps) {
       </div>
     </div>
     {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    {LeaveModal}
     </>
   )
 }

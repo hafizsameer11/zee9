@@ -252,8 +252,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [collectionsOn, setCollectionsOnState] = useState(localStorage.getItem(CO_KEY) !== '0')
   const [toast, setToast] = useState<string | null>(null)
-  /** One-shot new-order alerts (dismiss forever for that event). */
-  const [newOrderAlerts, setNewOrderAlerts] = useState<MerchantDepositEvent[]>([])
   /** Orders waiting for merchant confirm after player TRX — keep alerting until resolved. */
   const [checkingById, setCheckingById] = useState<Record<string, MerchantDepositEvent>>({})
   /** orderId → snooze until timestamp */
@@ -303,7 +301,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       delete next[orderId]
       return next
     })
-    setNewOrderAlerts((q) => q.filter((a) => a.orderId !== orderId))
     setSnoozeUntil((prev) => {
       if (!prev[orderId]) return prev
       const next = { ...prev }
@@ -379,7 +376,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .filter((o) => o.type === 'DEPOSIT' && OPEN_DEPOSIT_STATUSES.has(o.status))
         .map((o) => o.id),
     )
-    setNewOrderAlerts((prev) => prev.filter((a) => openDepositIds.has(a.orderId) && !dismissed.has(a.orderId)))
     setCheckingById((prev) => {
       const next: Record<string, MerchantDepositEvent> = {}
       for (const [id, alert] of Object.entries(prev)) {
@@ -393,8 +389,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const depositAlert = useMemo(() => {
     const now = tick
-    const freshNew = newOrderAlerts.find((a) => !dismissedOrderIds.has(a.orderId))
-    if (freshNew) return freshNew
     const waiting = Object.values(checkingById).filter(
       (a) =>
         !dismissedOrderIds.has(a.orderId) &&
@@ -402,7 +396,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         (snoozeUntil[a.orderId] ?? 0) <= now,
     )
     return waiting[0] ?? null
-  }, [newOrderAlerts, checkingById, snoozeUntil, dismissedOrderIds, openedCheckingIds, tick])
+  }, [checkingById, snoozeUntil, dismissedOrderIds, openedCheckingIds, tick])
 
   const withdrawAlert = useMemo(() => {
     const now = tick
@@ -419,10 +413,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const cur = depositAlert
     if (!cur) return
     stopAlertSound()
-    if (cur.type === 'deposit_new') {
-      setNewOrderAlerts((q) => q.slice(1))
-      return
-    }
     setSnoozeUntil((prev) => ({ ...prev, [cur.orderId]: Date.now() + CHECKING_SNOOZE_MS }))
   }, [depositAlert])
 
@@ -430,10 +420,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const cur = depositAlert
     if (!cur) return
     stopAlertSound()
-    if (cur.type === 'deposit_new') {
-      setNewOrderAlerts((q) => q.slice(1))
-      return
-    }
     markCheckingOrderOpened(cur.orderId)
   }, [depositAlert, markCheckingOrderOpened])
 
@@ -477,7 +463,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setAccounts(mappedAccs)
     setOrders(mappedOrders)
     const dismissed = dismissedOrderRef.current
-    const opened = openedCheckingRef.current
+    let opened = new Set(openedCheckingRef.current)
+    for (const o of mappedOrders) {
+      if (!(o.submittedAt || (o.trxId && o.trxId.trim()))) opened.delete(o.id)
+    }
+    if (opened.size !== openedCheckingRef.current.size) {
+      openedCheckingRef.current = opened
+      setOpenedCheckingIds(opened)
+      saveOpenedChecking(opened)
+    }
     pruneDepositAlerts(mappedOrders, dismissed, opened)
     syncCheckingFromOrders(mappedOrders, dismissed, opened)
     const availIds = new Set(mappedAvail.map((w) => w.id))
@@ -547,9 +541,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return
     }
     if (dismissedOrderRef.current.has(ev.orderId)) return
-    if (ev.type === 'deposit_submitted' && openedCheckingRef.current.has(ev.orderId)) return
+    if (ev.type === 'deposit_new') return
     void reload()
     if (ev.type === 'deposit_submitted' && ev.orderId) {
+      setOpenedCheckingIds((prev) => {
+        if (!prev.has(ev.orderId)) return prev
+        const next = new Set(prev)
+        next.delete(ev.orderId)
+        saveOpenedChecking(next)
+        return next
+      })
       setCheckingById((prev) => ({ ...prev, [ev.orderId]: ev }))
       setSnoozeUntil((prev) => {
         const next = { ...prev }
@@ -557,12 +558,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return next
       })
       return
-    }
-    if (ev.type === 'deposit_new') {
-      setNewOrderAlerts((q) => {
-        if (q.some((a) => a.orderId === ev.orderId)) return q
-        return [...q, ev]
-      })
     }
   })
 

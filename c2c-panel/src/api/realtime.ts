@@ -111,12 +111,12 @@ export function useMerchantRealtime(enabled: boolean, onEvent: (ev: MerchantReal
             return
           }
           if (
-            parsed?.type === 'deposit_new' ||
             parsed?.type === 'deposit_submitted' ||
             parsed?.type === 'deposit_resolved'
           ) {
             const data = parsed.data as MerchantDepositEvent
             if (parsed.type === 'deposit_resolved') data.type = 'deposit_resolved'
+            else if (parsed.type === 'deposit_submitted') data.type = 'deposit_submitted'
             showBrowserNotification(data.title, data.body, 'zee9-c2c-deposit')
             onEventRef.current(data)
           }

@@ -28,6 +28,7 @@ import {
   isLivePlayer,
   preconnectSlot,
   serverSlotBuyFeature,
+  serverSlotCompleteFeatureBuy,
   serverSlotSpin,
 } from '../../lib/serverSpin'
 
@@ -602,21 +603,28 @@ export function useBountyTrailGame(opts: Opts) {
         const payload = settled.payload as unknown as ServerFrame
         const frames = payload.freeSpins || []
         const featureWin = Number(settled.win ?? payload.featureTotal ?? 0)
+        const settlementId = settled.settlementId
+        // Refresh so cost debit shows; win is credited only after spins finish.
         await refresh?.()
         setPhase('freeSpinsIntro')
         setStatusMsg('HIGH NOON FREE SPINS')
         await sleep(1200)
         setPhase('freeSpins')
-        if (frames.length === 0) {
-          setPhase('ready')
+        try {
+          if (frames.length === 0) {
+            setPhase('ready')
+            onMessage?.(featureWin > 0 ? `Feature win ${formatMoney(featureWin)}` : 'No bonus win')
+            return
+          }
+          await playFreeSpinQueue(frames, 0, featureWin)
+          if (featureWin > 0) onMessage?.(`Feature win ${formatMoney(featureWin)}`)
+        } finally {
+          if (settlementId) {
+            await serverSlotCompleteFeatureBuy(gameSlug(), settlementId)
+          }
+          await refresh?.()
           busy.current = false
-          onMessage?.(featureWin > 0 ? `Feature win ${formatMoney(featureWin)}` : 'No bonus win')
-          return
         }
-        await playFreeSpinQueue(frames, 0, featureWin)
-        await refresh?.()
-        if (featureWin > 0) onMessage?.(`Feature win ${formatMoney(featureWin)}`)
-        busy.current = false
       } catch (e: any) {
         busy.current = false
         setPhase('ready')

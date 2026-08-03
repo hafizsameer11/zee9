@@ -48,11 +48,12 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
       canAfford,
       debit,
       credit,
+      getBalance: () => balance,
       refresh,
       play,
       onMessage,
     }),
-    [canAfford, credit, debit, onMessage, play, refresh],
+    [balance, canAfford, credit, debit, onMessage, play, refresh],
   )
 
   const game = useFortuneGems2Game(api)
@@ -347,7 +348,7 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
             <div className={styles.stats}>
               <div className={styles.stat}>
                 <span className={styles.statLabel}>BALANCE</span>
-                <span className={styles.statValue}>{formatMoney(balance)}</span>
+                <span className={styles.statValue}>{formatMoney(game.balanceHold ?? balance)}</span>
               </div>
               <div className={styles.stat}>
                 <span className={styles.statLabel}>BET</span>

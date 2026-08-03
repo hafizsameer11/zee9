@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
 import { useDesignScale } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { connectCrashSocket } from '../lib/crashSocket'
 import type { GameComponentProps } from '../types'
 import { roundLossMessage } from '../lib/roundResult'
@@ -291,6 +292,19 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
     if (training) onMessage?.('Training mode — place a bet before the round starts!')
   }
 
+  const hasActiveBet = playerStatus === 'active' || pendingNextBet
+  const canCashOutLeave = serverPhase === 'flying' && playerStatus === 'active'
+  const cashOutAmount = Math.floor(betAmount * displayMult * 100) / 100
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet,
+    stakeAmount: playerStatus === 'active' ? betAmount : undefined,
+    canCashOut: canCashOutLeave,
+    cashOutAmount,
+    onCashOut: cashOut,
+    lobbyPath: '/',
+  })
+
   return (
     <>
     <CrashDesignUI
@@ -327,7 +341,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
       onBetPlus={() => adjustBet(1)}
       onBet={() => void onBet()}
       onCashOut={cashOut}
-      onHome={() => navigate('/')}
+      onHome={requestLeave}
       onAddCash={() => {
         setMenuOpen(false)
         setShowAddCash(true)
@@ -336,6 +350,7 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
       onToggleMenu={() => setMenuOpen((v) => !v)}
     />
     {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    {LeaveModal}
     </>
   )
 }

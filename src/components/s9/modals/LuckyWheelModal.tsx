@@ -200,7 +200,7 @@ export default function LuckyWheelModal({ onClose, onDeposit, onSpinDone, varian
               {result.isPhysical
                 ? 'Our team will contact you to arrange your prize.'
                 : result.amount > 0
-                  ? 'Added to your bonus balance.'
+                  ? 'Added to your balance.'
                   : 'Better luck on your next spin.'}
             </p>
             <button type="button" onClick={() => setResult(null)}>

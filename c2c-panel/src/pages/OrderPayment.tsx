@@ -30,8 +30,10 @@ export default function OrderPayment() {
   }, [showConfirmTimer, showPayTimer])
 
   useEffect(() => {
-    if (id) markCheckingOrderOpened(id)
-  }, [id, markCheckingOrderOpened])
+    if (!id || !order) return
+    const hasTrx = !!(order.submittedAt || (order.trxId && order.trxId.trim()))
+    if (hasTrx) markCheckingOrderOpened(id)
+  }, [id, order?.submittedAt, order?.trxId, markCheckingOrderOpened])
 
   // When 5m pay window hits 0, refresh so expired order leaves the queue
   useEffect(() => {

@@ -4,6 +4,7 @@ import { useWallet } from '../../context/WalletContext'
 import type { WingoBetType } from '../engines/wingo'
 import { connectWingoSocket } from '../lib/wingoSocket'
 import type { GameComponentProps } from '../types'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import WingoDesignUI, {
   type BetCounters,
@@ -305,7 +306,13 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
   const displayBalance = Math.max(0, balance - pendingSpend)
   const hasBets = pending.length > 0 || myBets.some((b) => b.state === 'ACTIVE')
 
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: hasBets,
+    lobbyPath: '/',
+  })
+
   return (
+    <>
     <WingoDesignUI
       balance={displayBalance}
       betAmount={betAmount}
@@ -322,7 +329,7 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
       myHistory={myHistory}
       result={result}
       showHelp={showHelp}
-      onHome={() => navigate('/')}
+      onHome={requestLeave}
       onHelp={() => setShowHelp((v) => !v)}
       onCloseHelp={() => setShowHelp(false)}
       onModeChange={onModeChange}
@@ -331,5 +338,7 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
       onRevoke={() => void revoke()}
       onRefreshBalance={() => void refresh()}
     />
+    {LeaveModal}
+    </>
   )
 }

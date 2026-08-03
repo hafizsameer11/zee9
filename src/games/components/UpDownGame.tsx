@@ -8,6 +8,7 @@ import { connectSevenUpSocket } from '../lib/sevenUpSocket'
 import type { GameComponentProps } from '../types'
 import { roundLossMessage, formatRoundAmount } from '../lib/roundResult'
 import { useDesignScale } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import UpDownDesignUI, {
   type AiPlayer,
   type FlyingChip,
@@ -428,6 +429,12 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
     avatar: avatarFor(p.id),
   }))
 
+  const myStake = myBets.down + myBets.seven + myBets.up
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: myStake > 0 && phase !== 'result',
+    stakeAmount: myStake,
+  })
+
   return (
     <>
     <UpDownDesignUI
@@ -453,7 +460,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       onBetAmount={setBetAmount}
       onZoneBet={handleZoneBet}
       onRebet={handleRebet}
-      onHome={() => navigate('/home')}
+      onHome={requestLeave}
       onAddCash={() => {
         setMenuOpen(false)
         setShowAddCash(true)
@@ -465,6 +472,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
       registerSelfRef={registerSelfRef}
     />
     {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    {LeaveModal}
     </>
   )
 }

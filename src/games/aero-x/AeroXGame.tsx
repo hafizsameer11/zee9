@@ -7,6 +7,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import Zee9LoadingScreen from '../../components/Zee9LoadingScreen'
 import { CTRL, UI } from './constants/assetManifest'
 import { DESIGN_H, DESIGN_W, formatRs, historyTone } from './constants/gameConfig'
@@ -40,6 +41,23 @@ export default function AeroXGame({ onMessage }: GameComponentProps) {
     return styles.histAccent
   }
 
+  const hasActiveBet = game.slots.some((s) => s.phase === 'active' || s.phase === 'pending')
+  const activeStake = game.slots
+    .filter((s) => s.phase === 'active' || s.phase === 'pending')
+    .reduce((sum, s) => sum + (s.wager || s.amount), 0)
+  const canCashOutLeave = game.phase === 'flying' && game.slots.some((s) => s.phase === 'active')
+  const cashOutAmount = game.slots
+    .filter((s) => s.phase === 'active')
+    .reduce((sum, s) => sum + Math.floor(s.wager * game.mult * 100) / 100, 0)
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet,
+    stakeAmount: activeStake,
+    canCashOut: canCashOutLeave,
+    cashOutAmount,
+    onCashOut: game.cashOutAllActive,
+  })
+
   return (
     <div ref={viewportRef} className={styles.root}>
       <div style={getDesignScaleShellStyle(layout)}>
@@ -63,7 +81,7 @@ export default function AeroXGame({ onMessage }: GameComponentProps) {
                 aria-label="Back"
                 onClick={() => {
                   play('click')
-                  navigate(-1)
+                  requestLeave()
                 }}
               >
                 <img src={CTRL.menu} alt="" />
@@ -177,6 +195,7 @@ export default function AeroXGame({ onMessage }: GameComponentProps) {
           )}
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }

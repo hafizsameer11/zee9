@@ -10,6 +10,8 @@ export type SlotSpinResult = {
   cost?: number
   slug?: string
   source?: string
+  settlementId?: string
+  credited?: boolean
   payload: Record<string, unknown>
 }
 
@@ -58,7 +60,26 @@ export async function serverSlotBuyFeature(
     cost: res.cost,
     slug: res.slug,
     source: res.source,
+    settlementId: res.settlementId,
+    credited: res.credited,
     payload: (res.payload || {}) as Record<string, unknown>,
+  }
+}
+
+/** Credit a deferred feature-buy win after the bonus animation finishes. */
+export async function serverSlotCompleteFeatureBuy(
+  slug: SlotSlug,
+  settlementId: string,
+): Promise<SlotSpinResult | null> {
+  if (!getAccess()) return null
+  const res = await slotSocket(slug).request<SlotSpinResult>('completeFeatureBuy', { settlementId })
+  return {
+    win: Number(res.win ?? 0),
+    slug: res.slug,
+    source: res.source,
+    settlementId: res.settlementId,
+    credited: res.credited,
+    payload: {},
   }
 }
 

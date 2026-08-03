@@ -502,6 +502,7 @@ gamesRoutes.post(
 
 /* ---------------- Slots (money-coming, fortune-gems-2, bounty-trail, wild-bounty, super-ace) ---------------- */
 const slotSpinSchema = z.object({ bet: z.number().positive() })
+const slotCompleteFeatureSchema = z.object({ settlementId: z.string().min(8).max(128) })
 
 for (const slug of slot.SLOT_SLUGS) {
   gamesRoutes.post(
@@ -520,6 +521,16 @@ for (const slug of slot.SLOT_SLUGS) {
       ok(res, await slot.buyFeature(req.user!.id, slug, req.body.bet))
     }),
   )
+  if (slug === 'bounty-trail' || slug === 'wild-bounty') {
+    gamesRoutes.post(
+      `/${slug}/complete-feature`,
+      authenticate,
+      validate({ body: slotCompleteFeatureSchema }),
+      asyncHandler(async (req, res) => {
+        ok(res, await slot.completeFeatureBuy(req.user!.id, slug, req.body.settlementId))
+      }),
+    )
+  }
 }
 
 // Public: single game config for the player UI (winPct is admin-only — never exposed).

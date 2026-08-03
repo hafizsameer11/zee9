@@ -8,6 +8,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { ASSET, CHIP_VALUES, type ChipValue } from './constants/rouletteConfig'
 import { GameFooter, GameHeader } from './components/GameChrome'
 import RouletteLoadingScreen, { WinningOverlay } from './components/RouletteLoadingScreen'
@@ -238,6 +239,11 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
 
   const showOutcome = game.state === 'RESULT' || game.state === 'PAYOUT'
 
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.bets.length > 0,
+    stakeAmount: game.stake,
+  })
+
   const onPlace = useCallback(
     async (input: {
       type: import('./constants/rouletteConfig').BetType
@@ -286,7 +292,7 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
             muted={muted}
             onBack={() => {
               sound.playClick()
-              navigate('/home')
+              requestLeave()
             }}
             onToggleSound={toggle}
             onHelp={() => {
@@ -428,6 +434,7 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
           )}
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }

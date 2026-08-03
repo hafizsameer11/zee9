@@ -4,6 +4,7 @@ import { useWallet } from '../../context/WalletContext'
 import Zee9LoadingScreen from '../../components/Zee9LoadingScreen'
 import { type JhandiSymbol } from '../engines/dice'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import type { GameComponentProps } from '../types'
 import { BOOT_PRELOAD, avatarImg, CHIP_IMG_SM, IMG } from './assets'
 import { formatAmount } from './chips'
@@ -80,6 +81,11 @@ export default function JhandiMundaGame({ bet: defaultBet, onMessage }: GameComp
   }, [])
 
   const game = useJhandiGame(wallet, defaultBet, onMessage)
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.myStake > 0,
+    stakeAmount: game.myStake,
+  })
 
   const centerOf = useCallback((el: HTMLElement | null) => {
     const scene = sceneRef.current
@@ -268,7 +274,7 @@ export default function JhandiMundaGame({ bet: defaultBet, onMessage }: GameComp
             </div>
 
             <header className={styles.topBar}>
-              <button type="button" className={styles.backBtn} onClick={() => navigate('/home')} aria-label="Back">
+              <button type="button" className={styles.backBtn} onClick={requestLeave} aria-label="Back">
                 <img src={IMG.btnBack} alt="" draggable={false} />
               </button>
               <div className={styles.balance}>PKR {formatAmount(wallet.balance)}</div>
@@ -334,6 +340,7 @@ export default function JhandiMundaGame({ bet: defaultBet, onMessage }: GameComp
           </div>
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }

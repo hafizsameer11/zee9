@@ -29,10 +29,8 @@ export default function App() {
   } = useStore()
 
   const onHome = location.pathname === '/'
-  const showDepositAlert =
-    depositAlert &&
-    (depositAlert.type !== 'deposit_submitted' || onHome)
-  const showWithdrawAlert = !showDepositAlert && withdrawAlert
+  const showDepositAlert = depositAlert && onHome
+  const showWithdrawAlert = !showDepositAlert && withdrawAlert && onHome
 
   return (
     <>

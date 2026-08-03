@@ -3,7 +3,7 @@ import { prisma } from '../../lib/prisma.js'
 import { runMoneyTx } from '../../core/tx.js'
 import { post, getBalances } from '../../core/ledger.js'
 import { toPaisa, toRupees } from '../../lib/money.js'
-import { badRequest, notFound, unprocessable } from '../../core/errors.js'
+import { badRequest, forbidden, notFound, unprocessable } from '../../core/errors.js'
 import { recordWagerAndRelease } from '../../core/wager.js'
 import { accrueForLoss, clawbackForWin } from '../commission/commission.service.js'
 import {
@@ -275,7 +275,8 @@ export async function spin(userId: string, slugRaw: string, betRupees: number) {
 }
 
 /**
- * Feature Buy: debit FEATURE_BUY_MULT × bet, run free-spin package, credit total.
+ * Feature Buy: debit FEATURE_BUY_MULT × bet, run free-spin package.
+ * Win is credited when the client calls completeFeatureBuy after the bonus animation.
  */
 export async function buyFeature(userId: string, slugRaw: string, betRupees: number) {
   if (!isSlotSlug(slugRaw)) throw badRequest('Unknown slot')
@@ -288,16 +289,27 @@ export async function buyFeature(userId: string, slugRaw: string, betRupees: num
   const costRupees = Math.round(betRupees * FEATURE_BUY_MULT * 100) / 100
   const cost = toPaisa(costRupees)
   if (cost <= 0n) throw badRequest('Invalid feature cost')
+  const settlementId = `${userId}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`
 
   return runMoneyTx(async (tx) => {
     const bal = await getBalances(tx, userId)
     if (bal.MAIN! < cost) throw unprocessable('Insufficient balance')
 
+    const outcome = buyFeatureAuthoritative(slug, betRupees, game.winPct)
+    const winPaisa = toPaisa(outcome.winRupees)
+
     await post(tx, {
       type: 'GAME_BET',
       referenceType: `${slug}-feature-bet`,
-      referenceId: userId,
-      meta: { game: slug, kind: 'feature-buy', bet: betRupees },
+      referenceId: settlementId,
+      idempotencyKey: `feature-buy-${settlementId}`,
+      meta: {
+        game: slug,
+        kind: 'feature-buy',
+        bet: betRupees,
+        userId,
+        pendingWinPaisa: winPaisa.toString(),
+      },
       assertNonNegative: [{ userId, bucket: 'MAIN' }],
       legs: [
         { account: { userId, bucket: 'MAIN' }, direction: 'DEBIT', amount: cost },
@@ -305,24 +317,110 @@ export async function buyFeature(userId: string, slugRaw: string, betRupees: num
       ],
     })
 
-    const outcome = buyFeatureAuthoritative(slug, betRupees, game.winPct)
-    const winPaisa = toPaisa(outcome.winRupees)
-
-    await settleSpin(tx, {
+    await accrueForLoss(tx, {
       userId,
-      slug,
-      betPaisa: cost,
-      winPaisa,
-      kind: 'feature-win',
+      lossAmount: cost,
+      referenceType: `${slug}-feature-bet`,
+      referenceId: settlementId,
     })
+    await tx.game.update({
+      where: { slug },
+      data: {
+        plays: { increment: 1 },
+        ggr: { increment: cost },
+      },
+    })
+    await recordWagerAndRelease(tx, userId, cost)
 
     return {
       slug,
       bet: betRupees,
       cost: costRupees,
       win: toRupees(winPaisa),
+      settlementId,
+      credited: false,
       source: 'server' as const,
       payload: outcome.payload,
+    }
+  })
+}
+
+/**
+ * Credit a deferred feature-buy win after the client finishes the bonus animation.
+ */
+export async function completeFeatureBuy(userId: string, slugRaw: string, settlementId: string) {
+  if (!isSlotSlug(slugRaw)) throw badRequest('Unknown slot')
+  const slug = slugRaw
+  if (slug !== 'bounty-trail' && slug !== 'wild-bounty') {
+    throw badRequest('Feature buy not available for this game')
+  }
+  if (!settlementId || settlementId.length > 128) throw badRequest('Invalid settlement')
+
+  return runMoneyTx(async (tx) => {
+    const pending = await tx.ledgerTransaction.findFirst({
+      where: {
+        type: 'GAME_BET',
+        referenceType: `${slug}-feature-bet`,
+        referenceId: settlementId,
+      },
+    })
+    if (!pending) throw notFound('Feature buy not found')
+
+    const meta = (pending.meta ?? {}) as {
+      userId?: string
+      pendingWinPaisa?: string
+    }
+    if (meta.userId !== userId) throw forbidden('Feature buy does not belong to this player')
+
+    const winPaisa = BigInt(meta.pendingWinPaisa ?? '0')
+
+    const existingWin = await tx.ledgerTransaction.findFirst({
+      where: {
+        type: 'GAME_WIN',
+        referenceType: `${slug}-feature-win`,
+        referenceId: settlementId,
+      },
+    })
+    if (existingWin) {
+      return {
+        slug,
+        settlementId,
+        win: toRupees(winPaisa),
+        credited: true,
+        source: 'server' as const,
+      }
+    }
+
+    if (winPaisa > 0n) {
+      await post(tx, {
+        type: 'GAME_WIN',
+        referenceType: `${slug}-feature-win`,
+        referenceId: settlementId,
+        idempotencyKey: `feature-win-${settlementId}`,
+        meta: { game: slug, kind: 'feature-win' },
+        legs: [
+          { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: winPaisa },
+          { account: { userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: winPaisa },
+        ],
+      })
+      await clawbackForWin(tx, {
+        userId,
+        winAmount: winPaisa,
+        referenceType: `${slug}-feature-win`,
+        referenceId: settlementId,
+      })
+      await tx.game.update({
+        where: { slug },
+        data: { ggr: { decrement: winPaisa } },
+      })
+    }
+
+    return {
+      slug,
+      settlementId,
+      win: toRupees(winPaisa),
+      credited: true,
+      source: 'server' as const,
     }
   })
 }

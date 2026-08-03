@@ -11,6 +11,7 @@ import {
   type WlBetKey,
 } from '../engines/wingoLottery'
 import { useDesignScale } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import {
   connectLotterySocket,
@@ -441,7 +442,15 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
     if (typeof p === 'string' && p !== 'FULL_ROUND' && p !== 'CHIP_BURST') setPhase(p)
   }, [])
 
+  const chipStake = chips.reduce((sum, c) => sum + c.denom, 0)
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: chips.length > 0,
+    stakeAmount: chipStake,
+    lobbyPath: '/',
+  })
+
   return (
+    <>
     <WingoLotteryDesignUI
       viewportRef={viewportRef}
       layout={layout}
@@ -455,7 +464,7 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
       result={result}
       bettingOpen={bettingOpen}
       lastWin={lastWin}
-      onHome={() => navigate('/')}
+      onHome={requestLeave}
       onSelectChip={(d) => {
         sound.play('tap', { volume: 0.35 })
         setSelectedChip(d)
@@ -472,5 +481,7 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
       cellTotals={cellTotals}
       playersOnline={playersOnline}
     />
+    {LeaveModal}
+    </>
   )
 }

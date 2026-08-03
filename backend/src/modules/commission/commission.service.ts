@@ -8,6 +8,7 @@ import {
   type Settings,
 } from '../../core/settings.js'
 import { applyBps, toPaisa } from '../../lib/money.js'
+import { queueCommissionSettlement } from './commission.queue.js'
 
 type LossInput = { userId: string; lossAmount: bigint; referenceType: string; referenceId: string }
 const DAILY_PRINCIPAL_SETTLEMENT = true
@@ -19,7 +20,10 @@ const DAILY_PRINCIPAL_SETTLEMENT = true
  */
 export async function accrueForLoss(tx: Tx, input: LossInput, settings?: Settings) {
   // Commissions are consolidated by the PKT end-of-day settlement.
-  if (DAILY_PRINCIPAL_SETTLEMENT) return
+  if (DAILY_PRINCIPAL_SETTLEMENT) {
+    queueCommissionSettlement(input.userId)
+    return
+  }
   const s = settings ?? (await getSettings())
   if (!s.commissionEnabled) return
   if (input.lossAmount <= 0n) return
@@ -134,7 +138,10 @@ export async function clawbackForWin(
   settings?: Settings,
 ) {
   // Wins are netted against losses by the PKT end-of-day settlement.
-  if (DAILY_PRINCIPAL_SETTLEMENT) return
+  if (DAILY_PRINCIPAL_SETTLEMENT) {
+    queueCommissionSettlement(input.userId)
+    return
+  }
   const s = settings ?? (await getSettings())
   if (!s.commissionEnabled) return
   if (input.winAmount <= 0n) return

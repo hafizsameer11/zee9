@@ -7,6 +7,7 @@ import { connectMinesSocket } from '../lib/minesSocket'
 import type { GameComponentProps } from '../types'
 import { roundLossMessage } from '../lib/roundResult'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import {
   BackChevronIcon,
   CartWagonIcon,
@@ -200,6 +201,14 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
     onMessage?.(null)
   }, [onMessage, play])
 
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: playing,
+    stakeAmount: round?.bet,
+    canCashOut: playing && gemsFound > 0,
+    cashOutAmount: currentWin,
+    onCashOut: cashOut,
+  })
+
   const cellClass = (index: number) => {
     const revealed = isRevealed(index)
     const isMine = round?.mines.has(index)
@@ -221,7 +230,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
 
         <header className={styles.topBar}>
           <div className={styles.topLeft}>
-            <button type="button" className={styles.backBtn} onClick={() => navigate('/home')} aria-label="Back">
+            <button type="button" className={styles.backBtn} onClick={requestLeave} aria-label="Back">
               <BackChevronIcon />
             </button>
             <div className={styles.promoBadge}>
@@ -269,7 +278,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
             </button>
             {menuOpen && (
               <div className={styles.menuPanel} role="menu">
-                <button type="button" className={styles.menuItem} onClick={() => navigate('/home')}>
+                <button type="button" className={styles.menuItem} onClick={requestLeave}>
                   Exit to lobby
                 </button>
                 <button
@@ -457,6 +466,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
       </div>
     </div>
     {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
+    {LeaveModal}
     </>
   )
 }

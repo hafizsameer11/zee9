@@ -175,9 +175,40 @@ async function commissionBalance(tx: Tx, userId: string): Promise<bigint> {
   return account?.balance ?? 0n
 }
 
-async function settlePlayer(accountId: string, sourceUserId: string, day: Bounds, settings: Settings) {
+/** Net COMMISSION ledger posted for one agent + member on a settlement day. */
+async function commissionLedgerNet(
+  tx: Tx,
+  agentId: string,
+  sourceUserId: string,
+  day: Bounds,
+): Promise<bigint> {
+  const entries = await tx.ledgerEntry.findMany({
+    where: {
+      account: { ownerId: agentId, bucket: 'COMMISSION', currency: 'PKR' },
+      transaction: {
+        type: 'COMMISSION',
+        referenceType: 'daily-principal-loss',
+        referenceId: `${day.key}:${sourceUserId}`,
+        status: 'POSTED',
+      },
+    },
+    select: { direction: true, amount: true },
+  })
+  return entries.reduce(
+    (sum, entry) => sum + (entry.direction === 'CREDIT' ? entry.amount : -entry.amount),
+    0n,
+  )
+}
+
+async function settlePlayer(
+  accountId: string,
+  sourceUserId: string,
+  day: Bounds,
+  settings: Settings,
+  options?: { forceRerun?: boolean },
+) {
   const todayKey = dateKeyAt(Date.now())
-  const allowRerun = day.key === todayKey
+  const allowRerun = day.key === todayKey || options?.forceRerun === true
 
   await runMoneyTx(async (tx) => {
     if (!allowRerun) {
@@ -230,47 +261,46 @@ async function settlePlayer(accountId: string, sourceUserId: string, day: Bounds
     }
 
     for (const recipient of recipients.values()) {
-      const existing = oldRows
-        .filter((row) => row.agentId === recipient.agentId && row.level === recipient.level)
-        .reduce((sum, row) => sum + row.amount, 0n)
+      const ledgerNet = await commissionLedgerNet(tx, recipient.agentId, sourceUserId, day)
       const magnitude = applyBps(lossDelta < 0n ? -lossDelta : lossDelta, recipient.rateBps)
       const desired = lossDelta < 0n ? -magnitude : magnitude
-      const requestedAdjustment = desired - existing
-      let appliedAdjustment = requestedAdjustment
+      const requestedAdjustment = desired - ledgerNet
+      let appliedAdjustment = 0n
 
       if (requestedAdjustment > 0n) {
-        await post(tx, {
+        const posted = await post(tx, {
           type: 'COMMISSION',
           referenceType: 'daily-principal-loss',
           referenceId: `${day.key}:${sourceUserId}`,
-          idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:credit:${requestedAdjustment}`,
+          idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:from:${ledgerNet}:to:${desired}`,
           meta: { settlementDate: day.key, sourceUserId, level: recipient.level },
           legs: [
             { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: requestedAdjustment },
             { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'CREDIT', amount: requestedAdjustment },
           ],
         })
+        if (posted.created) appliedAdjustment = requestedAdjustment
       } else if (requestedAdjustment < 0n) {
         const available = await commissionBalance(tx, recipient.agentId)
         const requestedDebit = -requestedAdjustment
         const debit = requestedDebit < available ? requestedDebit : available
-        appliedAdjustment = -debit
         if (debit > 0n) {
-          await post(tx, {
+          const posted = await post(tx, {
             type: 'COMMISSION',
             referenceType: 'daily-principal-loss',
             referenceId: `${day.key}:${sourceUserId}`,
-            idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:debit:${debit}`,
+            idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:from:${ledgerNet}:to:${desired}`,
             meta: { settlementDate: day.key, sourceUserId, level: recipient.level, adjustment: 'debit' },
             legs: [
               { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: debit },
               { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'DEBIT', amount: debit },
             ],
           })
+          if (posted.created) appliedAdjustment = -debit
         }
       }
 
-      const finalAmount = existing + appliedAdjustment
+      const finalAmount = ledgerNet + appliedAdjustment
       await tx.commission.deleteMany({
         where: {
           agentId: recipient.agentId,
@@ -342,6 +372,25 @@ export async function settleDailyCommissions(key: string) {
   }
   logger.info({ settlementDate: key, players: settled, failed }, 'Daily deposited-principal commission settled')
   if (failed > 0) throw new Error(`${failed} daily commission settlement(s) failed`)
+}
+
+/** Reconcile ledger + commission rows for past days (fixes idempotency drift). */
+export async function repairCommissionSettlements(fromKey: string, toKey: string) {
+  const settings = await getSettings()
+  if (!settings.commissionEnabled || settings.commissionBasis !== 'GGR') return
+
+  let key = fromKey
+  while (key <= toKey) {
+    const day = boundsFor(key)
+    const players = await collectSettlementPlayers(day)
+    let settled = 0
+    for (const [ownerId, accountId] of players) {
+      await settlePlayer(accountId, ownerId, day, settings, { forceRerun: true })
+      settled++
+    }
+    logger.info({ settlementDate: key, players: settled }, 'Commission settlement repaired')
+    key = shiftDate(key, 1)
+  }
 }
 
 /** Re-run commission for one player (after win / withdraw). Defaults to today PKT. */

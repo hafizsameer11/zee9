@@ -8,6 +8,7 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import {
   ASSET,
   CHIP_VALUES,
@@ -72,6 +73,11 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
     onWalletChange: () => {
       void refresh()
     },
+  })
+
+  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
+    hasActiveBet: game.bets.length > 0,
+    stakeAmount: game.stake,
   })
 
   const showOutcome =
@@ -366,7 +372,7 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
             reducedMotion={reducedMotion}
             onBack={() => {
               sound.playClick()
-              navigate('/home')
+              requestLeave()
             }}
             onToggleSound={toggle}
             onTrend={() => {
@@ -446,6 +452,7 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
           )}
         </div>
       </div>
+      {LeaveModal}
     </div>
   )
 }
