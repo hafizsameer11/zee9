@@ -5,6 +5,7 @@ import { sound } from '../../lib/sound'
 import { useDesignScale } from '../hooks/useDesignScale'
 import { connectCrashSocket } from '../lib/crashSocket'
 import type { GameComponentProps } from '../types'
+import { roundLossMessage } from '../lib/roundResult'
 import CrashDesignUI, { type CrashHistoryEntry, type CrashPhase } from './CrashDesignUI'
 import styles from './crashGame.module.css'
 import AddCashModal from '../../components/s9/modals/AddCashModal'
@@ -178,7 +179,12 @@ export default function CrashGame({ bet: defaultBet, onMessage }: GameComponentP
         }
         if (nextPhase === 'crashed' && prevPhase.current === 'flying') {
           sound.play('crash')
-          if (playerStatusRef.current !== 'cashed') onMessage?.('💥 Bang!')
+          if (playerStatusRef.current !== 'cashed') {
+            const staked = betAmountRef.current
+            onMessage?.(
+              staked > 0 ? `💥 Bang! ${roundLossMessage(staked)}` : '💥 Bang!',
+            )
+          }
           void refresh()
         }
         if (nextPhase === 'waiting') {

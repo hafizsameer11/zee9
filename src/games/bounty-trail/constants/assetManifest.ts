@@ -2,56 +2,69 @@ import { ASSET, BASE } from './gameConfig'
 import { SYMBOLS } from './symbolConfig'
 import { preloadImages } from '../../../lib/preloadImages'
 
-export const CRITICAL_ASSETS: string[] = [
-  ASSET.bg,
-  ASSET.loadingHero,
-  ASSET.logo,
-  ASSET.multiplierBoard,
-  ASSET.statusBoard,
-  ASSET.reelFrame,
+/** Fast path — scene + controls only (~100 KB). Game shows after this. */
+export const BOOT_ASSETS: string[] = [
+  ASSET.scene,
   ASSET.goldFrame,
-  ASSET.featureBuy,
   ASSET.spin,
   ASSET.minus,
   ASSET.plus,
   ASSET.auto,
-  ASSET.coin,
-  ASSET.smoke,
-  ASSET.dust,
-  ASSET.foreground,
-  ASSET.controlDeck,
-  ...SYMBOLS.map((s) => s.src),
+  ASSET.turbo,
 ]
+
+/** Unique symbol art (deduped — hunter/sheriff etc. share paths). */
+export const SYMBOL_ASSETS: string[] = [...new Set(SYMBOLS.map((s) => s.src))]
 
 export const SECONDARY_ASSETS: string[] = [
   ASSET.bigWin,
   ASSET.freeSpins,
   ASSET.featurePurchase,
-  ASSET.turbo,
+  ASSET.coin,
   ASSET.spark,
+  ASSET.smoke,
+  ASSET.dust,
   ...Object.values(ASSET.icons),
-  ASSET.bgFallback,
-  ASSET.loadingHeroFallback,
 ]
 
-let preloadPromise: Promise<void> | null = null
+let bootPromise: Promise<void> | null = null
+let fullPromise: Promise<void> | null = null
 
+/** Scene + controls — use for play/preview boot gate. */
+export async function preloadBountyBoot(
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<void> {
+  if (bootPromise) {
+    await bootPromise
+    onProgress?.(BOOT_ASSETS.length, BOOT_ASSETS.length)
+    return
+  }
+  bootPromise = preloadImages(BOOT_ASSETS, { concurrency: 6, onProgress })
+  await bootPromise
+}
+
+/** Full preload — boot first, then symbols in background. */
 export async function preloadBountyAssets(
   onProgress?: (loaded: number, total: number) => void,
 ): Promise<void> {
-  if (preloadPromise) {
-    await preloadPromise
-    onProgress?.(CRITICAL_ASSETS.length, CRITICAL_ASSETS.length)
+  if (fullPromise) {
+    await fullPromise
+    onProgress?.(BOOT_ASSETS.length + SYMBOL_ASSETS.length, BOOT_ASSETS.length + SYMBOL_ASSETS.length)
     return
   }
-  preloadPromise = (async () => {
-    await preloadImages(CRITICAL_ASSETS, {
-      concurrency: 8,
-      onProgress,
+  fullPromise = (async () => {
+    await preloadBountyBoot((loaded, total) => {
+      onProgress?.(loaded, total + SYMBOL_ASSETS.length)
+    })
+    await preloadImages(SYMBOL_ASSETS, {
+      concurrency: 10,
+      onProgress: (loaded, total) => {
+        onProgress?.(BOOT_ASSETS.length + loaded, BOOT_ASSETS.length + total)
+      },
     })
     void preloadImages(SECONDARY_ASSETS, { concurrency: 6 })
   })()
-  await preloadPromise
+  await fullPromise
 }
 
 export { BASE }

@@ -14,6 +14,7 @@ const WIDE_FRAME_GAMES = new Set([
   'dragon-tiger',
   'chicken-road',
   'fortune-gems-2',
+  'car-roulette',
 ])
 
 function isTouchDevice() {

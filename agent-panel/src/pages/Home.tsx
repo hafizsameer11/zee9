@@ -9,7 +9,7 @@ export default function Home() {
 
   async function withdraw() {
     if (!summary?.salaryTransferOpen) {
-      showToast('Transfer closed by admin')
+      showToast('Withdraw frozen by admin')
       return
     }
     const max = Number(summary.salaryApproved ?? summary.transferable ?? 0)
@@ -61,7 +61,7 @@ export default function Home() {
               </div>
             ) : (
               <div className="sub" style={{ opacity: 0.7 }}>
-                Transfer closed · Hold {fmt(summary.salaryHold ?? summary.commissionBalance)}
+                Withdraw frozen by admin · Hold {fmt(summary.salaryHold ?? summary.commissionBalance)}
               </div>
             )}
           </div>

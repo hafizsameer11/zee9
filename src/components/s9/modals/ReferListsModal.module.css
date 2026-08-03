@@ -121,6 +121,34 @@
   flex: 1;
   background: #2a0808;
   min-height: 0;
+  overflow-y: auto;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 1fr 0.9fr;
+  gap: 4px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(139, 105, 20, 0.2);
+  align-items: center;
+}
+
+.row span {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  word-break: break-word;
+}
+
+.valid {
+  color: #8bd98b !important;
+  font-weight: 800 !important;
+}
+
+.pending {
+  color: #ffb74d !important;
+  font-weight: 800 !important;
 }
 
 .footer {

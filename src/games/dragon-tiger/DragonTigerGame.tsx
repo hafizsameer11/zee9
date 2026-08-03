@@ -77,6 +77,14 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
   const showOutcome =
     game.state === 'SHOWING_WINNER' || game.state === 'PAYOUT' || game.state === 'RESETTING'
 
+  // Clear table chips when betting closes or a new round starts.
+  useEffect(() => {
+    if (!game.bettingOpen) {
+      setChipStacks([])
+      setBotByZone(new Map())
+    }
+  }, [game.bettingOpen, game.roundId])
+
   // Live: pool from server zone totals. Demo: soft fake pools.
   useEffect(() => {
     if (game.live) {
@@ -300,6 +308,7 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
   const onPlace = useCallback(
     (selection: BetSelection) => {
       sound.unlock()
+      onMessage?.(null)
       const ok = game.placeBet(selection, game.selectedChip)
       if (!ok) return
       if (reducedMotion || !canvasRef.current) {
@@ -327,7 +336,7 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
         size: 36,
       })
     },
-    [game, reducedMotion, spawnFly, toCanvasPoint, pushStack],
+    [game, reducedMotion, spawnFly, toCanvasPoint, pushStack, onMessage],
   )
 
   const isLoading = game.state === 'LOADING'
@@ -384,6 +393,7 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
               poolTiger={pool.tiger + (game.byZone.get('tiger')?.amount ?? 0)}
               poolTie={pool.tie + (game.byZone.get('tie')?.amount ?? 0)}
               trendPct={trendPct}
+              lockedSide={game.lockedSide}
               onPlace={onPlace}
             />
           </div>
@@ -425,9 +435,9 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
               <div className={styles.helpCard} onClick={(e) => e.stopPropagation()} role="dialog">
                 <h3>HOW TO PLAY</h3>
                 <p>
-                  Select a chip and tap Dragon, Tie, or Tiger. Higher card wins (Ace low, King high).
-                  Suits do not matter. Equal ranks are Tie. Dragon/Tiger pay x2 total return; Tie pays
-                  x9. Betting closes when the timer ends.
+                  Select a chip and tap Dragon, Tie, or Tiger — one side per round only. Higher card
+                  wins (Ace low, King high). Suits do not matter. Equal ranks are Tie. Dragon/Tiger
+                  pay x2 total return; Tie pays x9. Betting closes when the timer ends.
                 </p>
               </div>
             </div>

@@ -14,12 +14,14 @@ export const DEVELOPED_GAME_IDS = new Set<string>([
   'roulette',
   'dragon-tiger',
   'chicken-road',
-  'bounty-trail',
   'wild-bounty',
   'aero-x',
   'double-crash',
   'super-ace',
   'double-fortune',
+  'car-roulette',
+  'zoo-roulette',
+  'jhandi-munda',
 ])
 
 export function isDevelopedGame(id: string): boolean {

@@ -172,6 +172,102 @@ export async function tickSevenUp() {
   return round
 }
 
+export type SevenUpSeat = {
+  id: string
+  name: string
+  bets: { down: number; seven: number; up: number }
+  total: number
+  lastSide: SevenUpSide
+  lastAmount: number
+  seq: number
+}
+
+type RoundPublic = {
+  history: number[]
+  zoneTotals: { down: number; seven: number; up: number }
+  seats: SevenUpSeat[]
+  betCount: number
+}
+
+/** Round-wide aggregates are identical for every client — compute once per tick. */
+const publicCache = new Map<string, { at: number; data: RoundPublic }>()
+const PUBLIC_TTL_MS = 220
+
+/** Never leak full display names into a public table feed. */
+function maskName(name: string, fallback: string) {
+  const clean = (name || '').trim()
+  if (!clean) return fallback
+  if (clean.length <= 2) return clean.toUpperCase()
+  return `${clean.slice(0, 2).toUpperCase()}${'*'.repeat(Math.min(3, clean.length - 2))}`
+}
+
+async function getRoundPublic(roundId: string, phase: WingoPhase): Promise<RoundPublic> {
+  const key = `${roundId}:${phase}`
+  const hit = publicCache.get(key)
+  const now = Date.now()
+  if (hit && now - hit.at < PUBLIC_TTL_MS) return hit.data
+
+  const [historyRows, betRows] = await Promise.all([
+    prisma.sevenUpRound.findMany({
+      where: { sum: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      take: HISTORY_LIMIT,
+      select: { sum: true },
+    }),
+    prisma.sevenUpBet.findMany({
+      where: { roundId, state: { in: ['ACTIVE', 'CASHED_OUT', 'BUST'] } },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        userId: true,
+        side: true,
+        amount: true,
+        createdAt: true,
+        user: { select: { displayName: true, playerNo: true } },
+      },
+    }),
+  ])
+
+  const zoneTotals = { down: 0, seven: 0, up: 0 }
+  const seatMap = new Map<string, SevenUpSeat>()
+  let seq = 0
+  for (const b of betRows) {
+    const rupees = toRupees(b.amount)
+    zoneTotals[b.side] += rupees
+    seq += 1
+    const existing = seatMap.get(b.userId)
+    if (existing) {
+      existing.bets[b.side] += rupees
+      existing.total += rupees
+      existing.lastSide = b.side
+      existing.lastAmount = rupees
+      existing.seq = seq
+    } else {
+      seatMap.set(b.userId, {
+        id: b.userId,
+        name: maskName(b.user?.displayName ?? '', `P${b.user?.playerNo ?? ''}`),
+        bets: { down: 0, seven: 0, up: 0, [b.side]: rupees } as SevenUpSeat['bets'],
+        total: rupees,
+        lastSide: b.side,
+        lastAmount: rupees,
+        seq,
+      })
+    }
+  }
+
+  const data: RoundPublic = {
+    history: historyRows.map((h) => h.sum!).filter((n) => n != null),
+    zoneTotals,
+    seats: [...seatMap.values()].sort((a, b) => b.total - a.total).slice(0, 12),
+    betCount: betRows.length,
+  }
+
+  publicCache.set(key, { at: now, data })
+  if (publicCache.size > 40) {
+    for (const [k, v] of publicCache) if (now - v.at > 60_000) publicCache.delete(k)
+  }
+  return data
+}
+
 export async function getState(userId: string | undefined, online = 0) {
   const round = await tickSevenUp()
   if (!round) {
@@ -189,34 +285,28 @@ export async function getState(userId: string | undefined, online = 0) {
       myBets: { down: 0, seven: 0, up: 0 },
       myPayout: 0,
       zoneTotals: { down: 0, seven: 0, up: 0 },
+      seats: [] as SevenUpSeat[],
+      betCount: 0,
+      balance: 0,
       playersOnline: online,
       serverTime: new Date().toISOString(),
     }
   }
 
-  const historyRows = await prisma.sevenUpRound.findMany({
-    where: { sum: { not: null } },
-    orderBy: { createdAt: 'desc' },
-    take: HISTORY_LIMIT,
-    select: { sum: true },
-  })
+  const [pub, myBetRows, balances] = await Promise.all([
+    getRoundPublic(round.id, round.phase),
+    userId
+      ? prisma.sevenUpBet.findMany({ where: { roundId: round.id, userId } })
+      : Promise.resolve([]),
+    userId ? getBalances(prisma, userId) : Promise.resolve(null),
+  ])
 
-  const myBetRows = userId
-    ? await prisma.sevenUpBet.findMany({ where: { roundId: round.id, userId } })
-    : []
   const myBets = { down: 0, seven: 0, up: 0 }
   let myPayout = 0
   for (const b of myBetRows) {
     myBets[b.side] += toRupees(b.amount)
     myPayout += toRupees(b.payout)
   }
-
-  const allBets = await prisma.sevenUpBet.findMany({
-    where: { roundId: round.id, state: { in: ['ACTIVE', 'CASHED_OUT', 'BUST'] } },
-    select: { side: true, amount: true },
-  })
-  const zoneTotals = { down: 0, seven: 0, up: 0 }
-  for (const b of allBets) zoneTotals[b.side] += toRupees(b.amount)
 
   const winningZone = round.sum != null ? sideFromSum(round.sum) : null
 
@@ -230,10 +320,13 @@ export async function getState(userId: string | undefined, online = 0) {
     die2: round.die2,
     sum: round.sum,
     winningZone,
-    history: historyRows.map((h) => h.sum!).filter((n) => n != null),
+    history: pub.history,
     myBets,
     myPayout,
-    zoneTotals,
+    zoneTotals: pub.zoneTotals,
+    seats: pub.seats,
+    betCount: pub.betCount,
+    balance: balances ? toRupees(balances.MAIN ?? 0n) : 0,
     playersOnline: online,
     forcedPending: (round.forcedSum != null && round.phase === 'BETTING') || pendingForceSum != null,
     serverTime: new Date().toISOString(),

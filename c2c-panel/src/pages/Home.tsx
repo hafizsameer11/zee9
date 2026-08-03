@@ -25,7 +25,7 @@ function isoDate(d: Date) {
 
 export default function Home() {
   const nav = useNavigate()
-  const { balance, freeze, orders, payouts, stats, transactions } = useStore()
+  const { balance, freeze, orders, payouts, availablePayouts, stats, transactions } = useStore()
   const [tab, setTab] = useState<TabKey>('today')
   const [customOpen, setCustomOpen] = useState(false)
   const [from, setFrom] = useState(isoDate(daysAgo(7)))
@@ -47,7 +47,12 @@ export default function Home() {
     }
   }, [tab, from, to])
 
-  const openOrders = orders.filter((o) => o.status === 'pending' || o.status === 'processing' || o.status === 'checking')
+  const openCollections = orders.filter(
+    (o) =>
+      o.type === 'DEPOSIT' &&
+      (o.status === 'pending' || o.status === 'processing' || o.status === 'checking'),
+  )
+  const withdrawBadge = availablePayouts.length + payouts.length
   const details = transactions.filter((t) => {
     const d = new Date(t.time.replace(' ', 'T'))
     if (Number.isNaN(d.getTime())) return true
@@ -169,7 +174,7 @@ export default function Home() {
           <button className="action-btn gold" onClick={() => nav('/collections')}>
             <span className="ab-icon">&#8646;</span>
             <span className="ab-label">Collections</span>
-            {openOrders.length > 0 && <span className="badge">{openOrders.length}</span>}
+            {openCollections.length > 0 && <span className="badge">{openCollections.length}</span>}
           </button>
           <button className="action-btn orange" onClick={() => nav('/pay-on-behalf')}>
             <span className="ab-icon">&#8631;</span>
@@ -178,7 +183,7 @@ export default function Home() {
               <br />
               On Behalf
             </span>
-            {payouts.length > 0 && <span className="badge">{payouts.length}</span>}
+            {withdrawBadge > 0 && <span className="badge">{withdrawBadge}</span>}
           </button>
         </div>
 

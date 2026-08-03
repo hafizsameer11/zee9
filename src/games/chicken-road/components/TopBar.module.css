@@ -13,7 +13,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .left,.right,.live { display: flex; align-items: center; gap: 7px; }
+.brandHome {
+  display: flex; align-items: center; gap: 7px; padding: 0; border: 0;
+  color: inherit; background: transparent; cursor: pointer;
+}
+.brandHome:active { transform: scale(.98); }
 .logoMark {
+  display: block;
   width: 31px; height: 31px; overflow: hidden; border-radius: 50%;
   background: #ffc733;
 }

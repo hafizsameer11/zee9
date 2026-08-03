@@ -1,0 +1,44 @@
+{
+  "club": {
+    "left": 0.5,
+    "top": 2,
+    "width": 32.5,
+    "height": 47,
+    "headPct": 11.5
+  },
+  "crown": {
+    "left": 33.83,
+    "top": 2,
+    "width": 32.5,
+    "height": 47,
+    "headPct": 11.5
+  },
+  "spade": {
+    "left": 67.16,
+    "top": 2,
+    "width": 32.5,
+    "height": 47,
+    "headPct": 11.5
+  },
+  "diamond": {
+    "left": 0.5,
+    "top": 52,
+    "width": 32.5,
+    "height": 47,
+    "headPct": 11.5
+  },
+  "flag": {
+    "left": 33.83,
+    "top": 52,
+    "width": 32.5,
+    "height": 47,
+    "headPct": 11.5
+  },
+  "heart": {
+    "left": 67.16,
+    "top": 52,
+    "width": 32.5,
+    "height": 47,
+    "headPct": 11.5
+  }
+}

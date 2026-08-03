@@ -10,6 +10,8 @@ import { badRequest, conflict, notFound, unprocessable } from '../../core/errors
 import { notify } from '../../core/notify.js'
 import { depositWagerMet, getEffectiveWager } from '../../core/wager.js'
 import { queueWithdrawUpdate } from '../../core/walletPush.js'
+import { settleCommissionsForUser } from '../commission/commission.daily.js'
+import { broadcastWithdrawAvailable } from '../agents/agent.realtime.js'
 
 function methodEnabled(s: Awaited<ReturnType<typeof getSettings>>, method: PaymentMethod) {
   if (method === 'JAZZCASH') return s.methodJazzcash
@@ -106,7 +108,7 @@ export async function create(userId: string, input: {
     throw unprocessable(`Withdrawal must be between ${s.minWithdraw} and ${s.maxWithdraw}`)
   }
 
-  return runMoneyTx(async (tx) => {
+  const wd = await runMoneyTx(async (tx) => {
     const open = await tx.withdrawal.findFirst({
       where: { userId, status: 'PENDING' },
       select: { id: true },
@@ -145,7 +147,7 @@ export async function create(userId: string, input: {
       )
     }
 
-    const wd = await tx.withdrawal.create({
+    const created = await tx.withdrawal.create({
       data: {
         userId,
         amount,
@@ -161,8 +163,8 @@ export async function create(userId: string, input: {
     await post(tx, {
       type: 'WITHDRAWAL_FREEZE',
       referenceType: 'withdrawal',
-      referenceId: wd.id,
-      idempotencyKey: `wd-freeze:${wd.id}`,
+      referenceId: created.id,
+      idempotencyKey: `wd-freeze:${created.id}`,
       assertNonNegative: [{ userId, bucket: 'MAIN' }],
       legs: [
         { account: { userId, bucket: 'MAIN' }, direction: 'DEBIT', amount },
@@ -171,12 +173,34 @@ export async function create(userId: string, input: {
     })
     await notify(tx, userId, 'withdrawal', 'Withdrawal submitted', `Your withdrawal of Rs ${(Number(amount) / 100).toLocaleString('en-PK')} is being processed by our payment partners.`)
     queueWithdrawUpdate(userId, {
-      id: wd.id,
+      id: created.id,
       status: 'PENDING',
       amount: Number(amount),
     })
-    return wd
+    return created
   })
+
+  try {
+    const player = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { displayName: true },
+    })
+    const amountRs = toRupees(wd.amount)
+    const methodLabel =
+      wd.method === 'JAZZCASH' ? 'JazzCash' : wd.method === 'EASYPAISA' ? 'Easypaisa' : wd.method
+    broadcastWithdrawAvailable({
+      withdrawalId: wd.id,
+      amount: amountRs,
+      method: methodLabel,
+      playerName: player?.displayName ?? null,
+      title: 'New withdraw request',
+      body: `${player?.displayName || 'Player'} — Rs ${amountRs.toLocaleString('en-PK')} ${methodLabel}. Claim in Pay On Behalf.`,
+    })
+  } catch {
+    /* non-fatal */
+  }
+
+  return wd
 }
 
 export function listMine(userId: string) {
@@ -238,12 +262,39 @@ export async function adminHoldStats() {
  * Release oldest held pending withdrawals into the C2C Pay On Behalf pool.
  * Admin keeps the rest to pay manually.
  */
+async function notifyMerchantsWithdrawReleased(ids: string[]) {
+  if (ids.length === 0) return
+  const released = await prisma.withdrawal.findMany({
+    where: { id: { in: ids }, c2cReleased: true },
+    include: { user: { select: { displayName: true } } },
+  })
+  for (const wd of released) {
+    try {
+      const amountRs = toRupees(wd.amount)
+      const methodLabel =
+        wd.method === 'JAZZCASH' ? 'JazzCash' : wd.method === 'EASYPAISA' ? 'Easypaisa' : wd.method
+      broadcastWithdrawAvailable({
+        withdrawalId: wd.id,
+        amount: amountRs,
+        method: methodLabel,
+        playerName: wd.user.displayName,
+        title: 'New withdraw request',
+        body: `${wd.user.displayName} — Rs ${amountRs.toLocaleString('en-PK')} ${methodLabel}. Claim in Pay On Behalf.`,
+      })
+    } catch {
+      /* non-fatal */
+    }
+  }
+}
+
 export async function releaseToC2c(input: { count?: number; ids?: string[] }) {
   if (input.ids?.length) {
+    const ids = input.ids
     const result = await prisma.withdrawal.updateMany({
-      where: { id: { in: input.ids }, status: 'PENDING', c2cReleased: false },
+      where: { id: { in: ids }, status: 'PENDING', c2cReleased: false },
       data: { c2cReleased: true },
     })
+    if (result.count > 0) await notifyMerchantsWithdrawReleased(ids)
     return { released: result.count }
   }
 
@@ -262,6 +313,11 @@ export async function releaseToC2c(input: { count?: number; ids?: string[] }) {
     where: { id: { in: rows.map((r) => r.id) }, status: 'PENDING', c2cReleased: false },
     data: { c2cReleased: true },
   })
+
+  if (result.count > 0) {
+    await notifyMerchantsWithdrawReleased(rows.map((r) => r.id))
+  }
+
   return { released: result.count, requested: count }
 }
 
@@ -306,34 +362,36 @@ async function closeOpenPayoutOrders(tx: Tx, withdrawalId: string, status: 'SUCC
 
 /** Admin confirms the manual payout was sent. */
 export async function markPaid(id: string, adminId: string, trxId: string, payoutProofUrl?: string) {
-  return runMoneyTx(async (tx) => {
-    const wd = await tx.withdrawal.findUnique({ where: { id } })
-    if (!wd) throw notFound('Withdrawal not found')
-    if (wd.status !== 'PENDING') throw conflict('Withdrawal already processed')
+  const wd = await runMoneyTx(async (tx) => {
+    const row = await tx.withdrawal.findUnique({ where: { id } })
+    if (!row) throw notFound('Withdrawal not found')
+    if (row.status !== 'PENDING') throw conflict('Withdrawal already processed')
 
     await tx.withdrawal.update({
       where: { id },
       data: { status: 'PAID', trxId, payoutProofUrl, processedById: adminId, processedAt: new Date() },
     })
     await closeOpenPayoutOrders(tx, id, 'SUCCESS')
-    await notify(tx, wd.userId, 'withdrawal', 'Withdrawal paid', `Your withdrawal of Rs ${(Number(wd.amount) / 100).toLocaleString('en-PK')} has been sent.`)
+    await notify(tx, row.userId, 'withdrawal', 'Withdrawal paid', `Your withdrawal of Rs ${(Number(row.amount) / 100).toLocaleString('en-PK')} has been sent.`)
     await post(tx, {
       type: 'WITHDRAWAL_PAID',
       referenceType: 'withdrawal',
-      referenceId: wd.id,
-      idempotencyKey: `wd-paid:${wd.id}`,
+      referenceId: row.id,
+      idempotencyKey: `wd-paid:${row.id}`,
       legs: [
-        { account: { userId: wd.userId, bucket: 'FROZEN' }, direction: 'DEBIT', amount: wd.amount },
-        { account: { system: 'GATEWAY_CLEARING' }, direction: 'CREDIT', amount: wd.amount },
+        { account: { userId: row.userId, bucket: 'FROZEN' }, direction: 'DEBIT', amount: row.amount },
+        { account: { system: 'GATEWAY_CLEARING' }, direction: 'CREDIT', amount: row.amount },
       ],
     })
-    queueWithdrawUpdate(wd.userId, {
-      id: wd.id,
+    queueWithdrawUpdate(row.userId, {
+      id: row.id,
       status: 'PAID',
-      amount: Number(wd.amount),
+      amount: Number(row.amount),
     })
     return tx.withdrawal.findUniqueOrThrow({ where: { id } })
   })
+  void settleCommissionsForUser(wd.userId).catch(() => {})
+  return wd
 }
 
 export async function reject(id: string, adminId: string, reason: string) {

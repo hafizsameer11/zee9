@@ -2,13 +2,15 @@ import type { Role } from '@prisma/client'
 import type { Tx } from '../../lib/prisma.js'
 import { prisma } from '../../lib/prisma.js'
 import { runMoneyTx } from '../../core/tx.js'
-import { post } from '../../core/ledger.js'
 import { getSettings } from '../../core/settings.js'
 import { hashPassword, verifyPassword, sha256, referralCode } from '../../lib/hash.js'
 import { allocatePlayerNo } from '../../lib/playerNo.js'
 import { signAccess, signRefresh, verifyRefresh } from '../../lib/jwt.js'
-import { toPaisa, applyPct } from '../../lib/money.js'
-import { badRequest, conflict, unauthorized } from '../../core/errors.js'
+import { toPaisa } from '../../lib/money.js'
+import { creditInstantBonus } from '../../core/wager.js'
+import { updateAgentship } from '../commission/commission.service.js'
+import { badRequest, conflict, forbidden, unauthorized } from '../../core/errors.js'
+import type { LoginApp } from './auth.schema.js'
 
 /** Walk up the referrer chain and create up to `maxLevels` referral edges. */
 async function buildReferralEdges(tx: Tx, newUserId: string, referredById: string | null, maxLevels = 3) {
@@ -78,8 +80,17 @@ export async function register(input: {
       referrer = await prisma.user.findUnique({ where: { playerNo: Number(refCode) }, select: { id: true } })
     }
     if (!referrer) {
-      referrer = await prisma.user.findUnique({ where: { referralCode: refCode }, select: { id: true } })
+      referrer = await prisma.user.findUnique({
+        where: { referralCode: refCode.trim().toUpperCase() },
+        select: { id: true },
+      })
     }
+  }
+  if (!referrer && input.bindCode) {
+    referrer = await prisma.user.findUnique({
+      where: { referralCode: input.bindCode.trim().toUpperCase() },
+      select: { id: true },
+    })
   }
 
   // Resolve the channel; fall back to the channel owner (mentor) as referrer if needed.
@@ -122,25 +133,20 @@ export async function register(input: {
 
     await buildReferralEdges(tx, user.id, referrer?.id ?? null)
 
+    if (referrer?.id) {
+      await updateAgentship(tx, referrer.id, settings)
+    }
+
     const bonus = toPaisa(settings.registrationBonus)
     if (bonus > 0n) {
-      await post(tx, {
-        type: 'REGISTRATION_BONUS',
+      await creditInstantBonus(tx, {
+        userId: user.id,
+        amount: bonus,
+        type: 'REGISTRATION',
+        ledgerType: 'REGISTRATION_BONUS',
         referenceType: 'user',
         referenceId: user.id,
-        legs: [
-          { account: { system: 'BONUS_POOL' }, direction: 'DEBIT', amount: bonus },
-          { account: { userId: user.id, bucket: 'BONUS' }, direction: 'CREDIT', amount: bonus },
-        ],
-      })
-      await tx.bonus.create({
-        data: {
-          userId: user.id,
-          type: 'REGISTRATION',
-          amount: bonus,
-          wagerRequired: applyPct(bonus, settings.bonusWager * 100),
-          status: 'ACTIVE',
-        },
+        idempotencyKey: `registration-bonus:${user.id}`,
       })
     }
     return user.id
@@ -163,12 +169,22 @@ export async function register(input: {
   }
 }
 
-export async function login(input: { phone: string; password: string; ip?: string; ua?: string }): Promise<AuthResult> {
+export async function login(input: {
+  phone: string
+  password: string
+  app?: LoginApp
+  ip?: string
+  ua?: string
+}): Promise<AuthResult> {
   const user = await prisma.user.findUnique({ where: { phone: input.phone } })
   if (!user) throw unauthorized('Invalid phone or password')
   if (user.status === 'BANNED') throw unauthorized('Account is banned')
   const okPw = await verifyPassword(input.password, user.passwordHash)
   if (!okPw) throw unauthorized('Invalid phone or password')
+  // C2C merchants have no Game ID and no player wallet of their own — keep them out of the game app.
+  if ((input.app ?? 'player') === 'player' && user.role === 'AGENT') {
+    throw forbidden('This is a C2C merchant account. Sign in on the merchant panel instead.')
+  }
 
   const accessToken = signAccess({ sub: user.id, role: user.role })
   const refreshToken = await createSession(user.id, { ip: input.ip, ua: input.ua })

@@ -5,9 +5,10 @@ import { ok } from '../../lib/respond.js'
 import { prisma } from '../../lib/prisma.js'
 import { getSettings } from '../../core/settings.js'
 import { balances } from '../wallet/wallet.service.js'
-import { toRupees } from '../../lib/money.js'
+import { toRupees, toPaisa } from '../../lib/money.js'
 import { allocatePlayerNo } from '../../lib/playerNo.js'
 import { forbidden } from '../../core/errors.js'
+import { countValidDirectReferrals, promoterLevelFromCount } from './promoterLevel.js'
 
 export const referralRoutes = Router()
 
@@ -105,6 +106,7 @@ referralRoutes.get(
         displayName: true,
         referralCode: true,
         playerNo: true,
+        referredById: true,
         agentActive: true,
         referralAgentActive: true,
         walletsFilled: true,
@@ -163,10 +165,28 @@ referralRoutes.get(
 
     const direct = await prisma.referralEdge.findMany({
       where: { ancestorId: userId, level: 1 },
-      include: { descendant: { select: { displayName: true, phone: true, createdAt: true } } },
+      include: { descendant: { select: { id: true, displayName: true, phone: true, playerNo: true, createdAt: true } } },
       take: 100,
       orderBy: { id: 'desc' },
     })
+    const minPer = toPaisa(s.minPerWallet)
+    const directRows = await Promise.all(
+      direct.map(async (d) => {
+        const dep = await prisma.deposit.aggregate({
+          where: { userId: d.descendant.id, status: 'APPROVED' },
+          _sum: { amount: true },
+        })
+        const depAmt = dep._sum.amount ?? 0n
+        return {
+          name: d.descendant.displayName,
+          phone: d.descendant.phone,
+          playerNo: d.descendant.playerNo,
+          joined: d.descendant.createdAt,
+          isValid: depAmt >= minPer,
+          deposit: toRupees(depAmt),
+        }
+      }),
+    )
 
     const commission = await prisma.commission.aggregate({
       where: { agentId: userId },
@@ -178,12 +198,49 @@ referralRoutes.get(
       where: { agentId: userId, createdAt: { gte: todayStart } },
       _sum: { amount: true },
     })
+    const todayReferrals = await prisma.user.count({
+      where: { referredById: userId, createdAt: { gte: todayStart } },
+    })
     const bal = await balances(userId)
     const team = me.referralAgentActive ? await teamStatsFor(userId) : null
+    const validReferrals = await countValidDirectReferrals(prisma, userId, toPaisa(s.minPerWallet))
+    const promoter = promoterLevelFromCount(validReferrals)
     let salaryApproved = me.salaryApprovedPaisa
     if (salaryApproved < 0n) salaryApproved = 0n
     if (salaryApproved > bal.COMMISSION) salaryApproved = bal.COMMISSION
     const salaryHold = bal.COMMISSION - salaryApproved
+
+    let referrer: {
+      name: string
+      playerNo: number | null
+      phone: string
+      joined: Date
+      yourDeposit: number
+      hasDeposited: boolean
+      isValid: boolean
+    } | null = null
+    if (me0.referredById) {
+      const refUser = await prisma.user.findUnique({
+        where: { id: me0.referredById },
+        select: { displayName: true, playerNo: true, phone: true, createdAt: true },
+      })
+      if (refUser) {
+        const myDep = await prisma.deposit.aggregate({
+          where: { userId, status: 'APPROVED' },
+          _sum: { amount: true },
+        })
+        const myDepAmt = myDep._sum.amount ?? 0n
+        referrer = {
+          name: refUser.displayName,
+          playerNo: refUser.playerNo,
+          phone: refUser.phone,
+          joined: refUser.createdAt,
+          yourDeposit: toRupees(myDepAmt),
+          hasDeposited: myDepAmt > 0n,
+          isValid: myDepAmt >= minPer,
+        }
+      }
+    }
 
     ok(res, {
       referralCode: me.referralCode,
@@ -198,10 +255,19 @@ referralRoutes.get(
       walletsRequired: s.walletsRequired,
       counts: { level1: byLevel[1], level2: byLevel[2], level3: byLevel[3] },
       downline: { level3: byLevel[3], level2: byLevel[2], level1: byLevel[1] },
+      validReferrals,
+      promoterLevel: promoter.level,
+      cashbackPct: promoter.cashbackPct,
+      nextPromoterLevel: promoter.nextLevel,
+      nextPromoterLevelRequires: promoter.nextLevelRequires,
+      upgradeCashbackPct: promoter.upgradeCashbackPct,
       commissionRates: { l1: s.commissionL1, l2: s.commissionL2, l3: s.commissionL3 },
       totalCommission: toRupees(commission._sum.amount ?? 0n),
       todayCommission: toRupees(todayComm._sum.amount ?? 0n),
+      todayReferrals,
       commissionBalance: toRupees(bal.COMMISSION),
+      gameBalance: toRupees(bal.MAIN),
+      salaryBalance: toRupees(bal.COMMISSION),
       salaryTransferOpen: me.salaryTransferOpen,
       salaryApproved: toRupees(salaryApproved),
       salaryHold: toRupees(salaryHold),
@@ -209,11 +275,8 @@ referralRoutes.get(
       displayName: me.displayName,
       userId: String(playerNo),
       team,
-      direct: direct.map((d) => ({
-        name: d.descendant.displayName,
-        phone: d.descendant.phone,
-        joined: d.descendant.createdAt,
-      })),
+      direct: directRows,
+      referrer,
     })
   }),
 )

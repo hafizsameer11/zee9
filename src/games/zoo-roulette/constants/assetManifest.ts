@@ -1,0 +1,42 @@
+import { ASSET, ANIMALS, CHIP_VALUES } from './gameConfig'
+
+export const BOOT_ASSETS: string[] = [
+  ASSET.bgLite,
+  ASSET.bg,
+  ASSET.chassis,
+  ASSET.well,
+  ASSET.realm,
+  ASSET.tile('normal'),
+  ASSET.tile('active'),
+  ASSET.tile('winner'),
+  ASSET.ui('tower'),
+  ASSET.ui('deck'),
+  ASSET.ui('btn-round'),
+  ASSET.ui('avatar-frame'),
+  ASSET.ui('timer-bezel'),
+  ASSET.ui('panel-beast'),
+  ASSET.ui('panel-bird'),
+  ASSET.ui('panel-shark'),
+  ASSET.ui('ico-back'),
+  ASSET.ui('ico-sound'),
+  ASSET.ui('ico-help'),
+  ASSET.ui('ico-plus'),
+  ASSET.ui('ico-rebet'),
+  ASSET.ui('ico-tri'),
+  ...ANIMALS.map((a) => ASSET.animal(a.id, 'track')),
+  ...ANIMALS.map((a) => ASSET.animal(a.id, 'portrait')),
+  ...CHIP_VALUES.map((v) => ASSET.chip(v)),
+  ...CHIP_VALUES.map((v) => ASSET.chip(v, true)),
+]
+
+export const GAMEPLAY_ASSETS: string[] = [
+  ASSET.banner('start'),
+  ASSET.banner('stop'),
+  ASSET.loading,
+  ASSET.ui('ribbon'),
+  ASSET.fx('shock'),
+  ASSET.fx('rays'),
+  ASSET.fx('sparks'),
+  ASSET.fx('glow'),
+  ...ANIMALS.map((a) => ASSET.animal(a.id, 'winner')),
+]

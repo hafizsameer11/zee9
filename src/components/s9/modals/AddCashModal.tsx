@@ -163,7 +163,7 @@ export default function AddCashModal({ onClose, initialAmount }: Props) {
       </div>
       {bonusEst && bonusEst.pct > 0 && (
         <p style={{ fontSize: 11, color: '#8bd98b', padding: '4px 12px 0', margin: 0 }}>
-          {bonusEst.label}: {bonusEst.pct}% bonus (Rs {bonus} after approval)
+          {bonusEst.label}: {bonusEst.pct}% bonus (Rs {bonus} added to balance after approval)
         </p>
       )}
 

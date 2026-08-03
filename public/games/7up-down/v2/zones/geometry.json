@@ -1,0 +1,23 @@
+{
+  "down": {
+    "left": 0.948,
+    "top": 3.161,
+    "width": 35.829,
+    "height": 93.966,
+    "headPct": 10.7
+  },
+  "seven": {
+    "left": 37.156,
+    "top": 19.828,
+    "width": 25.687,
+    "height": 77.299,
+    "headPct": 13.01
+  },
+  "up": {
+    "left": 63.223,
+    "top": 3.161,
+    "width": 35.924,
+    "height": 93.966,
+    "headPct": 10.7
+  }
+}

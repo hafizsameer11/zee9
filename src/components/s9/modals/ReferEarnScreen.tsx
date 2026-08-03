@@ -38,10 +38,19 @@ type RefData = {
   shareUrl: string
   counts: { level1: number; level2: number; level3: number }
   downline?: { level1: number; level2: number; level3: number }
+  validReferrals?: number
+  promoterLevel?: number
+  cashbackPct?: number
+  nextPromoterLevel?: number | null
+  nextPromoterLevelRequires?: number | null
+  upgradeCashbackPct?: number | null
   commissionRates: { l1: number; l2: number; l3: number }
   totalCommission: number
   commissionBalance?: number
+  gameBalance?: number
+  salaryBalance?: number
   todayCommission?: number
+  todayReferrals?: number
   todayEarnings?: number
   salaryTransferOpen?: boolean
   salaryApproved?: number
@@ -60,7 +69,16 @@ type RefData = {
     commission: number
     date: string
   } | null
-  direct: { name: string; phone: string; joined: string }[]
+  direct: { name: string; phone: string; playerNo?: number | null; joined: string; isValid?: boolean; deposit?: number }[]
+  referrer?: {
+    name: string
+    playerNo: number | null
+    phone: string
+    joined: string
+    yourDeposit: number
+    hasDeposited: boolean
+    isValid: boolean
+  } | null
 }
 
 export default function ReferEarnScreen({ onClose, onWithdraw, onToast }: Props) {
@@ -115,6 +133,8 @@ export default function ReferEarnScreen({ onClose, onWithdraw, onToast }: Props)
           userId: String(ref.playerNo ?? ref.playerId ?? ref.userId ?? ref.referralCode),
           playerNo: ref.playerNo ?? ref.playerId,
           commissionBalance: Number(ref.commissionBalance ?? ref.totalCommission) || 0,
+          gameBalance: Number(ref.gameBalance ?? 0) || 0,
+          salaryBalance: Number(ref.salaryBalance ?? ref.commissionBalance ?? ref.totalCommission) || 0,
           totalCommission: Number(ref.totalCommission) || 0,
           todayCommission: Number(ref.todayCommission ?? ref.todayEarnings) || 0,
           salaryTransferOpen: !!ref.salaryTransferOpen,
@@ -132,6 +152,15 @@ export default function ReferEarnScreen({ onClose, onWithdraw, onToast }: Props)
       />
     )
   }
+
+  const promoterLv = ref?.promoterLevel ?? 1
+  const validRefs = ref?.validReferrals ?? 0
+  const currentTier = LEVELS.find((l) => l.lv === promoterLv) ?? LEVELS[0]!
+  const upgradePct = ref?.upgradeCashbackPct ?? LEVELS.find((l) => l.lv === promoterLv + 1)?.cashback
+
+  const availableBalance = Number(ref?.totalCommission ?? 0)
+  const todayReward = Number(ref?.todayEarnings ?? ref?.todayCommission ?? 0)
+  const todayRefs = ref?.todayReferrals ?? 0
 
   return (
     <div className={styles.overlay}>
@@ -155,213 +184,208 @@ export default function ReferEarnScreen({ onClose, onWithdraw, onToast }: Props)
 
         <div className={styles.content}>
           {ref && (
-            <section
-              style={{
-                background: 'linear-gradient(180deg,#3a1a00,#1a0c00)',
-                border: '1px solid #8b6914',
-                borderRadius: 12,
-                padding: 12,
-                margin: '0 0 12px',
-              }}
-            >
-              <div style={{ display: 'flex', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ color: '#c9a24a', fontSize: 10 }}>Player ID</div>
-                  <b style={{ color: '#ffd54f', fontSize: 16 }}>{ref.playerNo ?? ref.playerId ?? '—'}</b>
+            <section className={styles.shareCard}>
+              <div className={styles.shareMeta}>
+                <div className={styles.shareMetaItem}>
+                  <label>Player ID</label>
+                  <strong>{ref.playerNo ?? ref.playerId ?? '—'}</strong>
                 </div>
-                <div>
-                  <div style={{ color: '#c9a24a', fontSize: 10 }}>Your code</div>
-                  <b style={{ color: '#ffd54f', fontSize: 16 }}>{ref.referralCode}</b>
+                <div className={styles.shareMetaItem}>
+                  <label>Your code</label>
+                  <strong>{ref.referralCode}</strong>
                 </div>
                 {ref.channelCode && (
-                  <div>
-                    <div style={{ color: '#c9a24a', fontSize: 10 }}>Channel</div>
-                    <b style={{ color: '#fff', fontSize: 16 }}>{ref.channelCode}</b>
+                  <div className={styles.shareMetaItem}>
+                    <label>Channel</label>
+                    <strong>{ref.channelCode}</strong>
                   </div>
                 )}
-                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                  <div style={{ color: '#c9a24a', fontSize: 10 }}>Commission earned</div>
-                  <b style={{ color: '#8bd98b', fontSize: 16 }}>
-                    Rs {(Number(ref.totalCommission) / 100).toLocaleString('en-PK')}
-                  </b>
+                <div className={styles.shareMetaItem}>
+                  <label>Commission earned</label>
+                  <strong className={styles.commission}>
+                    Rs {availableBalance.toLocaleString('en-PK')}
+                  </strong>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input
-                  readOnly
-                  value={ref.shareUrl}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    background: '#1a0505',
-                    border: '1px solid #8b6914',
-                    borderRadius: 8,
-                    color: '#e8d0a0',
-                    fontSize: 11,
-                    padding: '8px 10px',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={copyLink}
-                  style={{
-                    background: 'linear-gradient(180deg,#ffb300,#e65100)',
-                    border: '1px solid #ffe082',
-                    color: '#fff',
-                    fontWeight: 800,
-                    borderRadius: 8,
-                    padding: '0 16px',
-                    fontSize: 12,
-                  }}
-                >
+              <div className={styles.shareRow}>
+                <input readOnly value={ref.shareUrl} className={styles.shareInput} />
+                <button type="button" onClick={copyLink} className={styles.copyBtn}>
                   {copied ? 'Copied!' : 'Copy'}
                 </button>
               </div>
-              <div style={{ display: 'flex', gap: 14, marginTop: 8, color: '#e8d0a0', fontSize: 11 }}>
+              <div className={styles.levelCounts}>
                 <span>
-                  L1 <b style={{ color: '#fff' }}>{ref.counts.level1}</b> ({ref.commissionRates.l1}%)
+                  L1 <b>{ref.counts.level1}</b> ({ref.commissionRates.l1}%)
                 </span>
                 <span>
-                  L2 <b style={{ color: '#fff' }}>{ref.counts.level2}</b> ({ref.commissionRates.l2}%)
+                  L2 <b>{ref.counts.level2}</b> ({ref.commissionRates.l2}%)
                 </span>
                 <span>
-                  L3 <b style={{ color: '#fff' }}>{ref.counts.level3}</b> ({ref.commissionRates.l3}%)
+                  L3 <b>{ref.counts.level3}</b> ({ref.commissionRates.l3}%)
                 </span>
               </div>
             </section>
           )}
 
-          <section className={styles.levelPanel}>
-            <div className={styles.levelLeft}>
-              <div className={styles.badge}>
-                <span className={styles.badgeNum}>1</span>
-                <span className={styles.badgeLv}>LV</span>
-              </div>
-              <p className={styles.upgradeText}>Upgrade to get 0.6% Cashback</p>
+          <section className={styles.statsGrid}>
+            <div className={styles.statCard}>
+              <span className={styles.statValue}>{ref?.counts.level1 ?? 0}</span>
+              <span className={styles.statLabel}>All Referrals</span>
             </div>
+            <div className={styles.statCard}>
+              <span className={styles.statValue}>{validRefs}</span>
+              <span className={styles.statLabel}>Valid Referrals</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statValue}>{todayRefs}</span>
+              <span className={styles.statLabel}>Today&apos;s Referrals</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statValue}>Rs {availableBalance.toLocaleString('en-PK')}</span>
+              <span className={styles.statLabel}>Available Balance</span>
+            </div>
+          </section>
+
+          <button type="button" className={styles.listsBtn} onClick={() => setShowLists(true)}>
+            👥 View My Referrals ({ref?.counts.level1 ?? 0})
+          </button>
+
+          {ref?.referrer && (
+            <section className={styles.referrerCard}>
+              <h3>My Referrer (who invited me)</h3>
+              <div className={styles.referrerGrid}>
+                <div>
+                  <label>Name</label>
+                  <strong>{ref.referrer.name}</strong>
+                </div>
+                <div>
+                  <label>Player ID</label>
+                  <strong>{ref.referrer.playerNo ?? '—'}</strong>
+                </div>
+                <div>
+                  <label>Your deposit</label>
+                  <strong>Rs {ref.referrer.yourDeposit.toLocaleString('en-PK')}</strong>
+                </div>
+                <div>
+                  <label>Your status</label>
+                  <strong className={ref.referrer.isValid ? styles.valid : styles.pending}>
+                    {ref.referrer.isValid
+                      ? 'Valid referral'
+                      : ref.referrer.hasDeposited
+                        ? 'Deposited (below Rs 1,000 min)'
+                        : 'No deposit yet'}
+                  </strong>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <p className={styles.earningsNote}>
+            You earn cashback when friends <b>play games and lose</b> — not from their deposit alone.
+            Rewards update through the day; friend needs Rs 1,000+ approved deposit to count as valid.
+          </p>
+
+          <section className={styles.levelPanel}>
             <button type="button" className={styles.rulesLink} onClick={() => setShowGuide(true)}>
               ⓘ Rules &gt;&gt;
             </button>
-
-            <div className={styles.levelTable}>
-              <div className={styles.tableRow}>
-                <span className={styles.rowLabel}>👤 Valid Referrals</span>
-                {LEVELS.map((l) => (
-                  <div key={`r-${l.lv}`} className={`${styles.cell} ${l.lv === 1 ? styles.cellActive : ''}`}>
-                    {l.lv === 1 && <span className={styles.lvDot}>LV{l.lv}</span>}
-                    {l.lv !== 1 && <span className={styles.lvLabel}>LV{l.lv}</span>}
-                    <strong>{l.referrals}</strong>
-                  </div>
-                ))}
+            <div className={styles.levelTop}>
+              <div className={styles.badge}>
+                <span className={styles.badgeNum}>{promoterLv}</span>
+                <span className={styles.badgeLv}>LV</span>
               </div>
-              <div className={styles.tableRow}>
-                <span className={styles.rowLabel}>📊 Cashback Ratio</span>
-                {LEVELS.map((l) => (
-                  <div key={`c-${l.lv}`} className={`${styles.cell} ${l.lv === 1 ? styles.cellActive : ''}`}>
-                    <strong>{l.cashback}</strong>
-                  </div>
-                ))}
+              <p className={styles.upgradeText}>
+                {upgradePct
+                  ? `Upgrade to get ${upgradePct} Cashback (${ref?.nextPromoterLevelRequires ?? 0} valid referrals)`
+                  : `Max level — ${currentTier.cashback} Cashback`}
+              </p>
+            </div>
+
+            <div className={styles.levelTableWrap}>
+              <div className={styles.levelTable}>
+                <div className={styles.tableRow}>
+                  <span className={styles.rowLabel}>👤 Valid Referrals</span>
+                  {LEVELS.map((l) => (
+                    <div key={`r-${l.lv}`} className={`${styles.cell} ${l.lv === promoterLv ? styles.cellActive : ''}`}>
+                      {l.lv === promoterLv && <span className={styles.lvDot}>LV{l.lv}</span>}
+                      {l.lv !== promoterLv && <span className={styles.lvLabel}>LV{l.lv}</span>}
+                      <strong>{l.referrals}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className={styles.tableRow}>
+                  <span className={styles.rowLabel}>📊 Cashback Ratio</span>
+                  {LEVELS.map((l) => (
+                    <div key={`c-${l.lv}`} className={`${styles.cell} ${l.lv === promoterLv ? styles.cellActive : ''}`}>
+                      <strong>{l.cashback}</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
 
-          <div className={styles.middleRow}>
-            <section className={styles.panel}>
-              <div className={styles.panelHead}>
-                <h2>Team Members</h2>
-                <button type="button" className={styles.link} onClick={() => setShowLists(true)}>
-                  Lists &gt;&gt;
-                </button>
+          <section className={styles.earningsCard}>
+            <div className={styles.earningsInfo}>
+              <h3>Earnings</h3>
+              <div className={styles.earningsLine}>
+                Today&apos;s reward: <strong>Rs {todayReward.toLocaleString('en-PK')}</strong>
               </div>
-              <div className={styles.teamBoxes}>
-                <div className={styles.teamBox}>
-                  <span className={styles.teamIcon}>👤</span>
-                  <strong>{ref?.counts.level1 ?? 0}</strong>
-                  <small>All Referrals</small>
-                </div>
-                <div className={styles.teamBox}>
-                  <span className={styles.teamIcon}>👥</span>
-                  <strong>{ref?.counts.level1 ?? 0}</strong>
-                  <small>Valid Referral(s)</small>
-                </div>
+              <div className={styles.earningsLine}>
+                Cashback rate:{' '}
+                <strong>
+                  {ref?.cashbackPct != null ? `${ref.cashbackPct}%` : currentTier.cashback}
+                </strong>
               </div>
-            </section>
+            </div>
+            <div className={styles.earningsActions}>
+              <button type="button" className={styles.linkBtn} onClick={() => setShowLists(true)}>
+                Team Lists &gt;&gt;
+              </button>
+              <button type="button" className={styles.linkBtn} onClick={() => setShowDetails(true)}>
+                Details &gt;&gt;
+              </button>
+              <button type="button" className={styles.withdrawBtn} onClick={onWithdraw}>
+                WITHDRAW
+              </button>
+            </div>
+          </section>
 
-            <section className={styles.panel}>
-              <div className={styles.panelHead}>
-                <h2>Earnings</h2>
-                <button type="button" className={styles.link} onClick={() => setShowDetails(true)}>
-                  Details &gt;&gt;
-                </button>
-              </div>
-              <div className={styles.earningsRow}>
-                <div className={styles.earnBox}>
-                  <strong>{ref?.counts.level1 ?? 0}</strong>
-                  <small>Today&apos;s Referrals</small>
-                </div>
-                <div className={styles.earnBox}>
-                  <strong>Rs {(ref?.todayEarnings ?? 0).toLocaleString('en-PK')}</strong>
-                  <small>Today&apos;s Reward</small>
-                </div>
-                <div className={styles.earnBox}>
-                  <strong>Rs {((ref?.totalCommission ?? 0) / 100).toLocaleString('en-PK')}</strong>
-                  <small>Available</small>
-                </div>
-                <button type="button" className={styles.withdrawBtn} onClick={onWithdraw}>
-                  WITHDRAW
-                </button>
-              </div>
-            </section>
-          </div>
+          <section className={styles.inviteCard}>
+            <h2>🎁 Invite Friends</h2>
+            <p>Share your link — earn cashback when friends play &amp; lose (updates through the day).</p>
+            <button type="button" className={styles.shareBtn} onClick={() => setShowShare(true)}>
+              Share &amp; Copy Link
+            </button>
+          </section>
 
-          <div className={styles.bottomRow}>
-            <section className={styles.panel}>
-              <div className={styles.panelHead}>
-                <h2>Daily Ranking</h2>
-                <button type="button" className={styles.link} onClick={() => setShowRanking(true)}>
-                  Ranking &gt;&gt;
-                </button>
-              </div>
-              <table className={styles.rankTable}>
-                <thead>
-                  <tr>
-                    <th>Top3</th>
-                    <th>Promoter</th>
-                    <th>CashBack</th>
+          <section className={styles.panel}>
+            <div className={styles.panelHead}>
+              <h2>Daily Ranking</h2>
+              <button type="button" className={styles.link} onClick={() => setShowRanking(true)}>
+                Full ranking &gt;&gt;
+              </button>
+            </div>
+            <table className={styles.rankTable}>
+              <thead>
+                <tr>
+                  <th>Top 3</th>
+                  <th>Promoter</th>
+                  <th>CashBack</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ranking.map((r, i) => (
+                  <tr key={`${r.name}-${i}`}>
+                    <td>{r.medal}</td>
+                    <td>{r.name}</td>
+                    <td>{Number(r.amount).toLocaleString('en-PK')}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {ranking.map((r) => (
-                    <tr key={r.name}>
-                      <td>{r.medal}</td>
-                      <td>{r.name}</td>
-                      <td>{r.amount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-
-            <section className={styles.inviteBanner}>
-              <span className={styles.giftIcon}>🎁</span>
-              <div className={styles.inviteCenter}>
-                <h2>Invite Friends</h2>
-                <button type="button" className={styles.shareBtn} onClick={() => setShowShare(true)}>
-                  🔗 Share&amp;Copylink
-                </button>
-              </div>
-              <span className={styles.coinsRight}>🪙🪙</span>
-            </section>
-          </div>
+                ))}
+              </tbody>
+            </table>
+          </section>
         </div>
-
-        <aside className={styles.activityTab}>
-          <span className={styles.actLabel}>Activity</span>
-          <div className={styles.actPromo}>
-            <span>🎁</span>
-            <strong>Rs 15,000</strong>
-          </div>
-        </aside>
 
         {showLists && (
           <ReferListsModal

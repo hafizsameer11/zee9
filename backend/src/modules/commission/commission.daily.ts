@@ -9,6 +9,10 @@ import {
   type Settings,
 } from '../../core/settings.js'
 import { applyBps } from '../../lib/money.js'
+import {
+  countValidDirectReferrals,
+  promoterCommissionRateBps,
+} from '../referrals/promoterLevel.js'
 
 const PKT_OFFSET_MS = 5 * 60 * 60 * 1000
 const CHECK_MS = 30_000
@@ -70,9 +74,35 @@ async function approvedDepositsBefore(tx: Tx, userId: string, before: Date): Pro
   return result._sum.amount ?? 0n
 }
 
-function principalLossTarget(deposits: bigint, wagered: bigint, won: bigint): bigint {
+/** Registration + deposit bonuses credited to MAIN — count toward commission loss basis. */
+async function bonusCreditsBefore(tx: Tx, userId: string, before: Date): Promise<bigint> {
+  const result = await tx.ledgerEntry.aggregate({
+    where: {
+      account: { ownerId: userId, bucket: 'MAIN' },
+      direction: 'CREDIT',
+      createdAt: { lt: before },
+      transaction: {
+        type: { in: ['REGISTRATION_BONUS', 'DEPOSIT_BONUS'] },
+        status: 'POSTED',
+      },
+    },
+    _sum: { amount: true },
+  })
+  return result._sum.amount ?? 0n
+}
+
+/** Total player funding (deposits + signup/deposit bonuses) used to cap net loss for commission. */
+async function commissionFundingBefore(tx: Tx, userId: string, before: Date): Promise<bigint> {
+  const [deposits, bonuses] = await Promise.all([
+    approvedDepositsBefore(tx, userId, before),
+    bonusCreditsBefore(tx, userId, before),
+  ])
+  return deposits + bonuses
+}
+
+function principalLossTarget(funding: bigint, wagered: bigint, won: bigint): bigint {
   const netLoss = wagered > won ? wagered - won : 0n
-  return netLoss < deposits ? netLoss : deposits
+  return netLoss < funding ? netLoss : funding
 }
 
 async function recipientsFor(
@@ -82,25 +112,36 @@ async function recipientsFor(
 ): Promise<Map<string, Recipient>> {
   const recipients = new Map<string, Recipient>()
   const add = (agentId: string, level: number, rateBps: number) => {
+    if (rateBps <= 0) return
     const key = `${agentId}:${level}`
     const prior = recipients.get(key)
     recipients.set(key, {
       agentId,
       level,
-      // If the same person qualifies as referral agent and mentor, preserve both configured rates.
-      rateBps: (prior?.rateBps ?? 0) + rateBps,
+      // One payout per person/level — mentor, agent, and channel paths must not stack.
+      rateBps: Math.max(prior?.rateBps ?? 0, rateBps),
     })
   }
 
   const edges = await tx.referralEdge.findMany({
     where: { descendantId: sourceUserId, level: { lte: settings.commissionLevels } },
-    include: { ancestor: { select: { id: true, referralAgentActive: true } } },
+    include: { ancestor: { select: { id: true, referralAgentActive: true, role: true } } },
     orderBy: { level: 'asc' },
   })
 
   for (const edge of edges) {
-    if (!edge.ancestor.referralAgentActive) continue
-    add(edge.ancestorId, edge.level, commissionRateBps(settings, edge.level))
+    let rateBps: number
+    if (edge.ancestor.role === 'MENTOR') {
+      rateBps = mentorCommissionRateBps(settings, edge.level)
+    } else {
+      const validRefs = await countValidDirectReferrals(tx, edge.ancestorId)
+      rateBps = await promoterCommissionRateBps(
+        edge.level,
+        validRefs,
+        edge.ancestor.referralAgentActive,
+      )
+    }
+    if (rateBps > 0) add(edge.ancestorId, edge.level, rateBps)
   }
 
   const source = await tx.user.findUnique({
@@ -115,7 +156,10 @@ async function recipientsFor(
     if (channel?.enabled && channel.owner.role === 'MENTOR') {
       const level = edges.find((edge) => edge.ancestorId === channel.ownerId)?.level ?? 1
       if (level <= settings.commissionLevels) {
-        add(channel.ownerId, level, mentorCommissionRateBps(settings, level))
+        const key = `${channel.ownerId}:${level}`
+        if (!recipients.has(key)) {
+          add(channel.ownerId, level, mentorCommissionRateBps(settings, level))
+        }
       }
     }
   }
@@ -132,36 +176,41 @@ async function commissionBalance(tx: Tx, userId: string): Promise<bigint> {
 }
 
 async function settlePlayer(accountId: string, sourceUserId: string, day: Bounds, settings: Settings) {
+  const todayKey = dateKeyAt(Date.now())
+  const allowRerun = day.key === todayKey
+
   await runMoneyTx(async (tx) => {
-    const alreadySettled = await tx.dailyCommissionSettlement.findUnique({
-      where: {
-        sourceUserId_settlementDate: {
-          sourceUserId,
-          settlementDate: day.key,
+    if (!allowRerun) {
+      const alreadySettled = await tx.dailyCommissionSettlement.findUnique({
+        where: {
+          sourceUserId_settlementDate: {
+            sourceUserId,
+            settlementDate: day.key,
+          },
         },
-      },
-      select: { id: true },
-    })
-    if (alreadySettled) return
+        select: { id: true },
+      })
+      if (alreadySettled) return
+    }
 
     const [
-      depositsAtStart,
-      depositsAtEnd,
+      fundingAtStart,
+      fundingAtEnd,
       wageredAtStart,
       wageredAtEnd,
       wonAtStart,
       wonAtEnd,
     ] = await Promise.all([
-      approvedDepositsBefore(tx, sourceUserId, day.start),
-      approvedDepositsBefore(tx, sourceUserId, day.end),
+      commissionFundingBefore(tx, sourceUserId, day.start),
+      commissionFundingBefore(tx, sourceUserId, day.end),
       sumGameEntries(tx, accountId, 'GAME_BET', day.start),
       sumGameEntries(tx, accountId, 'GAME_BET', day.end),
       sumGameEntries(tx, accountId, 'GAME_WIN', day.start),
       sumGameEntries(tx, accountId, 'GAME_WIN', day.end),
     ])
 
-    const lossAtStart = principalLossTarget(depositsAtStart, wageredAtStart, wonAtStart)
-    const lossAtEnd = principalLossTarget(depositsAtEnd, wageredAtEnd, wonAtEnd)
+    const lossAtStart = principalLossTarget(fundingAtStart, wageredAtStart, wonAtStart)
+    const lossAtEnd = principalLossTarget(fundingAtEnd, wageredAtEnd, wonAtEnd)
     const lossDelta = lossAtEnd - lossAtStart
     const recipients = await recipientsFor(tx, sourceUserId, settings)
 
@@ -194,7 +243,7 @@ async function settlePlayer(accountId: string, sourceUserId: string, day: Bounds
           type: 'COMMISSION',
           referenceType: 'daily-principal-loss',
           referenceId: `${day.key}:${sourceUserId}`,
-          idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}`,
+          idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:credit:${requestedAdjustment}`,
           meta: { settlementDate: day.key, sourceUserId, level: recipient.level },
           legs: [
             { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: requestedAdjustment },
@@ -211,7 +260,7 @@ async function settlePlayer(accountId: string, sourceUserId: string, day: Bounds
             type: 'COMMISSION',
             referenceType: 'daily-principal-loss',
             referenceId: `${day.key}:${sourceUserId}`,
-            idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}`,
+            idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:debit:${debit}`,
             meta: { settlementDate: day.key, sourceUserId, level: recipient.level, adjustment: 'debit' },
             legs: [
               { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: debit },
@@ -245,15 +294,29 @@ async function settlePlayer(accountId: string, sourceUserId: string, day: Bounds
       }
     }
 
-    await tx.dailyCommissionSettlement.create({
-      data: {
+    await tx.dailyCommissionSettlement.upsert({
+      where: {
+        sourceUserId_settlementDate: {
+          sourceUserId,
+          settlementDate: day.key,
+        },
+      },
+      create: {
         sourceUserId,
         settlementDate: day.key,
-        depositTarget: depositsAtEnd,
+        depositTarget: fundingAtEnd,
         wageredTarget: wageredAtEnd,
         wonTarget: wonAtEnd,
         lossTarget: lossAtEnd,
         lossDelta,
+      },
+      update: {
+        depositTarget: fundingAtEnd,
+        wageredTarget: wageredAtEnd,
+        wonTarget: wonAtEnd,
+        lossTarget: lossAtEnd,
+        lossDelta,
+        settledAt: new Date(),
       },
     })
   })
@@ -264,49 +327,118 @@ export async function settleDailyCommissions(key: string) {
   if (!settings.commissionEnabled || settings.commissionBasis !== 'GGR') return
 
   const day = boundsFor(key)
-  const accounts = await prisma.ledgerAccount.findMany({
-    where: {
-      ownerId: { not: null },
-      bucket: 'MAIN',
-      entries: {
-        some: {
-          createdAt: { gte: day.start, lt: day.end },
-          direction: 'DEBIT',
-          transaction: { type: 'GAME_BET', status: 'POSTED' },
-        },
-      },
-    },
-    select: { id: true, ownerId: true },
-  })
+  const players = await collectSettlementPlayers(day)
 
   let settled = 0
   let failed = 0
-  for (const account of accounts) {
-    if (!account.ownerId) continue
+  for (const [ownerId, accountId] of players) {
     try {
-      await settlePlayer(account.id, account.ownerId, day, settings)
+      await settlePlayer(accountId, ownerId, day, settings)
       settled++
     } catch (err) {
       failed++
-      logger.error({ err, settlementDate: key, sourceUserId: account.ownerId }, 'Daily commission settlement failed')
+      logger.error({ err, settlementDate: key, sourceUserId: ownerId }, 'Daily commission settlement failed')
     }
   }
   logger.info({ settlementDate: key, players: settled, failed }, 'Daily deposited-principal commission settled')
   if (failed > 0) throw new Error(`${failed} daily commission settlement(s) failed`)
 }
 
+/** Re-run commission for one player (after win / withdraw). Defaults to today PKT. */
+export async function settleCommissionsForUser(userId: string, dateKey?: string) {
+  const settings = await getSettings()
+  if (!settings.commissionEnabled || settings.commissionBasis !== 'GGR') return
+
+  const key = dateKey ?? dateKeyAt(Date.now())
+  const day = boundsFor(key)
+  const acc = await prisma.ledgerAccount.findFirst({
+    where: { ownerId: userId, bucket: 'MAIN', currency: 'PKR' },
+    select: { id: true },
+  })
+  if (!acc) return
+  await settlePlayer(acc.id, userId, day, settings)
+}
+
+/** Players whose net-loss commission may have changed today (bet, win, or withdraw). */
+async function collectSettlementPlayers(day: Bounds): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+
+  async function addUser(userId: string) {
+    if (out.has(userId)) return
+    const acc = await prisma.ledgerAccount.findFirst({
+      where: { ownerId: userId, bucket: 'MAIN', currency: 'PKR' },
+      select: { id: true },
+    })
+    if (acc) out.set(userId, acc.id)
+  }
+
+  const inDay = { gte: day.start, lt: day.end }
+
+  const [betRows, winRows, wdRows, commissioned] = await Promise.all([
+    prisma.ledgerEntry.findMany({
+      where: {
+        createdAt: inDay,
+        direction: 'DEBIT',
+        transaction: { type: 'GAME_BET', status: 'POSTED' },
+        account: { bucket: 'MAIN', ownerId: { not: null } },
+      },
+      select: { account: { select: { ownerId: true } } },
+      distinct: ['accountId'],
+    }),
+    prisma.ledgerEntry.findMany({
+      where: {
+        createdAt: inDay,
+        direction: 'CREDIT',
+        transaction: { type: 'GAME_WIN', status: 'POSTED' },
+        account: { bucket: 'MAIN', ownerId: { not: null } },
+      },
+      select: { account: { select: { ownerId: true } } },
+      distinct: ['accountId'],
+    }),
+    prisma.withdrawal.findMany({
+      where: { status: 'PAID', processedAt: inDay },
+      select: { userId: true },
+    }),
+    prisma.commission.findMany({
+      where: { createdAt: inDay },
+      select: { sourceUserId: true },
+      distinct: ['sourceUserId'],
+    }),
+  ])
+
+  for (const r of betRows) {
+    if (r.account.ownerId) await addUser(r.account.ownerId)
+  }
+  for (const r of winRows) {
+    if (r.account.ownerId) await addUser(r.account.ownerId)
+  }
+  for (const w of wdRows) await addUser(w.userId)
+  for (const c of commissioned) await addUser(c.sourceUserId)
+
+  return out
+}
+
 let timer: ReturnType<typeof setInterval> | null = null
-let attemptedDate = ''
+const attemptedDates = new Set<string>()
 
 async function sweepCompletedDay() {
-  const completedDate = shiftDate(dateKeyAt(Date.now()), -1)
-  if (attemptedDate === completedDate) return
-  attemptedDate = completedDate
+  const today = dateKeyAt(Date.now())
+  const yesterday = shiftDate(today, -1)
+
+  if (!attemptedDates.has(yesterday)) {
+    attemptedDates.add(yesterday)
+    try {
+      await settleDailyCommissions(yesterday)
+    } catch (err) {
+      attemptedDates.delete(yesterday)
+      logger.error({ err, settlementDate: yesterday }, 'Daily commission sweep failed')
+    }
+  }
+
   try {
-    await settleDailyCommissions(completedDate)
+    await settleDailyCommissions(today)
   } catch (err) {
-    attemptedDate = ''
-    logger.error({ err, settlementDate: completedDate }, 'Daily commission sweep failed')
+    logger.error({ err, settlementDate: today }, 'Intraday commission sweep failed')
   }
 }
 

@@ -52,9 +52,40 @@ export function ReferGuideModal({ onClose }: { onClose: () => void }) {
       <ol className={styles.guide}>
         <li>Share your unique referral link with friends.</li>
         <li>Friend registers using your link or referral code.</li>
-        <li>When they deposit, you earn commission (agents only).</li>
-        <li>Upgrade your agent rank by getting more valid referrals.</li>
-        <li>Withdraw earnings from the Earnings panel.</li>
+        <li>
+          When they deposit Rs 1,000+ and <b>play games</b>, you earn cashback on their net loss
+          (0.5%–2% by your level).
+        </li>
+        <li>Deposit bonus (Rs 150 signup + 5% per deposit) goes to your friend, not to you.</li>
+        <li>Earnings update through the day; check <b>Details</b> for history.</li>
+        <li>Withdraw available balance from the Earnings panel.</li>
+      </ol>
+    </S9ModalShell>
+  )
+}
+
+export function AgentRulesModal({ onClose }: { onClose: () => void }) {
+  return (
+    <S9ModalShell title="Agent Commission Rules" onClose={onClose} wide>
+      <ol className={styles.guide}>
+        <li>Share your agent link — members join under your team.</li>
+        <li>
+          Commission is on each member&apos;s <b>net loss</b> (deposits + signup/deposit bonuses they played and lost).
+        </li>
+        <li>
+          <b>Level 1:</b> 30% commission on your direct member&apos;s net loss.
+        </li>
+        <li>
+          <b>Level 2:</b> 10% on your level-2 member&apos;s net loss.
+        </li>
+        <li>
+          <b>Level 3:</b> 10% on your level-3 member&apos;s net loss.
+        </li>
+        <li>
+          If a member <b>wins or withdraws</b> after losing, your salary is reduced by the same
+          % — balance updates through the day.
+        </li>
+        <li>Transfer approved salary to your game wallet when admin opens transfer.</li>
       </ol>
     </S9ModalShell>
   )

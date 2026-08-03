@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { roundLossMessage } from '../../lib/roundResult'
 import { DEMO_BALANCE } from '../../../data/s9Games'
 import { isLivePlayer, preconnectSlot, serverSlotSpin } from '../../lib/serverSpin'
 import {
@@ -253,7 +254,7 @@ export function useSuperAceGame(opts: SuperAceGameOpts) {
         }
       } else {
         setDisplayWin(0)
-        onMessage?.(null)
+        onMessage?.(roundLossMessage(betRef.current))
         if (liveSettled) void opts.refresh?.()
       }
 

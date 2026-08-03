@@ -171,13 +171,21 @@ function matches(a: SymbolId, b: SymbolId): boolean {
 export function evaluateWays(grid: Cell[][], bet: number, mult: number): WayWin[] {
   const wins: WayWin[] = []
   const candidates = new Set<SymbolId>()
+  let reel0HasWild = false
   for (const cell of grid[0]!) {
-    if (cell.id !== 'scatter' && cell.id !== 'bonus') {
-      candidates.add(cell.id === 'wild' ? 'wild' : cell.id)
-    }
+    if (cell.id === 'scatter' || cell.id === 'bonus') continue
+    if (cell.id === 'wild') reel0HasWild = true
+    else candidates.add(cell.id)
   }
-  // Also evaluate each concrete pay symbol that can connect via wilds
-  for (const s of PAY_SYMBOLS) candidates.add(s.id)
+  if (reel0HasWild) {
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const id = grid[c]![r]!.id
+        if (id !== 'wild' && id !== 'scatter' && id !== 'bonus') candidates.add(id)
+      }
+    }
+    if (candidates.size === 0) candidates.add('hat')
+  }
 
   for (const symbol of candidates) {
     if (symbol === 'wild') continue
@@ -213,7 +221,6 @@ export function evaluateWays(grid: Cell[][], bet: number, mult: number): WayWin[
     })
   }
 
-  // Deduplicate overlapping same-symbol evaluations keeping best
   const best = new Map<SymbolId, WayWin>()
   for (const w of wins) {
     const prev = best.get(w.symbol)

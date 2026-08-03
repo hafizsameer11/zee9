@@ -10,7 +10,7 @@ import styles from './GamePlay.module.css'
 
 export default function GamePlay() {
   const { id } = useParams<{ id: string }>()
-  const gameId = id ?? ''
+  const gameId = id === 'bounty-trail' ? 'wild-bounty' : (id ?? '')
   const entry = getGameEntry(gameId)
   const game = S9_GAMES.find((g) => g.id === gameId)
   const [bet] = useState(10)
@@ -34,9 +34,9 @@ export default function GamePlay() {
     void warmGameById(gameId, (pct) => {
       if (!cancelled) setProgress(pct)
     }).finally(async () => {
-      // Keep loader visible briefly so it feels smooth (not a flash)
       const elapsed = performance.now() - started
-      const wait = Math.max(0, 450 - elapsed)
+      const minWait = gameId === 'wild-bounty' ? 0 : 450
+      const wait = Math.max(0, minWait - elapsed)
       if (wait) await new Promise((r) => window.setTimeout(r, wait))
       if (!cancelled) {
         setProgress(100)

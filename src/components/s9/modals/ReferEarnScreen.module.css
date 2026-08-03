@@ -34,15 +34,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   background: var(--zee-bg);
   border-bottom: 1px solid rgba(212, 175, 55, 0.35);
   flex-shrink: 0;
 }
 
 .back {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: linear-gradient(180deg, #ff8f00, #e65100);
   border: 2px solid var(--zee-gold-light, #f5d76e);
@@ -56,7 +56,7 @@
 }
 
 .header h1 {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 900;
   color: var(--zee-gold-light, #f5d76e);
   text-shadow: 0 0 12px rgba(232, 197, 71, 0.3);
@@ -65,59 +65,240 @@
 .headerRight {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .hdrAction {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  gap: 2px;
   color: #f5c842;
+  min-width: 40px;
 }
 
 .hdrAction span {
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .hdrAction small {
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 700;
 }
 
 .content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 6px 8px 6px 6px;
   min-height: 0;
   overflow-y: auto;
-  padding-right: 52px;
+  overflow-x: hidden;
+  padding: 10px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Share card ── */
+.shareCard {
+  border: 1px solid #8b6914;
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, #3a1a00, #1a0c00);
+  flex-shrink: 0;
+}
+
+.shareMeta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.shareMetaItem label {
+  display: block;
+  color: #c9a24a;
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.shareMetaItem strong {
+  color: #ffd54f;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.shareMetaItem span.commission {
+  color: #8bd98b;
+}
+
+.shareRow {
+  display: flex;
+  gap: 8px;
+}
+
+.shareInput {
+  flex: 1;
+  min-width: 0;
+  background: #1a0505;
+  border: 1px solid #8b6914;
+  border-radius: 8px;
+  color: #e8d0a0;
+  font-size: 11px;
+  padding: 10px;
+}
+
+.copyBtn {
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #ffb300, #e65100);
+  border: 1px solid #ffe082;
+  color: #fff;
+  font-weight: 800;
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 12px;
+}
+
+.levelCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  color: #e8d0a0;
+  font-size: 11px;
+}
+
+.levelCounts b {
+  color: #fff;
+}
+
+.earningsNote {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #c9a86c;
+  background: rgba(245, 200, 66, 0.08);
+  border: 1px solid rgba(245, 200, 66, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.earningsNote b {
+  color: #f5c842;
+}
+
+.listsBtn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid #f5c842;
+  background: linear-gradient(180deg, #3a2a10, #1a1408);
+  color: #f5c842;
+  font-size: 14px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.referrerCard {
+  border: 1px solid rgba(139, 180, 255, 0.4);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, #1a2438, #101828);
+  flex-shrink: 0;
+}
+
+.referrerCard h3 {
+  font-size: 12px;
+  font-weight: 800;
+  color: #90caf9;
+  margin-bottom: 10px;
+}
+
+.referrerGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.referrerGrid label {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  color: #90caf9;
+  margin-bottom: 2px;
+}
+
+.referrerGrid strong {
+  font-size: 13px;
+  color: #fff;
+}
+
+.valid {
+  color: #8bd98b !important;
+}
+
+.pending {
+  color: #ffb74d !important;
+}
+
+/* ── Stats grid ── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2a2218, #1a1410);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  text-align: center;
+}
+
+.statValue {
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.statLabel {
+  font-size: 10px;
+  font-weight: 700;
+  color: #c9a86c;
+  line-height: 1.3;
 }
 
 /* ── Level panel ── */
 .levelPanel {
   position: relative;
   border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  padding: 12px;
   background: linear-gradient(180deg, #1e1e1e, #141414);
   flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.levelLeft {
+.levelTop {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+  padding-right: 72px;
 }
 
 .badge {
-  position: relative;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: linear-gradient(180deg, #1565c0, #0d47a1);
   border: 3px solid #f5c842;
@@ -130,105 +311,217 @@
 }
 
 .badgeNum {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 900;
   color: #f5c842;
   line-height: 1;
 }
 
 .badgeLv {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 800;
   color: #fff;
 }
 
 .upgradeText {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: #f5c842;
+  line-height: 1.4;
 }
 
 .rulesLink {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 9px;
+  top: 12px;
+  right: 12px;
+  font-size: 10px;
   font-weight: 700;
   color: #fff;
+  white-space: nowrap;
+}
+
+.levelTableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
 .levelTable {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-width: 520px;
 }
 
 .tableRow {
   display: flex;
-  align-items: center;
-  gap: 2px;
+  align-items: stretch;
+  gap: 4px;
 }
 
 .rowLabel {
-  width: 90px;
+  width: 100px;
   flex-shrink: 0;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   color: #f5c842;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 .cell {
   flex: 1;
   text-align: center;
-  padding: 4px 2px;
-  border-radius: 4px;
-  font-size: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  font-size: 9px;
   color: #c9a86c;
-  min-width: 0;
+  min-width: 52px;
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .cell strong {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: #fff;
   font-weight: 800;
 }
 
 .cellActive {
-  background: rgba(245, 200, 66, 0.15);
-  border: 1px solid rgba(245, 200, 66, 0.4);
+  background: rgba(245, 200, 66, 0.2);
+  border: 1px solid rgba(245, 200, 66, 0.5);
 }
 
 .lvDot {
   display: inline-block;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 800;
   color: #3e2723;
   background: #f5c842;
   border-radius: 999px;
-  padding: 1px 5px;
-  margin-bottom: 2px;
+  padding: 2px 6px;
+  margin-bottom: 3px;
 }
 
 .lvLabel {
   display: block;
-  font-size: 7px;
+  font-size: 8px;
   color: #f5c842;
   font-weight: 700;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
-/* ── Shared panel ── */
-.panel {
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  border-radius: 10px;
-  padding: 6px 8px;
+/* ── Earnings strip ── */
+.earningsCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
   background: linear-gradient(180deg, #1e1e1e, #141414);
+  flex-shrink: 0;
+}
+
+.earningsInfo {
   flex: 1;
   min-width: 0;
+}
+
+.earningsInfo h3 {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f5c842;
+  margin-bottom: 6px;
+}
+
+.earningsLine {
+  font-size: 12px;
+  color: #e8d0a0;
+  margin-bottom: 4px;
+}
+
+.earningsLine strong {
+  color: #8bd98b;
+  font-size: 14px;
+}
+
+.earningsActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.linkBtn {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.withdrawBtn {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #eceff1, #90a4ae, #546e7a);
+  border: 2px solid #fff;
+  color: #37474f;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* ── Invite card ── */
+.inviteCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7b1fa2 0%, #512da8 50%, #303f9f 100%);
+  border: 1px solid #e040fb;
+  box-shadow: 0 4px 16px rgba(123, 31, 162, 0.35);
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.inviteCard h2 {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.inviteCard p {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.shareBtn {
+  width: 100%;
+  max-width: 280px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe082, #ffb300, #ff6f00);
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4);
+}
+
+/* ── Ranking panel ── */
+.panel {
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, #1e1e1e, #141414);
+  flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -236,226 +529,42 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .panelHead h2 {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   color: #f5c842;
 }
 
 .link {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   color: #fff;
 }
 
-.middleRow,
-.bottomRow {
-  display: flex;
-  gap: 6px;
-  flex: 1;
-  min-height: 0;
-}
-
-/* ── Team ── */
-.teamBoxes {
-  display: flex;
-  gap: 8px;
-}
-
-.teamBox {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid #6d4c41;
-  border-radius: 8px;
-}
-
-.teamIcon {
-  font-size: 18px;
-}
-
-.teamBox strong {
-  font-size: 14px;
-  font-weight: 900;
-  color: #fff;
-}
-
-.teamBox small {
-  font-size: 7px;
-  color: #c9a86c;
-  text-align: center;
-}
-
-/* ── Earnings ── */
-.earningsRow {
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-}
-
-.earnBox {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 4px;
-  background: linear-gradient(180deg, #ffe082, #ffb300);
-  border-radius: 6px;
-  border: 1px solid #fff;
-  min-width: 0;
-}
-
-.earnBox strong {
-  font-size: 13px;
-  font-weight: 900;
-  color: #3e2723;
-}
-
-.earnBox small {
-  font-size: 6px;
-  font-weight: 700;
-  color: #5d4037;
-  text-align: center;
-  line-height: 1.2;
-}
-
-.withdrawBtn {
-  padding: 0 10px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #eceff1, #90a4ae, #546e7a);
-  border: 2px solid #fff;
-  color: #37474f;
-  font-size: 9px;
-  font-weight: 900;
-  flex-shrink: 0;
-  align-self: stretch;
-}
-
-/* ── Ranking table ── */
 .rankTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .rankTable th {
   color: #f5c842;
   font-weight: 800;
-  padding: 3px 6px;
+  padding: 6px 8px;
   text-align: left;
   border-bottom: 1px solid rgba(245, 200, 66, 0.2);
 }
 
 .rankTable td {
   color: #fff;
-  padding: 4px 6px;
+  padding: 8px;
   font-weight: 600;
 }
 
 .rankTable td:last-child {
   color: #f5c842;
   font-weight: 800;
-}
-
-/* ── Invite banner ── */
-.inviteBanner {
-  flex: 1.2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #7b1fa2 0%, #512da8 50%, #303f9f 100%);
-  border: 1px solid #e040fb;
-  box-shadow: 0 0 16px rgba(123, 31, 162, 0.4);
-  min-width: 0;
-}
-
-.giftIcon {
-  font-size: 32px;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
-}
-
-.inviteCenter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.inviteCenter h2 {
-  font-size: 13px;
-  font-weight: 900;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-}
-
-.shareBtn {
-  padding: 8px 20px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #ffe082, #ffb300, #ff6f00);
-  border: 2px solid #fff;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 900;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  box-shadow: 0 4px 12px rgba(255, 149, 0, 0.4);
-}
-
-.coinsRight {
-  font-size: 20px;
-}
-
-/* ── Activity floating tab ── */
-.activityTab {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 4px;
-  background: linear-gradient(180deg, rgba(123, 31, 162, 0.9), rgba(74, 20, 140, 0.95));
-  border: 1px solid #e040fb;
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  box-shadow: -4px 0 16px rgba(123, 31, 162, 0.4);
-}
-
-.actLabel {
-  font-size: 8px;
-  font-weight: 800;
-  color: #f5c842;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-}
-
-.actPromo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  font-size: 14px;
-}
-
-.actPromo strong {
-  font-size: 7px;
-  font-weight: 900;
-  color: #fff;
-  background: #e74c3c;
-  padding: 2px 4px;
-  border-radius: 4px;
-  white-space: nowrap;
 }

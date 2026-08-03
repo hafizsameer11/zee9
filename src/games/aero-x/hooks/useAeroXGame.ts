@@ -34,6 +34,7 @@ export type BetSlot = {
   autoEnabled: boolean
   autoAt: number
   betId?: string | null
+  pendingNext: boolean
 }
 
 function preload(urls: readonly string[], onProgress?: (pct: number) => void) {
@@ -68,6 +69,7 @@ const defaultSlot = (): BetSlot => ({
   autoEnabled: false,
   autoAt: 2,
   betId: null,
+  pendingNext: false,
 })
 
 type ServerPhase = 'waiting' | 'flying' | 'crashed'
@@ -102,6 +104,7 @@ export function useAeroXGame({ canAfford, debit: _debit, credit, onMessage, play
   const busySlots = useRef<[boolean, boolean]>([false, false])
   const refreshRef = useRef(refresh)
   const applyLiveRef = useRef<(state: any) => void>(() => {})
+  const placeBetOnServerRef = useRef<(index: 0 | 1) => Promise<boolean>>(async () => false)
 
   playRef.current = playSfx
   creditRef.current = credit
@@ -324,6 +327,20 @@ export function useAeroXGame({ canAfford, debit: _debit, credit, onMessage, play
         if (prevServerPhase.current !== 'waiting' && prevServerPhase.current !== 'idle') {
           playRef.current?.('countdown')
           void refreshRef.current?.()
+
+          const pendingIndexes = slotsRef.current
+            .map((slot, i) => (slot.pendingNext ? i : -1))
+            .filter((i): i is 0 | 1 => i === 0 || i === 1)
+          if (pendingIndexes.length) {
+            setSlots((prev) =>
+              prev.map((slot) => ({ ...slot, pendingNext: false })) as [BetSlot, BetSlot],
+            )
+            later(() => {
+              void (async () => {
+                for (const i of pendingIndexes) await placeBetOnServerRef.current(i)
+              })()
+            }, 80)
+          }
         }
       }
 
@@ -396,6 +413,54 @@ export function useAeroXGame({ canAfford, debit: _debit, credit, onMessage, play
     })
   }, [])
 
+  const placeBetOnServer = useCallback(
+    async (index: 0 | 1) => {
+      if (busySlots.current[index]) return false
+      const s = slotsRef.current[index]
+      if (s.phase === 'active' || s.phase === 'pending') return false
+      if (!canAfford(s.amount)) {
+        onMessage?.('Insufficient balance')
+        playRef.current?.('error')
+        return false
+      }
+      busySlots.current[index] = true
+      try {
+        playRef.current?.('bet')
+        const sock = socketRef.current
+        if (!sock) throw new Error('Not connected')
+        const res = await sock.request<{ betId: string }>('bet', {
+          amount: s.amount,
+          slot: index,
+          autoAt: s.autoEnabled || s.tab === 'auto' ? s.autoAt : null,
+        })
+        setSlots((prev) => {
+          const next = [...prev] as [BetSlot, BetSlot]
+          next[index] = {
+            ...next[index],
+            phase: 'pending',
+            wager: s.amount,
+            betId: res.betId,
+            autoEnabled: next[index].tab === 'auto',
+            pendingNext: false,
+          }
+          return next
+        })
+        onMessage?.(null)
+        void refreshRef.current?.()
+        socketRef.current?.refresh()
+        return true
+      } catch (e: any) {
+        playRef.current?.('error')
+        onMessage?.(e?.message || 'Bet failed')
+        return false
+      } finally {
+        busySlots.current[index] = false
+      }
+    },
+    [canAfford, onMessage],
+  )
+  placeBetOnServerRef.current = placeBetOnServer
+
   const placeOrCashLive = useCallback(
     async (index: 0 | 1) => {
       const s = slotsRef.current[index]
@@ -431,55 +496,44 @@ export function useAeroXGame({ canAfford, debit: _debit, credit, onMessage, play
         return
       }
 
+      if (s.pendingNext) {
+        setSlots((prev) => {
+          const next = [...prev] as [BetSlot, BetSlot]
+          next[index] = { ...next[index], pendingNext: false }
+          return next
+        })
+        onMessage?.(null)
+        return
+      }
+
       if (s.phase === 'pending') {
         onMessage?.('Bet locked for this round')
         return
       }
 
-      if (p !== 'waiting' && p !== 'loading') {
-        onMessage?.('Wait for next round')
-        playRef.current?.('error')
+      if (s.phase === 'active') return
+
+      if (p === 'waiting' || p === 'loading') {
+        await placeBetOnServer(index)
         return
       }
 
+      // Flying / flew away — queue for next round (like Aviator)
       if (!canAfford(s.amount)) {
         onMessage?.('Insufficient balance')
         playRef.current?.('error')
         return
       }
-      if (busySlots.current[index]) return
-      busySlots.current[index] = true
-      try {
-        playRef.current?.('bet')
-        const sock = socketRef.current
-        if (!sock) throw new Error('Not connected')
-        const res = await sock.request<{ betId: string }>('bet', {
-          amount: s.amount,
-          slot: index,
-          autoAt: s.autoEnabled || s.tab === 'auto' ? s.autoAt : null,
-        })
-        setSlots((prev) => {
-          const next = [...prev] as [BetSlot, BetSlot]
-          next[index] = {
-            ...next[index],
-            phase: 'pending',
-            wager: s.amount,
-            betId: res.betId,
-            autoEnabled: next[index].tab === 'auto',
-          }
-          return next
-        })
-        onMessage?.(null)
-        void refreshRef.current?.()
-        socketRef.current?.refresh()
-      } catch (e: any) {
-        playRef.current?.('error')
-        onMessage?.(e?.message || 'Bet failed')
-      } finally {
-        busySlots.current[index] = false
-      }
+      playRef.current?.('bet')
+      setSlots((prev) => {
+        const next = [...prev] as [BetSlot, BetSlot]
+        next[index] = { ...next[index], pendingNext: true }
+        return next
+      })
+      onMessage?.('Bet queued for next round')
+      window.setTimeout(() => onMessage?.(null), 1800)
     },
-    [canAfford, onMessage],
+    [canAfford, onMessage, placeBetOnServer],
   )
 
   const placeOrCash = useCallback(

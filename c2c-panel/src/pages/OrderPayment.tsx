@@ -7,7 +7,7 @@ import { confirmRemainSec, mmss, payRemainSec, shouldShowConfirmCountdown, shoul
 export default function OrderPayment() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { orders, resolveOrder, acceptOrder, showToast, reload } = useStore()
+  const { orders, resolveOrder, acceptOrder, showToast, reload, markCheckingOrderOpened } = useStore()
   const order = orders.find((o) => o.id === id)
   const [remarks, setRemarks] = useState('')
   const [accepted, setAccepted] = useState(false)
@@ -28,6 +28,10 @@ export default function OrderPayment() {
     const t = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(t)
   }, [showConfirmTimer, showPayTimer])
+
+  useEffect(() => {
+    if (id) markCheckingOrderOpened(id)
+  }, [id, markCheckingOrderOpened])
 
   // When 5m pay window hits 0, refresh so expired order leaves the queue
   useEffect(() => {

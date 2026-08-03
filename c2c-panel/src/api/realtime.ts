@@ -4,7 +4,7 @@ import { getAccess } from './client'
 const API_BASE = ((import.meta as any).env?.VITE_API_BASE as string) || 'http://localhost:4000/api/v1'
 
 export type MerchantDepositEvent = {
-  type: 'deposit_new' | 'deposit_submitted'
+  type: 'deposit_new' | 'deposit_submitted' | 'deposit_resolved'
   title: string
   body: string
   orderId: string
@@ -14,7 +14,20 @@ export type MerchantDepositEvent = {
   collectionAccount: string | null
   trxId?: string | null
   playerName?: string | null
+  status?: 'SUCCESS' | 'FAIL'
 }
+
+export type MerchantWithdrawEvent = {
+  type: 'withdraw_new'
+  withdrawalId: string
+  amount: number
+  method: string
+  playerName?: string | null
+  title: string
+  body: string
+}
+
+export type MerchantRealtimeEvent = MerchantDepositEvent | MerchantWithdrawEvent
 
 function wsUrl(token: string) {
   const base = API_BASE.replace(/\/$/, '')
@@ -23,11 +36,11 @@ function wsUrl(token: string) {
   return u.toString()
 }
 
-function showBrowserNotification(title: string, body: string) {
+function showBrowserNotification(title: string, body: string, tag: string) {
   try {
     if (typeof Notification === 'undefined') return
     if (Notification.permission === 'granted') {
-      const n = new Notification(title, { body, tag: 'zee9-c2c-deposit' })
+      const n = new Notification(title, { body, tag })
       window.setTimeout(() => n.close(), 8000)
     }
   } catch {
@@ -46,8 +59,8 @@ export function requestNotificationPermission() {
   }
 }
 
-/** Keep a live WebSocket to the backend; call onEvent for deposit alerts. */
-export function useMerchantRealtime(enabled: boolean, onEvent: (ev: MerchantDepositEvent) => void) {
+/** Keep a live WebSocket to the backend; call onEvent for deposit / withdraw alerts. */
+export function useMerchantRealtime(enabled: boolean, onEvent: (ev: MerchantRealtimeEvent) => void) {
   const onEventRef = useRef(onEvent)
   onEventRef.current = onEvent
 
@@ -90,9 +103,21 @@ export function useMerchantRealtime(enabled: boolean, onEvent: (ev: MerchantDepo
       ws.onmessage = (msg) => {
         try {
           const parsed = JSON.parse(String(msg.data))
-          if (parsed?.type === 'deposit_new' || parsed?.type === 'deposit_submitted') {
+          if (parsed?.type === 'withdraw_new') {
+            const data = parsed.data as MerchantWithdrawEvent
+            data.type = 'withdraw_new'
+            showBrowserNotification(data.title, data.body, 'zee9-c2c-withdraw')
+            onEventRef.current(data)
+            return
+          }
+          if (
+            parsed?.type === 'deposit_new' ||
+            parsed?.type === 'deposit_submitted' ||
+            parsed?.type === 'deposit_resolved'
+          ) {
             const data = parsed.data as MerchantDepositEvent
-            showBrowserNotification(data.title, data.body)
+            if (parsed.type === 'deposit_resolved') data.type = 'deposit_resolved'
+            showBrowserNotification(data.title, data.body, 'zee9-c2c-deposit')
             onEventRef.current(data)
           }
         } catch {

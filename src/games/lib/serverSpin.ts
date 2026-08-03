@@ -4,6 +4,15 @@ import type { GameSocket } from './createGameSocket'
 
 export type { SlotSlug }
 
+export type SlotSpinResult = {
+  win: number
+  bet?: number
+  cost?: number
+  slug?: string
+  source?: string
+  payload: Record<string, unknown>
+}
+
 const sockets = new Map<string, GameSocket>()
 
 function slotSocket(slug: SlotSlug): GameSocket {
@@ -24,10 +33,33 @@ export function preconnectSlot(slug: SlotSlug) {
 export async function serverSlotSpin(
   slug: SlotSlug,
   bet: number,
-): Promise<{ win: number; payload: any } | null> {
+): Promise<SlotSpinResult | null> {
   if (!getAccess()) return null
-  const res = await slotSocket(slug).request<{ win?: number; payload?: any }>('spin', { bet })
-  return { win: Number(res.win ?? 0), payload: res.payload }
+  const res = await slotSocket(slug).request<SlotSpinResult>('spin', { bet })
+  return {
+    win: Number(res.win ?? 0),
+    bet: res.bet,
+    slug: res.slug,
+    source: res.source,
+    payload: (res.payload || {}) as Record<string, unknown>,
+  }
+}
+
+/** Feature Buy for bounty-trail / wild-bounty. Returns null if not authenticated. */
+export async function serverSlotBuyFeature(
+  slug: SlotSlug,
+  bet: number,
+): Promise<SlotSpinResult | null> {
+  if (!getAccess()) return null
+  const res = await slotSocket(slug).request<SlotSpinResult>('buyFeature', { bet })
+  return {
+    win: Number(res.win ?? 0),
+    bet: res.bet,
+    cost: res.cost,
+    slug: res.slug,
+    source: res.source,
+    payload: (res.payload || {}) as Record<string, unknown>,
+  }
 }
 
 export function isLivePlayer(): boolean {

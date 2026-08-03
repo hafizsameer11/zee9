@@ -113,7 +113,7 @@ export async function loginRequest(phone: string, password: string) {
     method: 'POST',
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, password }),
+    body: JSON.stringify({ phone, password, app: 'c2c' }),
   })
   const text = await res.text()
   let json: any = {}

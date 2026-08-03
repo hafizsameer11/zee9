@@ -6,7 +6,8 @@ import {
 } from '../data/s9Games'
 import { DEVELOPED_GAME_IDS } from '../games/developedGames'
 import { CRASH_ASSETS } from '../games/components/crashAssets'
-import { UP_DOWN_HUD, UP_DOWN_IMG } from '../games/components/upDownAssets'
+import { PRELOAD as SEVEN_UP_ASSETS } from '../games/7up-down/assets'
+import { BOOT_PRELOAD as JHANDI_BOOT } from '../games/jhandi-munda/assets'
 import { preloadImages, runWhenIdle } from './preloadImages'
 import { ZEE9_LOGO, ZEE9_LOGO_PNG } from '../components/Zee9LoadingScreen'
 
@@ -114,7 +115,7 @@ async function warmGameBootAssets() {
       ),
     () =>
       import('../games/bounty-trail/constants/assetManifest').then((m) =>
-        m.preloadBountyAssets(),
+        m.preloadBountyBoot(),
       ),
     () =>
       import('../games/aero-x/constants/assetManifest').then((m) =>
@@ -139,11 +140,7 @@ async function warmGameBootAssets() {
     () => withProgress([...Object.values(CRASH_ASSETS)]),
     () => withProgress([...MINES_ASSETS]),
     () => withProgress([...AVIATOR_ASSETS]),
-    () =>
-      withProgress([
-        ...Object.values(UP_DOWN_IMG),
-        ...Object.values(UP_DOWN_HUD),
-      ]),
+    () => withProgress([...SEVEN_UP_ASSETS]),
   ]
 
   for (const job of jobs) {
@@ -203,7 +200,7 @@ export async function warmGameById(gameId: string, onProgress?: ProgressCb) {
       case 'bounty-trail':
       case 'wild-bounty':
         await import('../games/bounty-trail/constants/assetManifest').then((m) =>
-          m.preloadBountyAssets((loaded, total) => {
+          m.preloadBountyBoot((loaded, total) => {
             onProgress?.(12 + Math.round((loaded / Math.max(1, total)) * 88))
           }),
         )
@@ -233,6 +230,16 @@ export async function warmGameById(gameId: string, onProgress?: ProgressCb) {
             (p) => onProgress?.(12 + Math.round(p * 0.88)),
           )
         })
+        break
+      case 'car-roulette':
+        await import('../games/car-roulette/constants/assetManifest').then((m) =>
+          withProgress(m.BOOT_ASSETS, (p) => onProgress?.(12 + Math.round(p * 0.88))),
+        )
+        break
+      case 'zoo-roulette':
+        await import('../games/zoo-roulette/constants/assetManifest').then((m) =>
+          withProgress(m.BOOT_ASSETS, (p) => onProgress?.(12 + Math.round(p * 0.88))),
+        )
         break
       case 'roulette':
         await import('../games/roulette/constants/rouletteConfig').then((m) =>
@@ -283,10 +290,10 @@ export async function warmGameById(gameId: string, onProgress?: ProgressCb) {
         await withProgress(WINGO_UI_ASSETS, (p) => onProgress?.(12 + Math.round(p * 0.88)))
         break
       case '7up-down':
-        await withProgress(
-          [...Object.values(UP_DOWN_IMG), ...Object.values(UP_DOWN_HUD)],
-          (p) => onProgress?.(12 + Math.round(p * 0.88)),
-        )
+        await withProgress(SEVEN_UP_ASSETS, (p) => onProgress?.(12 + Math.round(p * 0.88)))
+        break
+      case 'jhandi-munda':
+        await withProgress(JHANDI_BOOT.slice(0, 8), (p) => onProgress?.(12 + Math.round(p * 0.88)))
         break
       default: {
         const g = S9_GAMES.find((x) => x.id === gameId)

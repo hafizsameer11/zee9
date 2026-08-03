@@ -26,20 +26,32 @@ export interface ReferralParams {
 interface AuthCtx {
   player: Player | null
   ready: boolean
+  /** Set when the signed-in account may not use the game app (e.g. a C2C merchant). */
+  blocked: string | null
   login: (phone: string, password: string) => Promise<void>
   register: (phone: string, password: string, displayName: string, ref?: ReferralParams) => Promise<void>
   logout: () => void
   refreshPlayer: () => Promise<void>
 }
 
+const MERCHANT_BLOCKED = 'This is a C2C merchant account. Sign in on the merchant panel instead.'
+
 const Ctx = createContext<AuthCtx | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [player, setPlayer] = useState<Player | null>(null)
   const [ready, setReady] = useState(false)
+  const [blocked, setBlocked] = useState<string | null>(null)
 
   async function loadMe() {
     const me = await api.get('/me')
+    if (me.role === 'AGENT') {
+      clearTokens()
+      setPlayer(null)
+      setBlocked(MERCHANT_BLOCKED)
+      throw new Error(MERCHANT_BLOCKED)
+    }
+    setBlocked(null)
     setPlayer({
       id: me.id,
       name: me.displayName,
@@ -69,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   async function login(phone: string, password: string) {
-    const data = await authRequest('login', { phone, password })
+    const data = await authRequest('login', { phone, password, app: 'player' })
     setTokens(data.accessToken, data.refreshToken)
     setPlayer({ id: data.user.id, name: data.user.displayName, phone: data.user.phone, referralCode: data.user.referralCode, playerNo: data.user.playerNo })
     await loadMe()
@@ -96,10 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (refresh) api.post('/auth/logout', { refreshToken: refresh }).catch(() => {})
     clearTokens()
     setPlayer(null)
+    setBlocked(null)
   }
 
   return (
-    <Ctx.Provider value={{ player, ready, login, register, logout, refreshPlayer: loadMe }}>{children}</Ctx.Provider>
+    <Ctx.Provider value={{ player, ready, blocked, login, register, logout, refreshPlayer: loadMe }}>
+      {children}
+    </Ctx.Provider>
   )
 }
 

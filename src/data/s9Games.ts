@@ -100,6 +100,8 @@ export const CATEGORY_CONFIG: Record<S9Category, CategoryConfig> = {
 export const S9_GAMES: S9Game[] = [
   // HOT
   { id: 'roulette', name: 'ROULETTE', badge: 'hot', categories: ['hot', 'live', 'games', 'all'], emoji: '🎡', thumbBg: 'linear-gradient(145deg,#0d3a24,#145536,#1a100a)', barColor: '#c9a227' },
+  { id: 'car-roulette', name: 'CAR ROULETTE', badge: 'new', categories: ['hot', 'live', 'games', 'all'], emoji: '🏎️', thumbBg: 'linear-gradient(145deg,#1a237e,#283593,#0d47a1)', barColor: '#3d5afe' },
+  { id: 'zoo-roulette', name: 'ZOO ROULETTE', badge: 'new', categories: ['hot', 'live', 'games', 'all'], emoji: '🦁', thumbBg: 'linear-gradient(145deg,#0a2818,#145536,#1a0a30)', barColor: '#c9a227' },
   { id: 'mahjong-ways-2', name: 'Mahjong Ways 2', badge: 'hot', categories: ['hot', 'slot', 'all'], emoji: '🀄', thumbBg: 'linear-gradient(145deg,#2e7d32,#1b5e20,#0d3010)', barColor: '#2e7d32' },
   { id: 'pinata-wins', name: 'Pinata Wins', badge: 'new', categories: ['hot', 'love', 'slot', 'all'], emoji: '💃', thumbBg: 'linear-gradient(145deg,#ff6b35,#c0392b,#8e44ad)', barColor: '#e67e22' },
   { id: 'wingo-lottery', name: 'WIN GO LOTTERY', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '🎯', thumbBg: 'linear-gradient(145deg,#0a6a6e,#1de9b6,#ff5722)', barColor: '#00838f' },
@@ -109,7 +111,7 @@ export const S9_GAMES: S9Game[] = [
   { id: 'aviator', name: 'AVIATOR', badge: 'hot', categories: ['hot', 'games', 'all'], emoji: '✈️', thumbBg: 'linear-gradient(145deg,#e53935,#b71c1c,#1a1a1a)', barColor: '#c62828' },
   { id: 'fortune-gems-2', name: 'Fortune Gems 2', badge: 'hot', categories: ['hot', 'slot', 'love', 'all'], emoji: '💎', thumbBg: 'linear-gradient(145deg,#ffd54f,#ff6f00,#bf360c)', barColor: '#e65100' },
   { id: 'aero-x', name: 'AEROX', badge: 'hot', categories: ['hot', 'love', 'games', 'all'], emoji: '🚀', thumbBg: 'linear-gradient(145deg,#1a1208,#ff8a28,#0a0c10)', barColor: '#ff8a28' },
-  { id: 'bounty-trail', name: 'BOUNTY TRAIL', badge: 'hot', categories: ['hot', 'love', 'slot', 'all'], emoji: '🤠', thumbBg: 'linear-gradient(145deg,#482411,#b66a1f,#211008)', barColor: '#d28a32' },
+  { id: 'wild-bounty', name: 'WILD BOUNTY', badge: 'hot', categories: ['hot', 'love', 'slot', 'all'], emoji: '🤠', thumbBg: 'linear-gradient(145deg,#482411,#b66a1f,#211008)', barColor: '#d28a32' },
   { id: 'fortune-ox', name: 'Fortune Ox', badge: 'new', categories: ['hot', 'slot', 'all'], emoji: '🐂', thumbBg: 'linear-gradient(145deg,#ef5350,#c62828,#b71c1c)', barColor: '#2980b9' },
   { id: 'fortune-gems', name: 'Fortune Gems', badge: 'hot', categories: ['hot', 'slot', 'all'], emoji: '💎', thumbBg: 'linear-gradient(145deg,#ffd54f,#ff8f00,#e65100)', barColor: '#f57c00' },
   { id: 'crazy777', name: 'Crazy777', categories: ['hot', 'slot', 'all'], emoji: '7️⃣', thumbBg: 'linear-gradient(145deg,#ffeb3b,#ff9800,#e65100)', barColor: '#27ae60' },
@@ -121,7 +123,6 @@ export const S9_GAMES: S9Game[] = [
   { id: 'clover-coins', name: 'Clover Coins 3x3', badge: 'new', categories: ['love', 'slot', 'all'], emoji: '🍀', thumbBg: 'linear-gradient(145deg,#43a047,#2e7d32,#1b5e20)', barColor: '#27ae60' },
   { id: 'fortune-dragon', name: 'Fortune Dragon', badge: 'new', categories: ['love', 'slot', 'all'], emoji: '🐉', thumbBg: 'linear-gradient(145deg,#ffd700,#ff6f00,#bf360c)', barColor: '#e65100' },
   { id: 'fruit-party', name: 'Fruit Party', categories: ['love', 'slot', 'all'], emoji: '🍒', thumbBg: 'linear-gradient(145deg,#e91e63,#f06292,#fce4ec)', barColor: '#e91e8c' },
-  { id: 'wild-bounty', name: 'Wild Bounty Showdown', categories: ['love', 'games', 'all'], emoji: '🤠', thumbBg: 'linear-gradient(145deg,#d84315,#bf360c,#4e342e)', barColor: '#d35400' },
   { id: 'treasures-aztec', name: 'TREASURES OF AZTEC', categories: ['love', 'slot', 'all'], emoji: '👸', thumbBg: 'linear-gradient(145deg,#6a1b9a,#4a148c,#311b92)', barColor: '#8e24aa' },
 
   // GAMES
@@ -129,7 +130,7 @@ export const S9_GAMES: S9Game[] = [
   { id: '7up-down', name: 'UP DOWN', categories: ['games', 'all'], emoji: '🎲', thumbBg: 'linear-gradient(145deg,#ffeb3b,#fbc02d,#f57f17)', barColor: '#f9a825' },
   { id: 'crash', name: 'CRASH', categories: ['games', 'all'], emoji: '🚀', thumbBg: 'linear-gradient(145deg,#1565c0,#0d47a1,#1a237e)', barColor: '#1565c0' },
   { id: 'black-red', name: 'Black Red', categories: ['games', 'all'], emoji: '🔴', thumbBg: 'linear-gradient(145deg,#c62828,#1a1a1a,#c62828)', barColor: '#b71c1c' },
-  { id: 'jhandi-munda', name: 'Jhandi Munda', categories: ['games', 'card', 'all'], emoji: '🎰', thumbBg: 'linear-gradient(145deg,#ff6f00,#e65100,#bf360c)', barColor: '#e65100' },
+  { id: 'jhandi-munda', name: 'JHANDI MUNDA', badge: 'new', categories: ['hot', 'games', 'card', 'live', 'all'], emoji: '🎰', thumbBg: 'linear-gradient(145deg,#0d4a32,#145536,#1a100a)', barColor: '#c9a227' },
   { id: 'jackpot-fishing', name: 'JackPot Fishing', categories: ['games', 'all'], emoji: '🦈', thumbBg: 'linear-gradient(145deg,#00bcd4,#0277bd,#01579b)', barColor: '#e91e8c' },
   { id: 'ocean-king', name: 'Ocean King Jackpot', categories: ['games', 'all'], emoji: '💀', thumbBg: 'linear-gradient(145deg,#26c6da,#00838f,#004d40)', barColor: '#1a5276' },
   { id: 'all-star-fishing', name: 'All-star Fishing', categories: ['games', 'all'], emoji: '🐟', thumbBg: 'linear-gradient(145deg,#ff7043,#e64a19,#bf360c)', barColor: '#ff5722' },
@@ -165,7 +166,10 @@ export function getGamesForCategory(category: S9Category): S9Game[] {
 }
 
 export function getDevelopedGamesForCategory(category: S9Category): S9Game[] {
-  return getGamesForCategory(category).filter((g) => isDevelopedGame(g.id))
+  const hidden = new Set(['bounty-trail'])
+  return getGamesForCategory(category).filter(
+    (g) => isDevelopedGame(g.id) && !hidden.has(g.id),
+  )
 }
 
 export function getDevelopedSidebarCategories(): typeof SIDEBAR_ITEMS {
@@ -175,11 +179,12 @@ export function getDevelopedSidebarCategories(): typeof SIDEBAR_ITEMS {
 }
 
 export const LOBBY_FEATURED_GAME_IDS = [
+  'zoo-roulette',
+  'car-roulette',
   'fortune-gems-2',
   'roulette',
   'dragon-tiger',
   'chicken-road',
-  'bounty-trail',
   'wild-bounty',
   'aero-x',
   'double-crash',
@@ -191,6 +196,7 @@ export const LOBBY_FEATURED_GAME_IDS = [
   'wingo-lottery',
   'wingo',
   '7up-down',
+  'jhandi-munda',
   'money-coming',
 ] as const
 
@@ -211,9 +217,10 @@ export const DEMO_PLAYER = {
 export const PROMO_LEVEL_BONUS = { current: 3777, max: 3777 }
 
 export function getLobbyFeaturedGames(): S9Game[] {
+  const hidden = new Set(['bounty-trail'])
   return LOBBY_FEATURED_GAME_IDS.map(
     (id) => S9_GAMES.find((g) => g.id === id)!,
-  ).filter(Boolean)
+  ).filter((g) => g && !hidden.has(g.id))
 }
 
 export const TICKER_MESSAGES =
@@ -228,8 +235,10 @@ const GAME_THUMBS: Partial<Record<string, string>> = {
   aviator: '/games/aviator.png',
   'fortune-gems-2': '/games/fortune-gems-2.png',
   'aero-x': '/games/aero-x.png',
-  'bounty-trail': '/games/bounty-trail.png',
+  'wild-bounty': '/games/wild-bounty.png',
   roulette: '/games/roulette.png',
+  'car-roulette': '/games/car-roulette.png',
+  'zoo-roulette': '/games/zoo-roulette.png',
   'dragon-tiger': '/games/dragon-tiger.png',
   'chicken-road': '/games/chicken-road.png',
   'double-fortune': '/games/double-fortune.png',
@@ -247,7 +256,6 @@ const GAME_THUMBS: Partial<Record<string, string>> = {
   ak47: '/games/ak47.png',
   'lucky-pachinko': '/games/lucky-pachinko.png',
   'ocean-king': '/games/ocean-king.png',
-  'wild-bounty': '/games/wild-bounty.png',
   lobby: '/games/lobby.png',
   'clover-coins': '/games/clover-coins.png',
   'fortune-dragon': '/games/fortune-dragon.png',
@@ -255,6 +263,7 @@ const GAME_THUMBS: Partial<Record<string, string>> = {
   'money-coming': '/games/money-coming.png',
   'all-star-fishing': '/games/all-star-fishing.png',
   '7up-down': '/games/7up-down.png',
+  'jhandi-munda': '/games/jhandi-munda.png',
 }
 
 const CATEGORY_THUMB: Record<S9Category, string> = {

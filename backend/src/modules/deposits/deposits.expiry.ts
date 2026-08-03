@@ -2,9 +2,89 @@ import { prisma } from '../../lib/prisma.js'
 import { logger } from '../../lib/logger.js'
 import { notify } from '../../core/notify.js'
 import { pushPlayerWallet } from '../wallet/player.realtime.js'
-import { agentConfirmDeposit, PAY_WINDOW_MS, MERCHANT_CONFIRM_MS } from './deposits.service.js'
+import { getSettings } from '../../core/settings.js'
+import { toPaisa, toRupees } from '../../lib/money.js'
+import { balances } from '../wallet/wallet.service.js'
+import {
+  agentConfirmDeposit,
+  agentRejectDeposit,
+  PAY_WINDOW_MS,
+  MERCHANT_CONFIRM_MS,
+} from './deposits.service.js'
 
 const SWEEP_MS = 30_000
+
+/** Fail open deposit orders a merchant can no longer settle (float ran out / over-allocated). */
+async function sweepInsufficientFloatOrders() {
+  const open = await prisma.collectionOrder.findMany({
+    where: {
+      type: 'DEPOSIT',
+      status: { in: ['PENDING', 'CHECKING', 'PROCESSING'] },
+      agentId: { not: null },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 100,
+    select: {
+      id: true,
+      orderNo: true,
+      amount: true,
+      agentId: true,
+      depositId: true,
+      playerId: true,
+    },
+  })
+  if (!open.length) return
+
+  const agentIds = [...new Set(open.map((o) => o.agentId!).filter(Boolean))]
+  const mainBal = new Map<string, bigint>()
+  for (const id of agentIds) {
+    const bal = await balances(id)
+    mainBal.set(id, bal.MAIN ?? 0n)
+  }
+
+  // Oldest orders first — keep what float can cover, fail the rest.
+  const committed = new Map<string, bigint>()
+  for (const order of open) {
+    const agentId = order.agentId!
+    const used = committed.get(agentId) ?? 0n
+    const balance = mainBal.get(agentId) ?? 0n
+    const canCover = balance >= used + order.amount
+
+    if (!canCover) {
+      try {
+        await agentRejectDeposit(
+          order.id,
+          agentId,
+          'Merchant float insufficient — order cancelled automatically',
+        )
+        if (order.playerId) void pushPlayerWallet(order.playerId, 'deposit_rejected')
+        logger.info({ orderNo: order.orderNo, agentId }, 'C2C deposit auto-failed (insufficient merchant float)')
+      } catch (err) {
+        logger.warn({ err, orderId: order.id }, 'Failed to auto-fail deposit for insufficient float')
+      }
+      continue
+    }
+
+    committed.set(agentId, used + order.amount)
+  }
+}
+
+/** Turn off collections for merchants who cannot cover the minimum deposit amount. */
+async function sweepDepletedMerchants() {
+  const s = await getSettings()
+  const minAmount = toPaisa(s.minDeposit)
+  const agents = await prisma.user.findMany({
+    where: { role: 'AGENT', agentActive: true },
+    select: { id: true },
+  })
+  for (const agent of agents) {
+    const bal = await balances(agent.id)
+    if ((bal.MAIN ?? 0n) < minAmount) {
+      await prisma.user.update({ where: { id: agent.id }, data: { agentActive: false } })
+      logger.info({ agentId: agent.id, float: toRupees(bal.MAIN ?? 0n) }, 'C2C merchant collections auto-disabled (low float)')
+    }
+  }
+}
 
 /**
  * C2C deposit timers:
@@ -12,6 +92,9 @@ const SWEEP_MS = 30_000
  * 2) After submit, merchant does not confirm within 1 hour → order auto-done (SUCCESS + credit).
  */
 export async function sweepDepositTimeouts() {
+  await sweepInsufficientFloatOrders()
+  await sweepDepletedMerchants()
+
   const now = Date.now()
   const submitDeadline = new Date(now - PAY_WINDOW_MS)
   const confirmDeadline = new Date(now - MERCHANT_CONFIRM_MS)
@@ -91,7 +174,21 @@ export async function sweepDepositTimeouts() {
       await agentConfirmDeposit(order.id, order.agentId, order.trxId ?? undefined)
       logger.info({ orderNo: order.orderNo }, 'C2C deposit auto-confirmed (merchant timeout 1h)')
     } catch (err) {
-      logger.warn({ err, orderId: order.id }, 'Failed to auto-confirm deposit order')
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('Insufficient merchant float')) {
+        try {
+          await agentRejectDeposit(
+            order.id,
+            order.agentId,
+            'Merchant float insufficient — order cancelled automatically',
+          )
+          logger.info({ orderNo: order.orderNo }, 'C2C deposit auto-failed on confirm (insufficient float)')
+        } catch (rejectErr) {
+          logger.warn({ err: rejectErr, orderId: order.id }, 'Failed to auto-fail deposit after float error')
+        }
+      } else {
+        logger.warn({ err, orderId: order.id }, 'Failed to auto-confirm deposit order')
+      }
     }
   }
 }

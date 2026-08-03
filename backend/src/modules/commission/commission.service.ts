@@ -296,6 +296,9 @@ export async function updateAgentship(tx: Tx, referrerId: string, s?: Settings) 
 
   await tx.user.update({
     where: { id: referrerId },
-    data: { walletsFilled: filled },
+    data: {
+      walletsFilled: filled,
+      ...(filled >= settings.walletsRequired ? { referralAgentActive: true } : {}),
+    },
   })
 }

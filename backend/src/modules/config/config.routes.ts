@@ -25,6 +25,7 @@ configRoutes.get(
         dailyRewards: s.dailyRewards?.length === 7 ? s.dailyRewards : [4, 9, 3, 5, 8, 6, 10],
         deposit: [s.depositBonus1, s.depositBonus2, s.depositBonus3],
         dailyDeposit: s.dailyDepositBonus,
+        perDeposit: s.dailyDepositBonus,
       },
       wager: { bonus: s.bonusWager, deposit: s.depositWager },
       wheel: {

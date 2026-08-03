@@ -2,10 +2,10 @@ import { memo, useEffect, useMemo, useRef } from 'react'
 import {
   COL_GAP,
   COLS,
-  FRAME_INSET,
-  MACHINE_H,
-  MACHINE_W,
-  REEL_VIEWPORT_H,
+  REEL_H,
+  REEL_W,
+  REEL_X,
+  REEL_Y,
   ROW_GAP,
   SYMBOL_H,
   SYMBOL_W,
@@ -22,6 +22,7 @@ type Props = {
   spinning: boolean
   stoppingReels: boolean[]
   winningCells: Set<string>
+  goldActivating?: Set<string>
   turbo: boolean
 }
 
@@ -30,20 +31,28 @@ function SymbolView({
   gold,
   goldMult,
   win,
+  goldActivating,
+  stagger,
 }: {
   id: SymbolId
   gold: boolean
   goldMult: number
   win: boolean
+  goldActivating: boolean
+  stagger: number
 }) {
   const meta = SYMBOL_MAP[id]
-  const fill = meta.kind === 'character' || meta.kind === 'special' ? 0.98 : 0.92
+  const fill = meta.kind === 'character' || meta.kind === 'special' ? 0.96 : 0.9
   return (
     <div
       className={`${styles.symbolCell} ${win ? styles.symbolWin : ''} ${
-        isDebugTransparency() ? styles.checker : ''
-      }`}
-      style={{ width: SYMBOL_W, height: SYMBOL_H }}
+        goldActivating ? styles.goldActivate : ''
+      } ${isDebugTransparency() ? styles.checker : ''}`}
+      style={{
+        width: SYMBOL_W,
+        height: SYMBOL_H,
+        animationDelay: win ? `${stagger * 0.07}s` : undefined,
+      }}
     >
       <img
         className={styles.symbolImg}
@@ -52,10 +61,9 @@ function SymbolView({
         draggable={false}
         style={{ width: `${fill * 100}%`, height: `${fill * 100}%` }}
       />
-      {gold && (
-        <img className={styles.goldFrame} src={ASSET.goldFrame} alt="" draggable={false} />
-      )}
+      {gold && <img className={styles.goldFrame} src={ASSET.goldFrame} alt="" draggable={false} />}
       {gold && goldMult > 1 && <span className={styles.goldBadge}>x{goldMult}</span>}
+      {win && <span className={styles.winRing} aria-hidden />}
     </div>
   )
 }
@@ -66,6 +74,7 @@ const ReelColumn = memo(function ReelColumn({
   spinning,
   stopping,
   winningCells,
+  goldActivating,
   turbo,
 }: {
   col: number
@@ -73,8 +82,10 @@ const ReelColumn = memo(function ReelColumn({
   spinning: boolean
   stopping: boolean
   winningCells: Set<string>
+  goldActivating: Set<string>
   turbo: boolean
 }) {
+  const colRef = useRef<HTMLDivElement>(null)
   const stripRef = useRef<HTMLDivElement>(null)
   const stripIds = useMemo(() => buildReelStrip(turbo ? 22 : 32), [spinning, turbo])
   const showStrip = spinning && !stopping
@@ -96,13 +107,23 @@ const ReelColumn = memo(function ReelColumn({
       el.style.transform = `translate3d(0,${-dist}px,0)`
     }
     if (stopping) {
-      el.style.transition = 'transform 0.34s cubic-bezier(0.16, 1.55, 0.3, 1)'
+      el.style.transition = 'transform 0.38s cubic-bezier(0.16, 1.55, 0.3, 1)'
       el.style.transform = 'translate3d(0,0,0)'
     }
   }, [spinning, stopping, turbo])
 
+  useEffect(() => {
+    const colEl = colRef.current
+    if (!colEl || !stopping) return
+    colEl.classList.remove(styles.reelBounce)
+    void colEl.offsetWidth
+    colEl.classList.add(styles.reelBounce)
+    const t = window.setTimeout(() => colEl.classList.remove(styles.reelBounce), 380)
+    return () => window.clearTimeout(t)
+  }, [stopping])
+
   return (
-    <div className={styles.reelCol} style={{ width: SYMBOL_W, height: REEL_VIEWPORT_H }}>
+    <div ref={colRef} className={styles.reelCol} style={{ width: SYMBOL_W, height: REEL_H }}>
       <div
         ref={stripRef}
         className={`${styles.reelStrip} ${showStrip ? styles.reelStripBlur : ''}`}
@@ -110,7 +131,15 @@ const ReelColumn = memo(function ReelColumn({
       >
         {showStrip
           ? stripIds.map((id, i) => (
-              <SymbolView key={`s-${col}-${i}`} id={id} gold={false} goldMult={1} win={false} />
+              <SymbolView
+                key={`s-${col}-${i}`}
+                id={id}
+                gold={false}
+                goldMult={1}
+                win={false}
+                goldActivating={false}
+                stagger={0}
+              />
             ))
           : cells.slice(0, VISIBLE_ROWS).map((cell, row) => (
               <SymbolView
@@ -119,6 +148,8 @@ const ReelColumn = memo(function ReelColumn({
                 gold={cell.gold}
                 goldMult={cell.goldMult}
                 win={winningCells.has(`${col}:${row}`)}
+                goldActivating={goldActivating.has(`${col}:${row}`)}
+                stagger={col + row}
               />
             ))}
       </div>
@@ -131,26 +162,16 @@ export default memo(function ReelMachine({
   spinning,
   stoppingReels,
   winningCells,
+  goldActivating = new Set(),
   turbo,
 }: Props) {
   return (
     <div
-      className={styles.machine}
-      style={{ width: MACHINE_W, height: MACHINE_H }}
+      className={styles.reelWindow}
+      style={{ left: REEL_X, top: REEL_Y, width: REEL_W, height: REEL_H }}
       aria-label="Reel machine"
     >
-      <div className={styles.machineWood} aria-hidden />
-      <img className={styles.machineFrame} src={ASSET.reelFrame} alt="" draggable={false} />
-      <div
-        className={styles.reelViewport}
-        style={{
-          width: COLS * SYMBOL_W + (COLS - 1) * COL_GAP,
-          height: REEL_VIEWPORT_H,
-          top: FRAME_INSET,
-          left: FRAME_INSET,
-          gap: COL_GAP,
-        }}
-      >
+      <div className={styles.reelViewport} style={{ gap: COL_GAP }}>
         {Array.from({ length: COLS }, (_, col) => (
           <ReelColumn
             key={col}
@@ -159,11 +180,11 @@ export default memo(function ReelMachine({
             spinning={spinning}
             stopping={stoppingReels[col] === true}
             winningCells={winningCells}
+            goldActivating={goldActivating}
             turbo={turbo}
           />
         ))}
       </div>
-      <div className={styles.machineVignette} aria-hidden />
     </div>
   )
 })

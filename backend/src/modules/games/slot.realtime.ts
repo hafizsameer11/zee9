@@ -72,6 +72,7 @@ function attachSlug(slug: string) {
             }
             await dispatchWsAction(ws, msg, {
               spin: async (m) => slot.spin(client.userId, slug, m.bet),
+              buyFeature: async (m) => slot.buyFeature(client.userId, slug, m.bet),
             })
           } catch {
             /* ignore */

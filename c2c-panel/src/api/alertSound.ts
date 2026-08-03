@@ -62,31 +62,9 @@ export function unlockAlertSound() {
   }
 }
 
+/** Alert sound disabled — merchants rely on visual popups only. */
 export function startAlertSound() {
-  if (playing) return
-  playing = true
-  try {
-    if (!audio) {
-      audio = new Audio('/alert.wav')
-      audio.loop = true
-      audio.volume = 0.85
-    }
-    audio.currentTime = 0
-    void audio.play().catch(() => {
-      // Autoplay blocked or file missing — pulse fallback beeps
-      playFallbackBeep()
-      fallbackTimer = window.setInterval(() => {
-        if (!playing) return
-        playFallbackBeep()
-      }, 900)
-    })
-  } catch {
-    playFallbackBeep()
-    fallbackTimer = window.setInterval(() => {
-      if (!playing) return
-      playFallbackBeep()
-    }, 900)
-  }
+  /* intentionally silent */
 }
 
 export function stopAlertSound() {

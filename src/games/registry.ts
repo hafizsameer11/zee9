@@ -3,7 +3,6 @@ import AviatorGame from './components/AviatorGame'
 import CrashGame from './components/CrashGame'
 import MinesGame from './components/MinesGame'
 import MoneyComingGame from './components/MoneyComingGame'
-import UpDownGame from './components/UpDownGame'
 import WingoGame from './components/WingoGame'
 import WingoLotteryGame from './components/WingoLotteryGame'
 import AeroXGame from './aero-x'
@@ -11,9 +10,13 @@ import BountyTrailGame from './bounty-trail'
 import ChickenRoadGame from './chicken-road'
 import DoubleCrashGame from './double-crash'
 import DoubleFortuneGame from './double-fortune'
+import CarRouletteGame from './car-roulette'
+import ZooRouletteGame from './zoo-roulette'
 import DragonTigerGame from './dragon-tiger'
 import FortuneGems2Game from './fortune-gems-2'
 import RouletteGame from './roulette'
+import JhandiMundaGame from './jhandi-munda'
+import SevenUpDownGame from './7up-down'
 import SuperAceGame from './super-ace'
 import type { GameEntry } from './types'
 
@@ -35,6 +38,9 @@ export const PLAYABLE_GAME_IDS = new Set<string>([
   'double-crash',
   'super-ace',
   'double-fortune',
+  'car-roulette',
+  'zoo-roulette',
+  'jhandi-munda',
 ])
 
 /** Games that stay in true phone portrait (no 90° landscape rotate). */
@@ -44,6 +50,7 @@ export const PORTRAIT_GAME_IDS = new Set<string>([
   'wild-bounty',
   'super-ace',
   'double-fortune',
+  'jhandi-munda',
 ])
 
 export function isPortraitGame(id: string): boolean {
@@ -61,7 +68,7 @@ function buildRegistry(): Record<string, GameEntry> {
     crash: { component: CrashGame, title: titleFor('crash'), engine: 'crash' },
     'wingo-lottery': { component: WingoLotteryGame, title: titleFor('wingo-lottery'), engine: 'wingo' },
     wingo: { component: WingoGame, title: titleFor('wingo'), engine: 'wingo' },
-    '7up-down': { component: UpDownGame, title: titleFor('7up-down'), engine: 'dice' },
+    '7up-down': { component: SevenUpDownGame, title: titleFor('7up-down'), engine: 'dice' },
     'money-coming': { component: MoneyComingGame, title: titleFor('money-coming'), engine: 'slot' },
     roulette: { component: RouletteGame, title: titleFor('roulette'), engine: 'roulette' },
     'dragon-tiger': {
@@ -100,6 +107,21 @@ function buildRegistry(): Record<string, GameEntry> {
       component: DoubleFortuneGame,
       title: titleFor('double-fortune'),
       engine: 'slot',
+    },
+    'car-roulette': {
+      component: CarRouletteGame,
+      title: titleFor('car-roulette'),
+      engine: 'roulette',
+    },
+    'zoo-roulette': {
+      component: ZooRouletteGame,
+      title: titleFor('zoo-roulette'),
+      engine: 'roulette',
+    },
+    'jhandi-munda': {
+      component: JhandiMundaGame,
+      title: titleFor('jhandi-munda'),
+      engine: 'dice',
     },
   }
 }

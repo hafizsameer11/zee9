@@ -14,7 +14,11 @@ export const registerSchema = z.object({
   bindCode: z.string().max(30).optional(),
 })
 
-export const loginSchema = z.object({ phone, password })
+/** Which front-end is signing in; defaults to the player game app. */
+export const loginAppSchema = z.enum(['player', 'c2c', 'agent', 'mentor', 'admin'])
+export type LoginApp = z.infer<typeof loginAppSchema>
+
+export const loginSchema = z.object({ phone, password, app: loginAppSchema.optional() })
 
 export const refreshSchema = z.object({ refreshToken: z.string().min(10) })
 

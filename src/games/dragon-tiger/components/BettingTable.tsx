@@ -17,6 +17,7 @@ type Props = {
   poolTiger: number
   poolTie: number
   trendPct: { dragon: number; tiger: number }
+  lockedSide: BetSelection | null
   onPlace: (selection: BetSelection) => void
 }
 
@@ -26,6 +27,7 @@ function Zone({
   amount,
   pool,
   disabled,
+  blocked,
   winning,
   losing,
   onPlace,
@@ -36,6 +38,7 @@ function Zone({
   amount: number
   pool: number
   disabled: boolean
+  blocked: boolean
   winning: boolean
   losing: boolean
   onPlace: (s: BetSelection) => void
@@ -44,9 +47,9 @@ function Zone({
   return (
     <button
       type="button"
-      className={`${styles.zone} ${styles[selection]} ${winning ? styles.winning : ''} ${losing ? styles.losing : ''}`}
+      className={`${styles.zone} ${styles[selection]} ${winning ? styles.winning : ''} ${losing ? styles.losing : ''} ${blocked ? styles.blocked : ''}`}
       data-bet={selection}
-      disabled={disabled}
+      disabled={disabled || blocked}
       onClick={() => onPlace(selection)}
       aria-label={`Bet ${label}`}
     >
@@ -72,9 +75,11 @@ export default function BettingTable({
   poolTiger,
   poolTie,
   trendPct,
+  lockedSide,
   onPlace,
 }: Props) {
   const stacksFor = (sel: BetSelection) => chipStacks.filter((c) => c.id.startsWith(sel))
+  const isBlocked = (sel: BetSelection) => lockedSide != null && lockedSide !== sel
 
   return (
     <div className={styles.table}>
@@ -92,6 +97,7 @@ export default function BettingTable({
               amount={byZone.get('dragon')?.amount ?? 0}
               pool={poolDragon}
               disabled={disabled}
+              blocked={isBlocked('dragon')}
               winning={showOutcome && winner === 'dragon'}
               losing={showOutcome && winner !== null && winner !== 'dragon'}
               onPlace={onPlace}
@@ -118,6 +124,7 @@ export default function BettingTable({
               amount={byZone.get('tie')?.amount ?? 0}
               pool={poolTie}
               disabled={disabled}
+              blocked={isBlocked('tie')}
               winning={showOutcome && winner === 'tie'}
               losing={showOutcome && winner !== null && winner !== 'tie'}
               onPlace={onPlace}
@@ -155,6 +162,7 @@ export default function BettingTable({
               amount={byZone.get('tiger')?.amount ?? 0}
               pool={poolTiger}
               disabled={disabled}
+              blocked={isBlocked('tiger')}
               winning={showOutcome && winner === 'tiger'}
               losing={showOutcome && winner !== null && winner !== 'tiger'}
               onPlace={onPlace}

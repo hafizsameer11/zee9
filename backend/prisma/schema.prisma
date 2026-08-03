@@ -106,6 +106,8 @@ model User {
   wingoBets         WingoBet[]
   lotteryBets       LotteryBet[]
   rouletteBets      RouletteBet[]
+  carRouletteBets   CarRouletteBet[]
+  zooRouletteBets   ZooRouletteBet[]
   dragonTigerBets   DragonTigerBet[]
   sevenUpBets       SevenUpBet[]
   notifications     Notification[]
@@ -779,6 +781,116 @@ model RouletteBet {
   payout    BigInt          @default(0)
   state     RoundState      @default(ACTIVE)
   createdAt DateTime        @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
+  @@index([createdAt])
+}
+
+// Shared multiplayer Car Roulette (eight fictional marques).
+enum CarRouletteBrand {
+  zephyra
+  kavaro
+  nordheim
+  ashlyne
+  taurion
+  regalis
+  scudera
+  vornik
+}
+
+model CarRouletteRound {
+  id            String            @id @default(cuid())
+  period        String            @unique
+  phase         WingoPhase        @default(BETTING)
+  resultBrand   CarRouletteBrand?
+  resultSlot    Int?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime          @default(now())
+  bets          CarRouletteBet[]
+
+  @@index([phase])
+  @@index([createdAt])
+}
+
+model CarRouletteBet {
+  id        String             @id @default(cuid())
+  roundId   String
+  round     CarRouletteRound   @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User               @relation(fields: [userId], references: [id])
+  brand     CarRouletteBrand
+  amount    BigInt
+  payout    BigInt             @default(0)
+  state     RoundState         @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  endedAt   DateTime?
+
+  @@index([userId])
+  @@index([roundId, state])
+  @@index([roundId, userId])
+  @@index([createdAt])
+}
+
+// Shared multiplayer Zoo Roulette (wildlife betting table).
+enum ZooRouletteAnimal {
+  monkey
+  rabbit
+  lion
+  panda
+  swallow
+  pigeon
+  peacock
+  eagle
+  shark
+  golden_frog
+}
+
+enum ZooRouletteZone {
+  monkey
+  rabbit
+  lion
+  panda
+  swallow
+  pigeon
+  peacock
+  eagle
+  shark
+  beast
+  bird
+}
+
+model ZooRouletteRound {
+  id            String             @id @default(cuid())
+  period        String             @unique
+  phase         WingoPhase         @default(BETTING)
+  resultAnimal  ZooRouletteAnimal?
+  resultSlot    Int?
+  bettingEndsAt DateTime
+  lockedEndsAt  DateTime?
+  revealEndsAt  DateTime?
+  createdAt     DateTime           @default(now())
+  bets          ZooRouletteBet[]
+
+  @@index([phase])
+  @@index([createdAt])
+}
+
+model ZooRouletteBet {
+  id        String           @id @default(cuid())
+  roundId   String
+  round     ZooRouletteRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  zone      ZooRouletteZone
+  amount    BigInt
+  payout    BigInt           @default(0)
+  state     RoundState       @default(ACTIVE)
+  createdAt DateTime         @default(now())
   endedAt   DateTime?
 
   @@index([userId])

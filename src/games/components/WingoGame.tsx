@@ -4,6 +4,7 @@ import { useWallet } from '../../context/WalletContext'
 import type { WingoBetType } from '../engines/wingo'
 import { connectWingoSocket } from '../lib/wingoSocket'
 import type { GameComponentProps } from '../types'
+import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import WingoDesignUI, {
   type BetCounters,
   type MyBetRecord,
@@ -183,9 +184,12 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
           const wins = serverBets.filter((b) => b.state === 'CASHED_OUT')
           const totalWin = wins.reduce((s, b) => s + (b.payout || 0), 0)
           if (totalWin > 0) {
-            toast(`Won Rs ${Math.round(totalWin).toLocaleString()}!`, 2200)
+            toast(roundWinMessage(totalWin), 2200)
           } else if (serverBets.some((b) => b.state === 'BUST' || b.state === 'CASHED_OUT')) {
-            toast(`Result #${state.result.number}`)
+            const staked = serverBets
+              .filter((b) => b.state === 'BUST' || b.state === 'CASHED_OUT')
+              .reduce((s, b) => s + (Number(b.amount) || 0), 0)
+            toast(staked > 0 ? roundLossMessage(staked) : `Result #${state.result.number}`)
           }
           void refresh()
         }

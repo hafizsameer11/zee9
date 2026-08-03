@@ -26,10 +26,17 @@ export default function TopBar({
   return (
     <header className={styles.bar}>
       <div className={styles.left}>
-        <div className={styles.logoMark}>
-          <img src={ASSET.chicken('idle')} alt="" />
-        </div>
-        <strong className={styles.brand}>CHICKEN <em>ROAD</em></strong>
+        <button
+          type="button"
+          className={styles.brandHome}
+          onClick={onBack}
+          aria-label="Back to home"
+        >
+          <span className={styles.logoMark}>
+            <img src={ASSET.chicken('idle')} alt="" />
+          </span>
+          <strong className={styles.brand}>CHICKEN <em>ROAD</em></strong>
+        </button>
         <div className={styles.live}>
           <i />
           <span>Live wins</span>

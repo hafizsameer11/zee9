@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { roundLossStatus } from '../../lib/roundResult'
 import {
   AUTO_SPIN_OPTIONS,
   BET_AMOUNTS,
@@ -206,10 +207,11 @@ export function useDoubleFortuneGame(opts: Opts) {
         setWinReaction('none')
       } else {
         setDisplayWin(0)
-        setStatusMsg('GOOD LUCK!')
+        setStatusMsg(roundLossStatus(betRef.current))
+        onMessage?.(roundLossStatus(betRef.current))
       }
     },
-    [countUpWin, credit, playSfx],
+    [countUpWin, credit, onMessage, playSfx],
   )
 
   const runSpin = useCallback(

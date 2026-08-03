@@ -858,8 +858,31 @@
   filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
 }
 
+.winMath {
+  margin-top: -40px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 900;
+  color: #fff6df;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.winMathMult {
+  color: #ffd76a;
+  font-size: 24px;
+  text-shadow: 0 0 12px rgba(255, 190, 60, 0.75);
+}
+
+.winMathEq {
+  opacity: 0.9;
+}
+
 .winAmount {
-  margin-top: -18px;
+  margin-top: -6px;
   font-size: 42px;
   font-weight: 900;
   color: #ffe082;

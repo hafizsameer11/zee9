@@ -668,7 +668,10 @@ adminRoutes.get(
   requireScope('users'),
   asyncHandler(async (_req, res) => {
     const agents = await prisma.user.findMany({
-      where: { OR: [{ referralAgentActive: true }, { walletsFilled: { gt: 0 } }] },
+      where: {
+        role: { notIn: ['MENTOR', 'ADMIN'] },
+        OR: [{ referralAgentActive: true }, { walletsFilled: { gt: 0 } }],
+      },
       orderBy: { createdAt: 'desc' },
       take: 200,
       select: {
@@ -702,12 +705,11 @@ adminRoutes.get(
         for (const e of byLevel) levels[e.level] = e._count._all
         return {
           ...a,
-          salaryApprovedPaisa: approved,
           referrals: a._count.referrals,
-          commission: c._sum.amount ?? 0n,
-          commissionBalance: commissionBal,
-          salaryApproved: approved,
-          salaryHold: commissionBal - approved,
+          commission: toRupees(c._sum.amount ?? 0n),
+          commissionBalance: toRupees(commissionBal),
+          salaryApproved: toRupees(approved),
+          salaryHold: toRupees(commissionBal - approved),
           downline: { level3: levels[3], level2: levels[2], level1: levels[1] },
         }
       }),
@@ -760,15 +762,23 @@ adminRoutes.post(
 )
 
 /**
- * Approve additional salary for transfer (from hold → transferable).
- * amount = rupees to add to approved pool (capped by current COMMISSION − already approved).
+ * Set how much salary this agent may withdraw (absolute rupees).
+ * Cap = current COMMISSION balance. Does NOT open withdraw — use salary-transfer for that.
+ * mode=add (default legacy): add amount from hold onto current approved.
+ * mode=set: replace approved with exact amount.
  */
 adminRoutes.post(
   '/referral-agents/:id/salary-approve',
   requireScope('users'),
-  validate({ body: z.object({ amount: z.number().positive() }) }),
+  validate({
+    body: z.object({
+      amount: z.number().min(0),
+      mode: z.enum(['add', 'set']).optional(),
+    }),
+  }),
   asyncHandler(async (req, res) => {
     const id = req.params.id
+    const mode = req.body.mode === 'set' ? 'set' : 'add'
     const user = await prisma.user.findUnique({
       where: { id },
       select: { id: true, salaryApprovedPaisa: true, salaryTransferOpen: true, displayName: true, playerNo: true },
@@ -776,33 +786,44 @@ adminRoutes.post(
     if (!user) throw notFound('Agent not found')
     const bal = await balances(id)
     const commissionBal = bal.COMMISSION
-    let approved = user.salaryApprovedPaisa
-    if (approved < 0n) approved = 0n
-    if (approved > commissionBal) approved = commissionBal
-    const hold = commissionBal - approved
+    let currentApproved = user.salaryApprovedPaisa
+    if (currentApproved < 0n) currentApproved = 0n
+    if (currentApproved > commissionBal) currentApproved = commissionBal
+
     const want = toPaisa(req.body.amount)
-    if (want <= 0n) throw badRequest('Invalid amount')
-    if (hold <= 0n) throw badRequest('Nothing on hold to approve')
-    const add = want > hold ? hold : want
-    const next = approved + add
+    if (want < 0n) throw badRequest('Invalid amount')
+
+    let next: bigint
+    if (mode === 'set') {
+      next = want > commissionBal ? commissionBal : want
+    } else {
+      if (want <= 0n) throw badRequest('Enter amount to approve')
+      const hold = commissionBal - currentApproved
+      if (hold <= 0n) throw badRequest('Nothing on hold to approve')
+      const add = want > hold ? hold : want
+      next = currentApproved + add
+    }
+
     await prisma.user.update({
       where: { id },
-      data: { salaryApprovedPaisa: next, salaryTransferOpen: true },
+      data: { salaryApprovedPaisa: next },
     })
     await audit(req, 'referralAgent.salaryApprove', 'user', id, null, {
-      amount: toRupees(add),
+      mode,
+      amount: toRupees(want),
       approved: toRupees(next),
       hold: toRupees(commissionBal - next),
+      withdrawOpen: user.salaryTransferOpen,
     })
     ok(res, {
       id,
       name: user.displayName,
       playerNo: user.playerNo,
       commissionBalance: toRupees(commissionBal),
-      salaryTransferOpen: true,
+      salaryTransferOpen: user.salaryTransferOpen,
       salaryApproved: toRupees(next),
       salaryHold: toRupees(commissionBal - next),
-      approvedNow: toRupees(add),
+      approvedNow: toRupees(next > currentApproved ? next - currentApproved : 0n),
     })
   }),
 )

@@ -294,6 +294,14 @@ export async function placeBet(userId: string, side: DragonTigerSide, amountRupe
     const bal = await getBalances(tx, userId)
     if (bal.MAIN! < amount) throw unprocessable('Insufficient balance')
 
+    const existing = await tx.dragonTigerBet.findFirst({
+      where: { roundId: round.id, userId, state: 'ACTIVE' },
+      select: { side: true },
+    })
+    if (existing && existing.side !== side) {
+      throw conflict('Choose one side per round — Dragon, Tie, or Tiger')
+    }
+
     await post(tx, {
       type: 'GAME_BET',
       referenceType: 'dragon-tiger-bet',

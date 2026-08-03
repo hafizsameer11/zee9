@@ -1,8 +1,7 @@
-import { useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useStore } from './data/store'
-import { unlockAlertSound } from './api/alertSound'
 import DepositAlertModal from './components/DepositAlertModal'
+import WithdrawAlertModal from './components/WithdrawAlertModal'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 import LoginPassword from './pages/LoginPassword'
@@ -17,21 +16,23 @@ import PaymentInformation from './pages/PaymentInformation'
 import Balance from './pages/Balance'
 
 export default function App() {
-  const { toast, depositAlert, snoozeDepositAlert, openDepositAlert } = useStore()
+  const location = useLocation()
+  const {
+    toast,
+    depositAlert,
+    snoozeDepositAlert,
+    rejectDepositAlert,
+    openDepositAlert,
+    withdrawAlert,
+    snoozeWithdrawAlert,
+    openWithdrawAlert,
+  } = useStore()
 
-  useEffect(() => {
-    const unlock = () => {
-      unlockAlertSound()
-      window.removeEventListener('pointerdown', unlock)
-      window.removeEventListener('keydown', unlock)
-    }
-    window.addEventListener('pointerdown', unlock)
-    window.addEventListener('keydown', unlock)
-    return () => {
-      window.removeEventListener('pointerdown', unlock)
-      window.removeEventListener('keydown', unlock)
-    }
-  }, [])
+  const onHome = location.pathname === '/'
+  const showDepositAlert =
+    depositAlert &&
+    (depositAlert.type !== 'deposit_submitted' || onHome)
+  const showWithdrawAlert = !showDepositAlert && withdrawAlert
 
   return (
     <>
@@ -51,11 +52,19 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {toast && <div className="toast">{toast}</div>}
-      {depositAlert && (
+      {showDepositAlert && (
         <DepositAlertModal
           alert={depositAlert}
           onLater={snoozeDepositAlert}
+          onReject={() => void rejectDepositAlert()}
           onOpen={openDepositAlert}
+        />
+      )}
+      {showWithdrawAlert && (
+        <WithdrawAlertModal
+          alert={withdrawAlert}
+          onLater={snoozeWithdrawAlert}
+          onOpen={openWithdrawAlert}
         />
       )}
     </>

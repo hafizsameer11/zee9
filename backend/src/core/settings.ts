@@ -29,6 +29,7 @@ export interface Settings {
   depositBonus1: number
   depositBonus2: number
   depositBonus3: number
+  /** % bonus on every approved deposit (each deposit, no daily cap). */
   dailyDepositBonus: number
   rebetBonus: boolean
   /** Bet Rebate: min net loss (Rs) to qualify */
@@ -122,7 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyOpenBonus: 4,
   dailyRewards: [4, 9, 3, 5, 8, 6, 10],
   dailyOpenNeedsDeposit: true,
-  depositBonus1: 10,
+  depositBonus1: 5,
   depositBonus2: 5,
   depositBonus3: 5,
   dailyDepositBonus: 5,

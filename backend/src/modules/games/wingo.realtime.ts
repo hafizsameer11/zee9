@@ -6,6 +6,7 @@ import { logger } from '../../lib/logger.js'
 import { env } from '../../lib/env.js'
 import * as wingo from './wingo.service.js'
 import { registerGameWs } from './gameWsRouter.js'
+import { dispatchWsAction } from './wsActions.js'
 
 type Client = {
   ws: WebSocket
@@ -173,28 +174,56 @@ export function attachWingoRealtime(_server: HttpServer) {
       }
 
       ws.on('message', (raw) => {
-        try {
-          const msg = JSON.parse(String(raw))
-          if (msg?.type === 'ping') send(ws, { type: 'pong', t: Date.now() })
-          if (msg?.type === 'refresh') {
-            client.lastPayload = null
-            kickWingoRealtime(client.mode)
-          }
-          if (msg?.type === 'mode' && typeof msg.mode === 'string') {
-            if ((wingo.WINGO_MODES as readonly string[]).includes(msg.mode)) {
-              client.mode = msg.mode as wingo.WingoMode
-              client.lastRoundId = null
-              client.lastPayload = null
-              void wingo.getState(client.userId, client.mode).then((state) => {
-                client.lastRoundId = state.roundId
-                client.lastSentAt = Date.now()
-                send(ws, { type: 'state', data: state })
-              })
+        void (async () => {
+          try {
+            const msg = JSON.parse(String(raw))
+            if (msg?.type === 'ping') {
+              send(ws, { type: 'pong', t: Date.now() })
+              return
             }
+            if (msg?.type === 'refresh') {
+              client.lastPayload = null
+              kickWingoRealtime(client.mode)
+              return
+            }
+            if (msg?.type === 'mode' && typeof msg.mode === 'string') {
+              if ((wingo.WINGO_MODES as readonly string[]).includes(msg.mode)) {
+                client.mode = msg.mode as wingo.WingoMode
+                client.lastRoundId = null
+                client.lastPayload = null
+                void wingo.getState(client.userId, client.mode).then((state) => {
+                  client.lastRoundId = state.roundId
+                  client.lastSentAt = Date.now()
+                  send(ws, { type: 'state', data: state })
+                })
+              }
+              return
+            }
+            await dispatchWsAction(
+              ws,
+              msg,
+              {
+                bet: async (m) =>
+                  wingo.placeBet(
+                    client.userId,
+                    m.mode ?? client.mode,
+                    m.type,
+                    m.amount,
+                    m.value,
+                  ),
+                revoke: async (m) => wingo.revokeBets(client.userId, m.mode ?? client.mode),
+              },
+              {
+                afterOk: () => {
+                  client.lastPayload = null
+                  kickWingoRealtime(client.mode)
+                },
+              },
+            )
+          } catch {
+            /* ignore */
           }
-        } catch {
-          /* ignore */
-        }
+        })()
       })
 
       ws.on('close', () => {

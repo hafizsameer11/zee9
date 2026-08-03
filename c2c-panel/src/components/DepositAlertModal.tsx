@@ -5,10 +5,12 @@ import type { MerchantDepositEvent } from '../api/realtime'
 export default function DepositAlertModal({
   alert,
   onLater,
+  onReject,
   onOpen,
 }: {
   alert: MerchantDepositEvent
   onLater: () => void
+  onReject?: () => void
   onOpen: () => void
 }) {
   const nav = useNavigate()
@@ -68,6 +70,11 @@ export default function DepositAlertModal({
           <button type="button" className="btn btn-outline btn-block" onClick={onLater}>
             Later
           </button>
+          {submitted && onReject && (
+            <button type="button" className="btn btn-outline btn-block" onClick={onReject}>
+              Not received
+            </button>
+          )}
           <button type="button" className="btn btn-gold btn-block" onClick={openOrder}>
             {submitted ? 'Checking' : 'Open order'}
           </button>

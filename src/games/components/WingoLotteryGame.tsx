@@ -11,6 +11,7 @@ import {
   type WlBetKey,
 } from '../engines/wingoLottery'
 import { useDesignScale } from '../hooks/useDesignScale'
+import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import {
   connectLotterySocket,
   type LotteryPublicBetEvent,
@@ -128,7 +129,12 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
     ])
   }, [])
 
-  const runVisualReveal = useCallback((n: number, period: string) => {
+  const runVisualReveal = useCallback(
+    (
+      n: number,
+      period: string,
+      outcome?: { won: number; hadBets: boolean; staked: number },
+    ) => {
     if (visualRunning.current) return
     visualRunning.current = true
     setResult(n)
@@ -139,8 +145,24 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
       timers.push(
         window.setTimeout(() => {
           setPhase(step.phase)
+          if (step.phase === 'RESULT_REVEAL' && outcome) {
+            if (outcome.won > 0) {
+              setLastWin(outcome.won)
+              sound.play('win', { volume: 0.75 })
+              onMessage?.(roundWinMessage(outcome.won))
+              window.setTimeout(() => onMessage?.(null), 2200)
+            } else if (outcome.hadBets && outcome.staked > 0) {
+              sound.play('lose', { volume: 0.3 })
+              onMessage?.(roundLossMessage(outcome.staked))
+              window.setTimeout(() => onMessage?.(null), 2200)
+            }
+            sound.play('reveal', { volume: 0.5 })
+          }
           if (step.phase === 'RESULT_TO_HISTORY') {
-            setHistory((h) => [...h.slice(-20), n])
+            setHistory((h) => {
+              if (h[h.length - 1] === n) return h
+              return [...h.slice(-20), n]
+            })
           }
           if (step.phase === 'SETTLEMENT' && settledPeriod.current !== period) {
             settledPeriod.current = period
@@ -165,7 +187,9 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
       for (const t of timers) window.clearTimeout(t)
       visualRunning.current = false
     }
-  }, [refresh])
+  },
+    [onMessage, refresh],
+  )
 
   useEffect(() => {
     if (!assetsReady) return
@@ -192,7 +216,11 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
 
         setServer(st)
         const historySignature = (st.history || []).join(',')
-        if (st.history?.length && historySignature !== lastHistorySignature.current) {
+        if (
+          st.history?.length &&
+          historySignature !== lastHistorySignature.current &&
+          !visualRunning.current
+        ) {
           lastHistorySignature.current = historySignature
           setHistory(st.history)
         }
@@ -279,18 +307,12 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
           const hadBets = (st.myBets || []).some(
             (b: LotteryBet) => b.state === 'CASHED_OUT' || b.state === 'BUST',
           )
-          if (won > 0) {
-            setLastWin(won)
-            sound.play('win', { volume: 0.75 })
-            onMessage?.(`Won Rs ${won.toLocaleString()}!`)
-            window.setTimeout(() => onMessage?.(null), 2200)
-          } else if (hadBets) {
-            setLastWin(0)
-            sound.play('lose', { volume: 0.3 })
-          }
+          const staked = (st.myBets || [])
+            .filter((b: LotteryBet) => b.state === 'CASHED_OUT' || b.state === 'BUST')
+            .reduce((s: number, b: LotteryBet) => s + (Number(b.amount) || 0), 0)
           const keys = (st.myBets || []).map((b: LotteryBet) => b.betKey as WlBetKey)
           if (keys.length) setLastRoundKeys(keys)
-          runVisualReveal(st.result, st.period)
+          runVisualReveal(st.result, st.period, { won, hadBets, staked })
         }
       },
       onBet: (bet: LotteryPublicBetEvent) => {

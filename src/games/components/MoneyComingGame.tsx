@@ -16,6 +16,7 @@ import {
 } from '../engines/moneyComing'
 import { MC_ASSETS, MC_AUDIO, preloadMoneyComingAssets } from '../engines/moneyComingAssets'
 import { useDesignScale } from '../hooks/useDesignScale'
+import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import type { GameComponentProps } from '../types'
 import MoneyComingDesignUI from './MoneyComingDesignUI'
 import styles from './moneyComing.module.css'
@@ -58,7 +59,7 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, MC_DESIGN_W, MC_DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, credit, canAfford, refresh } = useWallet()
   const busyRef = useRef(false)
   const spinAudioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -109,12 +110,18 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
     spinAudioRef.current = null
   }
 
-  const spin = useCallback(async (opts?: { free?: boolean }) => {
+  const spin = useCallback(async (opts?: { free?: boolean; chain?: Array<{
+    reels: [McNumber, McNumber, McNumber]
+    mult: McMult
+    win: number
+    kind: 'none' | 'match' | 'respin'
+  }> }) => {
     if (busyRef.current || spinning) return
     const free = opts?.free === true
     const live = !!getAccess()
+    const chain = opts?.chain
 
-    if (!free) {
+    if (!free && !chain) {
       if (!canAfford(betAmount)) {
         sound.play('error')
         onMessage?.('Insufficient balance')
@@ -150,22 +157,60 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
     let nextMult: McMult
     let winAmount = 0
     let kind: 'none' | 'match' | 'respin' = 'none'
+    let pendingChain: typeof chain | undefined
 
     try {
-      if (live && !free) {
+      if (chain && chain.length > 0) {
+        // Playback of a server-authored RESPIN step
+        await new Promise((r) => setTimeout(r, Math.min(duration, turbo ? 700 : 1200)))
+        const step = chain[0]!
+        next = step.reels
+        nextMult = step.mult
+        winAmount = step.win
+        kind = step.kind
+        pendingChain = chain.slice(1)
+      } else if (live && !free) {
         const settled = await serverSlotSpin('money-coming', betAmount)
         if (!settled) throw new Error('Not authenticated')
         const payload = settled.payload || {}
-        next = (payload.reels as [McNumber, McNumber, McNumber]) ?? [
-          randomNumber(),
-          randomNumber(),
-          randomNumber(),
-        ]
-        nextMult = (payload.mult as McMult) ?? '—'
-        winAmount = Number(settled.win ?? 0)
-        kind = winAmount > 0 ? 'match' : 'none'
+        const steps = payload.steps as
+          | Array<{
+              reels: [McNumber, McNumber, McNumber]
+              mult: McMult
+              win: number
+              kind: 'none' | 'match' | 'respin'
+            }>
+          | undefined
+
+        if (steps && steps.length > 1) {
+          // Animate first RESPIN, then continue the chain
+          await new Promise((r) => setTimeout(r, Math.min(duration, 900)))
+          const first = steps[0]!
+          next = first.reels
+          nextMult = first.mult
+          winAmount = first.win
+          kind = first.kind
+          pendingChain = steps.slice(1)
+        } else {
+          next = (payload.reels as [McNumber, McNumber, McNumber]) ?? [
+            randomNumber(),
+            randomNumber(),
+            randomNumber(),
+          ]
+          nextMult = (payload.mult as McMult) ?? '—'
+          winAmount = Number(settled.win ?? 0)
+          kind = winAmount > 0 ? 'match' : nextMult === 'RESPIN' ? 'respin' : 'none'
+          await new Promise((r) => setTimeout(r, Math.min(duration, 900)))
+        }
+
+        // Dev parity: visible outcome must re-evaluate to the settled win (final step only)
+        if (import.meta.env.DEV && !pendingChain?.length && nextMult !== 'RESPIN') {
+          const local = evaluateSpin(next, nextMult, betAmount)
+          if (local.win !== winAmount) {
+            console.warn('[money-coming] paytable drift', { local: local.win, server: winAmount, next, nextMult })
+          }
+        }
         await refresh()
-        await new Promise((r) => setTimeout(r, Math.min(duration, 900)))
       } else if (free) {
         await new Promise((r) => setTimeout(r, duration))
         next = [randomNumber(), randomNumber(), randomNumber()]
@@ -194,13 +239,17 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
     stopSpinAudio()
     sound.play('tap', { volume: 0.35 })
 
-    if (kind === 'respin') {
+    if (kind === 'respin' || (pendingChain && pendingChain.length > 0)) {
       onMessage?.('RESPIN!')
       playMcSfx(MC_CLICK_SFX, 0.45, () => sound.play('bonus', { volume: 0.45 }))
       window.setTimeout(() => onMessage?.(null), 1200)
       busyRef.current = false
       setShine(false)
-      window.setTimeout(() => void spin({ free: true }), 500)
+      const rest = pendingChain && pendingChain.length > 0 ? pendingChain : undefined
+      window.setTimeout(() => {
+        if (rest) void spin({ free: true, chain: rest })
+        else void spin({ free: true })
+      }, 500)
       return
     }
 
@@ -209,15 +258,17 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
       setLastWin(winAmount)
       sound.play('win', { volume: 0.75 })
       sound.play('coin', { volume: 0.4 })
-      onMessage?.(`Won Rs ${winAmount.toLocaleString()}!`)
+      onMessage?.(roundWinMessage(winAmount))
       window.setTimeout(() => onMessage?.(null), 2000)
     } else {
       sound.play('lose', { volume: 0.35 })
+      onMessage?.(roundLossMessage(betAmount))
+      window.setTimeout(() => onMessage?.(null), 2000)
     }
 
     setShine(false)
     busyRef.current = false
-  }, [betAmount, canAfford, credit, debit, onMessage, refresh, spinning, turbo])
+  }, [betAmount, canAfford, credit, onMessage, refresh, spinning, turbo])
 
   useEffect(() => {
     if (!auto || spinning || busyRef.current) return

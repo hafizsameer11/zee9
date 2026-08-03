@@ -35,7 +35,7 @@ export function notifyMerchant(agentId: string, payload: unknown) {
 }
 
 export type MerchantDepositEvent = {
-  type: 'deposit_new' | 'deposit_submitted'
+  type: 'deposit_new' | 'deposit_submitted' | 'deposit_resolved'
   title: string
   body: string
   orderId: string
@@ -45,10 +45,55 @@ export type MerchantDepositEvent = {
   collectionAccount: string | null
   trxId?: string | null
   playerName?: string | null
+  status?: 'SUCCESS' | 'FAIL'
 }
+
+export type MerchantWithdrawEvent = {
+  type: 'withdraw_new'
+  withdrawalId: string
+  amount: number
+  method: string
+  playerName?: string | null
+  title: string
+  body: string
+}
+
+export type MerchantRealtimeEvent = MerchantDepositEvent | MerchantWithdrawEvent
 
 export function pushDepositToMerchant(agentId: string, event: MerchantDepositEvent) {
   return notifyMerchant(agentId, { type: event.type, data: event })
+}
+
+/** New player withdrawal in the C2C pool — all online merchants can claim. */
+export function broadcastWithdrawAvailable(event: Omit<MerchantWithdrawEvent, 'type'>) {
+  const payload = { type: 'withdraw_new', data: { ...event, type: 'withdraw_new' as const } }
+  let n = 0
+  for (const c of clients) {
+    send(c.ws, payload)
+    n++
+  }
+  return n
+}
+
+/** Tell merchant tabs to stop alerting for this order (confirmed / rejected / expired). */
+export function pushDepositResolvedToMerchant(
+  agentId: string,
+  order: { id: string; orderNo: string; status: 'SUCCESS' | 'FAIL' },
+) {
+  return notifyMerchant(agentId, {
+    type: 'deposit_resolved',
+    data: {
+      type: 'deposit_resolved',
+      title: order.status === 'SUCCESS' ? 'Deposit confirmed' : 'Deposit closed',
+      body: `Order ${order.orderNo} is ${order.status === 'SUCCESS' ? 'complete' : 'closed'}.`,
+      orderId: order.id,
+      orderNo: order.orderNo,
+      amount: 0,
+      method: '',
+      collectionAccount: null,
+      status: order.status,
+    },
+  })
 }
 
 export function attachAgentRealtime(_server: HttpServer) {

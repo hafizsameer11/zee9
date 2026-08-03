@@ -247,11 +247,15 @@ export async function getState(userId: string | undefined, onlineCount = 0) {
   if (!round) throw unprocessable('WinGo Lottery unavailable')
 
   const historyRows = await prisma.lotteryRound.findMany({
-    where: { phase: 'REVEAL', resultNumber: { not: null } },
+    where: {
+      phase: 'REVEAL',
+      resultNumber: { not: null },
+      id: { not: round.id },
+    },
     orderBy: { createdAt: 'desc' },
     take: HISTORY_LIMIT,
   })
-  const history = historyRows.map((r) => r.resultNumber!)
+  const history = historyRows.map((r) => r.resultNumber!).reverse()
 
   const allActive = await prisma.lotteryBet.findMany({
     where: { roundId: round.id, state: 'ACTIVE' },

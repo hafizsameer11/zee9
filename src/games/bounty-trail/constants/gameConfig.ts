@@ -1,7 +1,6 @@
 import { S9_CURRENCY_SYMBOL, formatS9Amount } from '../../../data/s9Games'
 import { STAGE_H, STAGE_W } from './layoutConfig'
 
-/** Portrait mobile canvas — fills phone screens without landscape rotate. */
 export const DESIGN_W = STAGE_W
 export const DESIGN_H = STAGE_H
 
@@ -40,22 +39,21 @@ export function featureBuyCost(bet: number): number {
 export const STATUS_MESSAGES = [
   'WIN UP TO 3600 WAYS!',
   '3 OR MORE SCATTERS TRIGGER FREE SPINS',
-  'GOLD SYMBOLS CAN INCREASE MULTIPLIERS',
-  'FEATURE MULTIPLIERS MAY PERSIST',
+  'GOLD FRAMED SYMBOLS BOOST MULTIPLIERS',
+  'MULTIPLIER UP TO x1024!',
   '10 OR MORE FREE SPINS AVAILABLE',
-  'LAND GOLD FRAMES FOR HIGH NOON PAYOUTS',
+  'WITH GOLD FRAMED SYMBOLS!',
 ] as const
 
 export const ASSET = {
-  bg: `${BASE}/backgrounds/saloon.webp`,
-  bgFallback: `${BASE}/backgrounds/saloon.png`,
+  scene: `${BASE}/backgrounds/gameplay-scene.webp`,
+  bg: `${BASE}/backgrounds/gameplay-scene.webp`,
   loadingHero: `${BASE}/loading/hero.webp`,
   loadingHeroFallback: `${BASE}/loading/hero.png`,
   logo: `${BASE}/ui/logo.png`,
-  multiplierBoard: `${BASE}/frames/multiplier-board.png`,
-  statusBoard: `${BASE}/frames/status-board.png`,
-  reelFrame: `${BASE}/frames/reel-frame.png`,
   goldFrame: `${BASE}/frames/gold-frame.png`,
+  winPanel: `${BASE}/frames/win-panel.png`,
+  statusBoard: `${BASE}/frames/status-board.png`,
   featureBuy: `${BASE}/controls/feature-buy.png`,
   spin: `${BASE}/controls/spin.png`,
   minus: `${BASE}/controls/minus.png`,
@@ -69,8 +67,6 @@ export const ASSET = {
   bigWin: `${BASE}/ui/bigwin-banner.png`,
   freeSpins: `${BASE}/ui/freespins.png`,
   featurePurchase: `${BASE}/ui/feature-purchase.png`,
-  foreground: `${BASE}/backgrounds/foreground.png`,
-  controlDeck: `${BASE}/frames/control-deck.png`,
   icons: {
     wallet: `${BASE}/ui/icon-wallet.png`,
     bet: `${BASE}/ui/icon-bet.png`,

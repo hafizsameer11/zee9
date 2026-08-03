@@ -1,58 +1,49 @@
 /**
- * Fixed 390×844 design canvas — absolute packing, no flex-grow empty gaps.
- * Reels dominate ~14%–58% of height; controls sit on the table deck.
+ * Scene-based layout — reels overlay the dark window in gameplay-scene.jpg (390×844).
+ * All chrome (frame, multiplier bar, feature buy, table) is baked into the scene art.
  */
 export const STAGE_W = 390
 export const STAGE_H = 844
 
+/** Top-left lobby / back control (matches reference video). */
+export const BACK_X = 10
+export const BACK_Y = 10
+export const BACK_SIZE = 42
+
 export const COLS = 6
 export const VISIBLE_ROWS = 4
 
-/** Absolute band tops / heights (design px). */
-export const BAND = {
-  menuY: 4,
-  menuH: 44,
-  logoY: 2,
-  logoH: 40,
-  multY: 40,
-  multH: 64,
-  reelY: 96,
-  statusY: 514,
-  statusH: 36,
-  balY: 552,
-  balH: 54,
-  ctrlY: 608,
-  ctrlH: 100,
-  /** Foreground / table starts under balance and fills to bottom. */
-  foreY: 560,
-  deckY: 598,
-  deckH: 120,
-} as const
-
-/** Machine ~92% canvas width; Feature Buy overlaps the right edge. */
-export const MACHINE_W = 358
-export const MACHINE_X = Math.round((STAGE_W - MACHINE_W) / 2) - 8
-export const FRAME_INSET = 11
+/** Reel window cut-out inside the illustrated frame. */
+export const REEL_X = 54
+export const REEL_Y = 276
 export const COL_GAP = 1
 export const ROW_GAP = 1
+export const REEL_W = 282
+export const SYMBOL_W = Math.floor((REEL_W - COL_GAP * (COLS - 1)) / COLS)
+export const SYMBOL_H = 76
+export const REEL_H = VISIBLE_ROWS * SYMBOL_H + (VISIBLE_ROWS - 1) * ROW_GAP
 
-export const REEL_INNER_W = MACHINE_W - FRAME_INSET * 2
-export const SYMBOL_W = Math.floor((REEL_INNER_W - COL_GAP * (COLS - 1)) / COLS)
-/** Tall cells — characters dominate the viewport (~55×98 at 390 canvas). */
-export const SYMBOL_H = 98
+/** Multiplier chip centers on the scene's wooden sign (y≈118). */
+export const MULT_Y = 108
+export const MULT_H = 44
+export const MULT_POSITIONS = [72, 130, 195, 260, 322] as const
 
-export const REEL_VIEWPORT_H =
-  VISIBLE_ROWS * SYMBOL_H + (VISIBLE_ROWS - 1) * ROW_GAP
+/** Clickable feature-buy plaque baked into scene art. */
+export const FEATURE_X = 302
+export const FEATURE_Y = 348
+export const FEATURE_W = 72
+export const FEATURE_H = 175
 
-export const MACHINE_H = REEL_VIEWPORT_H + FRAME_INSET * 2
+export const WIN_Y = 598
+export const WIN_H = 48
 
-export const FEATURE_W = 78
-export const FEATURE_H = 228
-export const FEATURE_X = STAGE_W - FEATURE_W - 0
-export const FEATURE_Y = BAND.reelY + Math.floor(MACHINE_H * 0.22)
+export const BAL_Y = 662
+export const BAL_H = 46
 
-export const SPIN_SIZE = 76
-export const CTRL_BTN = 46
+export const CTRL_Y = 738
+export const CTRL_H = 88
+export const SPIN_SIZE = 80
+export const CTRL_BTN = 50
 
 export function isDebugTransparency(): boolean {
   try {

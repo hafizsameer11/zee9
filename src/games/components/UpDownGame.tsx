@@ -6,6 +6,7 @@ import { getAccess } from '../../api/client'
 import { type UpDownChoice } from '../engines/dice'
 import { connectSevenUpSocket } from '../lib/sevenUpSocket'
 import type { GameComponentProps } from '../types'
+import { roundLossMessage, formatRoundAmount } from '../lib/roundResult'
 import { useDesignScale } from '../hooks/useDesignScale'
 import UpDownDesignUI, {
   type AiPlayer,
@@ -19,6 +20,7 @@ import styles from './premiumFrame.module.css'
 import AddCashModal from '../../components/s9/modals/AddCashModal'
 
 const ROUND_SEC = 12
+const ROLL_MIN_MS = 2200
 
 const AI_PLAYERS: Omit<AiPlayer, 'avatar'>[] = [
   { id: 'emmett', name: 'Emmett', balance: 72589, badge: 'WINNER', side: 'left' },
@@ -133,6 +135,8 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   const myBetsRef = useRef(myBets)
   myBetsRef.current = myBets
   const socketRef = useRef<ReturnType<typeof connectSevenUpSocket> | null>(null)
+  const rollingStartedAtRef = useRef(0)
+  const resultTimerRef = useRef<number | null>(null)
 
   const registerSeatRef = useCallback((playerId: string, el: HTMLDivElement | null) => {
     seatRefs.current[playerId] = el
@@ -205,11 +209,11 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   )
 
   const showResultFx = useCallback(
-    (sum: number, totalWin: number) => {
+    (totalWin: number, staked: number) => {
       const won = totalWin > 0
       if (won) {
         sound.play('win')
-        onMessage?.(`Won ${totalWin.toLocaleString()} chips!`)
+        onMessage?.(`Won ${formatRoundAmount(totalWin)} chips!`)
         const floatId = nextChipId()
         setWinFloats((prev) => [
           ...prev,
@@ -218,9 +222,9 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
         window.setTimeout(() => {
           setWinFloats((prev) => prev.filter((f) => f.id !== floatId))
         }, 1300)
-      } else {
+      } else if (staked > 0) {
         sound.play('lose', { volume: 0.5 })
-        onMessage?.(`Sum ${sum} — try again`)
+        onMessage?.(roundLossMessage(staked))
       }
     },
     [onMessage],
@@ -337,6 +341,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
         }
 
         if (nextUi === 'rolling') {
+          if (phase !== 'rolling') rollingStartedAtRef.current = Date.now()
           setPhase('rolling')
           return
         }
@@ -348,20 +353,34 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
         }
         const winZone = (state.winningZone as UpDownChoice) || zoneForSum(sum)
         const totalWin = Number(state.myPayout ?? 0)
-        setWinningZone(winZone)
-        setLastResult({ sum, won: totalWin > 0, win: totalWin })
-        setPhase('result')
-        setLastBets({
-          down: Number(state.myBets?.down) || 0,
-          seven: Number(state.myBets?.seven) || 0,
-          up: Number(state.myBets?.up) || 0,
-        })
-        if (revealedPeriodRef.current !== period) {
-          revealedPeriodRef.current = period
-          showResultFx(sum, totalWin)
-          void refresh()
+        const staked =
+          (Number(state.myBets?.down) || 0) +
+          (Number(state.myBets?.seven) || 0) +
+          (Number(state.myBets?.up) || 0)
+
+        const applyResult = () => {
+          setWinningZone(winZone)
+          setLastResult({ sum, won: totalWin > 0, win: totalWin })
+          setPhase('result')
+          setLastBets({
+            down: Number(state.myBets?.down) || 0,
+            seven: Number(state.myBets?.seven) || 0,
+            up: Number(state.myBets?.up) || 0,
+          })
+          if (revealedPeriodRef.current !== period) {
+            revealedPeriodRef.current = period
+            showResultFx(totalWin, staked)
+            void refresh()
+          }
+          lastPeriodRef.current = period
         }
-        lastPeriodRef.current = period
+
+        const wait = Math.max(0, ROLL_MIN_MS - (Date.now() - rollingStartedAtRef.current))
+        if (resultTimerRef.current) window.clearTimeout(resultTimerRef.current)
+        resultTimerRef.current = window.setTimeout(() => {
+          resultTimerRef.current = null
+          applyResult()
+        }, wait)
       },
       onError: (message) => onMessage?.(message),
     })
@@ -369,6 +388,10 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
     return () => {
       sock.close()
       socketRef.current = null
+      if (resultTimerRef.current) {
+        window.clearTimeout(resultTimerRef.current)
+        resultTimerRef.current = null
+      }
     }
   }, [live, onMessage, refresh, showResultFx])
 

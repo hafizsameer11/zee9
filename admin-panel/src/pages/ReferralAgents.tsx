@@ -11,6 +11,7 @@ type RefAgent = {
   playerNo: number | null
   role: string
   referralAgentActive: boolean
+  /** When false, agent cannot withdraw salary (frozen). */
   salaryTransferOpen: boolean
   salaryApproved: number
   salaryHold: number
@@ -44,10 +45,10 @@ export default function ReferralAgents() {
   const [approveAmt, setApproveAmt] = useState('')
 
   function mapAgent(a: any): RefAgent {
-    const bal = Number(a.commissionBalance) / 100
-    const approved = Number(a.salaryApproved ?? a.salaryApprovedPaisa ?? 0) / 100
-    const hold =
-      a.salaryHold != null ? Number(a.salaryHold) / 100 : Math.max(0, bal - approved)
+    // Admin list API returns rupees (not paisa).
+    const bal = Number(a.commissionBalance ?? 0)
+    const approved = Number(a.salaryApproved ?? 0)
+    const hold = a.salaryHold != null ? Number(a.salaryHold) : Math.max(0, bal - approved)
     return {
       id: a.id,
       displayName: a.displayName || a.name,
@@ -60,7 +61,7 @@ export default function ReferralAgents() {
       salaryHold: hold,
       walletsFilled: a.walletsFilled,
       referrals: a.referrals,
-      commission: Number(a.commission) / 100,
+      commission: Number(a.commission ?? 0),
       commissionBalance: bal,
       downline: a.downline || { level1: 0, level2: 0, level3: 0 },
       createdAt: a.createdAt,
@@ -92,40 +93,48 @@ export default function ReferralAgents() {
     }
   }
 
-  async function toggleTransfer(id: string, open: boolean) {
+  async function toggleWithdraw(id: string, open: boolean) {
     setBusy(true)
     try {
       await api.post(`/admin/referral-agents/${id}/salary-transfer`, { open })
-      showToast(open ? 'Transfer opened' : 'Transfer hidden')
+      showToast(open ? 'Salary withdraw opened' : 'Salary withdraw frozen')
       await load()
       if (salaryFor?.id === id) {
         setSalaryFor((prev) => (prev ? { ...prev, salaryTransferOpen: open } : prev))
       }
     } catch (e: any) {
-      showToast(e?.message || 'Failed to update transfer')
+      showToast(e?.message || 'Failed to update withdraw')
     } finally {
       setBusy(false)
     }
   }
 
-  async function approveSalary() {
+  async function setWithdrawAmount() {
     if (!salaryFor) return
     const amount = Number(approveAmt)
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount < 0) {
       showToast('Enter a valid amount')
+      return
+    }
+    const max = Number(salaryFor.commissionBalance)
+    if (amount > max) {
+      showToast(`Max is Rs ${max.toLocaleString('en-PK')}`)
       return
     }
     setBusy(true)
     try {
-      const res = await api.post(`/admin/referral-agents/${salaryFor.id}/salary-approve`, { amount })
-      showToast(`Approved Rs ${money(Number(res.approvedNow)).replace('Rs ', '')} — transfer open`)
+      const res = await api.post(`/admin/referral-agents/${salaryFor.id}/salary-approve`, {
+        amount,
+        mode: 'set',
+      })
+      showToast(`Withdrawable set to Rs ${Number(res.salaryApproved).toLocaleString('en-PK')}`)
       setApproveAmt('')
       await load()
       setSalaryFor((prev) =>
         prev
           ? {
               ...prev,
-              salaryTransferOpen: true,
+              salaryTransferOpen: !!res.salaryTransferOpen,
               salaryApproved: Number(res.salaryApproved),
               salaryHold: Number(res.salaryHold),
               commissionBalance: Number(res.commissionBalance),
@@ -133,7 +142,7 @@ export default function ReferralAgents() {
           : prev,
       )
     } catch (e: any) {
-      showToast(e?.message || 'Approve failed')
+      showToast(e?.message || 'Failed to set amount')
     } finally {
       setBusy(false)
     }
@@ -162,29 +171,33 @@ export default function ReferralAgents() {
   }, [agents, q])
 
   const active = agents.filter((a) => a.referralAgentActive).length
-  const eligible = agents.filter((a) => a.walletsFilled >= settings.walletsRequired).length
+  const withdrawOpen = agents.filter((a) => a.salaryTransferOpen).length
   const onHold = agents.reduce((s, a) => s + Number(a.salaryHold), 0)
 
   return (
     <>
       <PageHead
         title="Agents"
-        subtitle="Referral salary · open Transfer per agent · approve partial amounts (rest stays on hold)"
+        subtitle="Freeze salary withdraw · set how much each agent can withdraw · rest stays on hold"
       />
 
       <div className="grid grid-3" style={{ marginBottom: 24 }}>
         <StatCard icon="agents" tone="violet" value={`${active}/${agents.length}`} label="Active referral agents" />
-        <StatCard icon="referrals" tone="green" value={String(eligible)} label="Eligible (wallets met)" />
-        <StatCard icon="money" tone="gold" value={money(onHold)} label="Salary on hold" />
+        <StatCard icon="money" tone="gold" value={String(withdrawOpen)} label="Withdraw open now" />
+        <StatCard icon="money" tone="green" value={money(onHold)} label="Salary on hold" />
       </div>
 
       <div className="card card-pad" style={{ marginBottom: 24, fontSize: 13 }}>
-        Rates: L1 {settings.commissionL1}% · L2 {settings.commissionL2}% · L3 {settings.commissionL3}% on net loss.
-        New commission stays on <b>hold</b> until you approve. Transfer button shows only when Transfer is ON.
+        Rates: L1 {settings.commissionL1}% · L2 {settings.commissionL2}% · L3 {settings.commissionL3}% on member net loss
+        (deposits + signup/deposit bonuses). By default <b>Withdraw is frozen</b> for every agent. Set the withdrawable amount, then turn{' '}
+        <b>Withdraw</b> ON — agent can only take that approved amount; the rest stays on hold.
       </div>
 
       <div className="card">
-        <div className="card-head" style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div
+          className="card-head"
+          style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}
+        >
           <h3 style={{ margin: 0 }}>Referral agents</h3>
           <input
             type="search"
@@ -202,9 +215,9 @@ export default function ReferralAgents() {
                 <th>Game ID</th>
                 <th>Wallets</th>
                 <th className="t-right">Balance</th>
-                <th className="t-right">Approved</th>
-                <th className="t-right">Hold</th>
-                <th>Show Transfer</th>
+                <th className="t-right">Can withdraw</th>
+                <th className="t-right">On hold</th>
+                <th>Withdraw</th>
                 <th>Active</th>
                 <th className="t-right">Actions</th>
               </tr>
@@ -235,10 +248,15 @@ export default function ReferralAgents() {
                   <td className="t-right num">{money(Number(a.salaryApproved))}</td>
                   <td className="t-right num">{money(Number(a.salaryHold))}</td>
                   <td>
-                    <Toggle
-                      on={a.salaryTransferOpen}
-                      onChange={() => !busy && void toggleTransfer(a.id, !a.salaryTransferOpen)}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                      <Toggle
+                        on={a.salaryTransferOpen}
+                        onChange={() => !busy && void toggleWithdraw(a.id, !a.salaryTransferOpen)}
+                      />
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        {a.salaryTransferOpen ? 'Open' : 'Frozen'}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <Toggle
@@ -252,10 +270,10 @@ export default function ReferralAgents() {
                         className="btn btn-primary btn-sm"
                         onClick={() => {
                           setSalaryFor(a)
-                          setApproveAmt('')
+                          setApproveAmt(String(Math.floor(Number(a.salaryApproved)) || ''))
                         }}
                       >
-                        Approve
+                        Set amount
                       </button>
                       <button className="btn btn-light btn-sm" onClick={() => openDownline(a)}>
                         Downline
@@ -282,37 +300,53 @@ export default function ReferralAgents() {
       </div>
 
       {salaryFor && (
-        <Modal title={`Salary · ${salaryFor.displayName}`} onClose={() => setSalaryFor(null)}>
+        <Modal title={`Salary withdraw · ${salaryFor.displayName}`} onClose={() => setSalaryFor(null)}>
           <p className="muted" style={{ marginTop: 0, fontSize: 13 }}>
-            Game ID {salaryFor.playerNo ?? '—'} · Balance {money(Number(salaryFor.commissionBalance))} · Approved{' '}
-            {money(Number(salaryFor.salaryApproved))} · Hold {money(Number(salaryFor.salaryHold))}
+            Game ID {salaryFor.playerNo ?? '—'} · Total commission{' '}
+            {money(Number(salaryFor.commissionBalance))} · Can withdraw{' '}
+            {money(Number(salaryFor.salaryApproved))} · On hold {money(Number(salaryFor.salaryHold))}
           </p>
           <div className="flex gap8" style={{ alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontSize: 13 }}>Show Transfer button</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>
+              {salaryFor.salaryTransferOpen ? 'Withdraw open' : 'Withdraw frozen'}
+            </span>
             <Toggle
               on={salaryFor.salaryTransferOpen}
-              onChange={() => !busy && void toggleTransfer(salaryFor.id, !salaryFor.salaryTransferOpen)}
+              onChange={() => !busy && void toggleWithdraw(salaryFor.id, !salaryFor.salaryTransferOpen)}
             />
           </div>
           <label style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>
-            Approve amount from hold (Rs)
+            How much can this agent withdraw? (Rs)
           </label>
           <input
             className="input"
             type="number"
-            min={1}
+            min={0}
             step={1}
-            placeholder={`Max ${Number(salaryFor.salaryHold)}`}
+            placeholder={`0 – ${Number(salaryFor.commissionBalance)}`}
             value={approveAmt}
             onChange={(e) => setApproveAmt(e.target.value)}
-            style={{ width: '100%', marginBottom: 12 }}
+            style={{ width: '100%', marginBottom: 8 }}
           />
-          <div className="flex gap8" style={{ justifyContent: 'flex-end' }}>
+          <p className="muted" style={{ fontSize: 12, marginTop: 0 }}>
+            Example: balance Rs 300,000 → set 30,000. Agent can withdraw only Rs 30,000; Rs 270,000 stays on hold
+            until you approve more. Withdraw button stays hidden while Frozen.
+          </p>
+          <div className="flex gap8" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <button
+              className="btn btn-outline"
+              disabled={busy}
+              onClick={() => {
+                setApproveAmt('0')
+              }}
+            >
+              Clear to 0
+            </button>
             <button className="btn btn-outline" onClick={() => setSalaryFor(null)}>
               Close
             </button>
-            <button className="btn btn-primary" disabled={busy} onClick={() => void approveSalary()}>
-              Approve &amp; open transfer
+            <button className="btn btn-primary" disabled={busy} onClick={() => void setWithdrawAmount()}>
+              Save amount
             </button>
           </div>
         </Modal>
@@ -325,6 +359,7 @@ export default function ReferralAgents() {
               <thead>
                 <tr>
                   <th>Level</th>
+                  <th>Type</th>
                   <th>Member</th>
                   <th>Phone</th>
                   <th>Game ID</th>
@@ -337,6 +372,11 @@ export default function ReferralAgents() {
                   <tr key={`${r.level}-${r.id}`}>
                     <td>
                       <Pill tone={r.level === 1 ? 'violet' : r.level === 2 ? 'blue' : 'grey'}>L{r.level}</Pill>
+                    </td>
+                    <td>
+                      <Pill tone={r.isReferralAgent ? 'violet' : 'blue'}>
+                        {r.isReferralAgent ? 'Agent' : 'Member'}
+                      </Pill>
                     </td>
                     <td>{r.name}</td>
                     <td className="num">{r.phone}</td>
@@ -351,7 +391,7 @@ export default function ReferralAgents() {
                 ))}
                 {downline.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="muted">
+                    <td colSpan={7} className="muted">
                       No downline yet.
                     </td>
                   </tr>

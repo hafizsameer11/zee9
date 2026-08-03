@@ -188,12 +188,14 @@ export default function Bonuses() {
 
         <div className="card card-pad">
           <h3 className="section-title">Deposit bonuses</h3>
-          <p className="section-sub">Percentage bonus applied on top of deposits.</p>
+          <p className="section-sub">Every approved deposit gets this % bonus — each time, no daily limit.</p>
           <div className="form-grid">
-            <NumField label="1st deposit" value={s.depositBonus1} onChange={(v) => patchSettings({ depositBonus1: v })} suffix="%" />
-            <NumField label="2nd deposit" value={s.depositBonus2} onChange={(v) => patchSettings({ depositBonus2: v })} suffix="%" />
-            <NumField label="3rd deposit" value={s.depositBonus3} onChange={(v) => patchSettings({ depositBonus3: v })} suffix="%" />
-            <NumField label="Daily deposit" value={s.dailyDepositBonus} onChange={(v) => patchSettings({ dailyDepositBonus: v })} suffix="%" />
+            <NumField
+              label="Every deposit"
+              value={s.dailyDepositBonus}
+              onChange={(v) => patchSettings({ dailyDepositBonus: v })}
+              suffix="%"
+            />
           </div>
           <div className="flex between mt16" style={{ gap: 12 }}>
             <div className="chip-row" style={{ flex: 1 }}>
@@ -221,8 +223,7 @@ export default function Bonuses() {
           {[
             ['Welcome (registration)', money(s.registrationBonus)],
             ['Daily rewards (7 days)', (s.dailyRewards?.length === 7 ? s.dailyRewards : [4, 9, 3, 5, 8, 6, 10]).map((n) => `Rs ${n}`).join(' / ')],
-            ['1st / 2nd / 3rd deposit', `${s.depositBonus1}% / ${s.depositBonus2}% / ${s.depositBonus3}%`],
-            ['Daily deposit boost', `${s.dailyDepositBonus}%`],
+            ['Every deposit bonus', `${s.dailyDepositBonus}%`],
             ['Rebet bonus', s.rebetBonus ? 'Enabled' : 'Off'],
             ['Extra bonus', s.extraBonus ? 'Enabled' : 'Off'],
           ].map(([k, v]) => (

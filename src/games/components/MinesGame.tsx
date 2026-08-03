@@ -5,6 +5,7 @@ import { useSound } from '../../lib/sound'
 import { GRID_SIZE } from '../engines/mines'
 import { connectMinesSocket } from '../lib/minesSocket'
 import type { GameComponentProps } from '../types'
+import { roundLossMessage } from '../lib/roundResult'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import {
   BackChevronIcon,
@@ -148,7 +149,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
           play('boom')
           setTimeout(() => play('lose', { volume: 0.7 }), 180)
           setRound((r) => (r ? { ...r, active: false, bomb: index, mines: new Set(res.mines), multiplier: 0 } : r))
-          onMessage?.('Hit a mine!')
+          onMessage?.(roundLossMessage(betAmount))
           void refresh()
         } else if (res.state === 'CASHED_OUT') {
           play('gem')

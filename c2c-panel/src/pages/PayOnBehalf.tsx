@@ -18,7 +18,6 @@ export default function PayOnBehalf() {
     submitPayout,
     cancelPayout,
     abnormalPayout,
-    balance,
     showToast,
     reload,
   } = useStore()
@@ -179,8 +178,8 @@ export default function PayOnBehalf() {
               </div>
             ))}
             <div className="pob-warn">
-              Transfer the exact amount. On confirm, Rs {fmt(selected.amount)} is deducted from your balance and you earn Rs{' '}
-              {fmt(selected.reward)}.
+              Pay from your JazzCash / Easypaisa wallet (not panel float). After 5 min hold, Rs {fmt(selected.amount)} + Rs{' '}
+              {fmt(selected.reward)} reward is added to your panel balance.
             </div>
 
             <div className="pob-step">Step 2. Enter Transfer ID after paying</div>
@@ -247,10 +246,10 @@ export default function PayOnBehalf() {
                   <button
                     className="btn btn-violet"
                     style={{ padding: '6px 12px', fontSize: 12 }}
-                    disabled={busy || balance < w.amount}
+                    disabled={busy}
                     onClick={() => claim(w.id)}
                   >
-                    {balance < w.amount ? 'Need balance' : 'Claim'}
+                    Claim
                   </button>
                 </div>
               </div>

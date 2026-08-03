@@ -50,3 +50,8 @@ export function totalPayout(bets: DragonTigerBet[], winner: BetSelection): numbe
 export function zoneAmount(bets: DragonTigerBet[], selection: BetSelection): number {
   return bets.filter((b) => b.selection === selection).reduce((s, b) => s + b.amount, 0)
 }
+
+/** Active bet zone for this round — user may only stack chips on one side. */
+export function lockedBetSide(bets: DragonTigerBet[]): BetSelection | null {
+  return bets[0]?.selection ?? null
+}

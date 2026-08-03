@@ -1,22 +1,55 @@
+import { useEffect, useState } from 'react'
+import { api } from '../../../api/client'
 import styles from './ReferListsModal.module.css'
 
-type Referral = { name: string; phone: string; joined: string }
+type Referral = {
+  name: string
+  phone: string
+  playerNo?: number | null
+  joined: string
+  isValid?: boolean
+  deposit?: number
+}
 
 type Props = {
   onClose: () => void
-  referrals: Referral[]
-  totalCommission: number
+  referrals?: Referral[]
+  totalCommission?: number
 }
 
-const COLUMNS = ['Nickname', 'Phone', 'Joined', 'Status']
+const COLUMNS = ['Name', 'Player ID', 'Joined', 'Deposit', 'Status']
 
-export default function ReferListsModal({ onClose, referrals, totalCommission }: Props) {
+export default function ReferListsModal({ onClose, referrals: initial, totalCommission: initialTotal }: Props) {
+  const [referrals, setReferrals] = useState<Referral[]>(initial ?? [])
+  const [totalCommission, setTotalCommission] = useState(initialTotal ?? 0)
+  const [validReferrals, setValidReferrals] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api
+      .get('/referrals')
+      .then((data) => {
+        if (Array.isArray(data.direct)) setReferrals(data.direct)
+        setTotalCommission(Number(data.totalCommission ?? 0))
+        setValidReferrals(Number(data.validReferrals ?? 0))
+      })
+      .catch(() => {
+        if (initial) setReferrals(initial)
+        if (initialTotal != null) setTotalCommission(initialTotal)
+      })
+      .finally(() => setLoading(false))
+  }, [initial, initialTotal])
+
+  const validCount = validReferrals || referrals.filter((r) => r.isValid).length
+
   return (
     <div className={styles.overlay} onClick={onClose} role="presentation">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
         <header className={styles.header}>
-          <h2>LISTS</h2>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Close">✕</button>
+          <h2>MY REFERRALS</h2>
+          <button type="button" className={styles.close} onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </header>
 
         <div className={styles.summary}>
@@ -26,11 +59,11 @@ export default function ReferListsModal({ onClose, referrals, totalCommission }:
           </div>
           <div className={styles.stat}>
             <span>Valid Referrals</span>
-            <strong>{referrals.length}</strong>
+            <strong>{validCount}</strong>
           </div>
           <div className={styles.stat}>
             <span>Total Reward</span>
-            <strong>Rs {(totalCommission / 100).toLocaleString('en-PK')}</strong>
+            <strong>Rs {totalCommission.toLocaleString('en-PK')}</strong>
           </div>
         </div>
 
@@ -41,15 +74,25 @@ export default function ReferListsModal({ onClose, referrals, totalCommission }:
         </div>
 
         <div className={styles.body}>
-          {referrals.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#c9a24a', padding: 24, fontSize: 13 }}>No referrals yet — share your link to invite friends.</p>
+          {loading ? (
+            <p style={{ textAlign: 'center', color: '#c9a24a', padding: 24, fontSize: 13 }}>Loading…</p>
+          ) : referrals.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#c9a24a', padding: 24, fontSize: 13 }}>
+              No referrals yet — share your link to invite friends.
+            </p>
           ) : (
             referrals.map((r) => (
-              <div key={r.phone} className={styles.colHead} style={{ borderBottom: '1px solid rgba(139,105,20,.2)', padding: '8px 0' }}>
+              <div
+                key={`${r.phone}-${r.joined}`}
+                className={styles.row}
+              >
                 <span>{r.name}</span>
-                <span>{r.phone}</span>
+                <span>{r.playerNo ?? '—'}</span>
                 <span>{new Date(r.joined).toLocaleDateString('en-PK')}</span>
-                <span>Active</span>
+                <span>Rs {(r.deposit ?? 0).toLocaleString('en-PK')}</span>
+                <span className={r.isValid ? styles.valid : styles.pending}>
+                  {r.isValid ? 'Valid' : (r.deposit ?? 0) > 0 ? 'Deposited' : 'Pending'}
+                </span>
               </div>
             ))
           )}

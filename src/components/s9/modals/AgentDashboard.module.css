@@ -119,10 +119,39 @@
 }
 
 .salesCard {
-  min-width: 180px;
+  min-width: 220px;
   text-align: center;
   position: relative;
   padding-bottom: 52px;
+}
+
+.walletSplit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.walletK {
+  color: #c9a24a;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.walletV {
+  font-size: 18px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.1;
+}
+
+.walletHint {
+  font-size: 9px;
+  color: #9eb0c8;
+  line-height: 1.2;
+  margin-top: 2px;
 }
 
 .salesAmount {

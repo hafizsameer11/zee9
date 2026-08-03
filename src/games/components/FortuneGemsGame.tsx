@@ -11,6 +11,7 @@ import {
   type GemsSymbol,
 } from '../engines/fortuneGems'
 import type { GameComponentProps } from '../types'
+import { roundLossMessage } from '../lib/roundResult'
 import {
   DESIGN_H,
   DESIGN_W,
@@ -124,7 +125,7 @@ export default function FortuneGemsGame({ bet: defaultBet, onMessage }: GameComp
           setWinCells(cells)
         } else {
           sound.play('lose', { volume: 0.45 })
-          onMessage?.('No win — spin again')
+          onMessage?.(roundLossMessage(betAmount))
         }
       }
     }, SPIN_INTERVAL_MS)

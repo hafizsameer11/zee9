@@ -1,3 +1,4 @@
+import type { BonusType, LedgerTxType } from '@prisma/client'
 import type { Tx } from '../lib/prisma.js'
 import { prisma } from '../lib/prisma.js'
 import { post } from './ledger.js'
@@ -29,6 +30,64 @@ export async function releaseIfNoWager(tx: Tx, bonusId: string) {
   const bonus = await tx.bonus.findUnique({ where: { id: bonusId } })
   if (!bonus || bonus.status !== 'ACTIVE') return
   if (bonus.wagerRequired <= 0n) await releaseBonus(tx, bonusId)
+}
+
+/** Credit bonus straight to MAIN (playable balance) — used for deposit / registration bonuses. */
+export async function creditInstantBonus(
+  tx: Tx,
+  input: {
+    userId: string
+    amount: bigint
+    type: BonusType
+    ledgerType: LedgerTxType
+    referenceType: string
+    referenceId: string
+    idempotencyKey: string
+  },
+) {
+  if (input.amount <= 0n) return
+  await post(tx, {
+    type: input.ledgerType,
+    referenceType: input.referenceType,
+    referenceId: input.referenceId,
+    idempotencyKey: input.idempotencyKey,
+    legs: [
+      { account: { system: 'BONUS_POOL' }, direction: 'DEBIT', amount: input.amount },
+      { account: { userId: input.userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: input.amount },
+    ],
+  })
+  await tx.bonus.create({
+    data: {
+      userId: input.userId,
+      type: input.type,
+      amount: input.amount,
+      wagerRequired: 0n,
+      wagerProgress: 0n,
+      status: 'RELEASED',
+    },
+  })
+}
+
+/** Release legacy ACTIVE deposit bonuses still sitting in the BONUS bucket. */
+export async function releaseStuckDepositBonuses() {
+  const stuck = await prisma.bonus.findMany({
+    where: {
+      status: 'ACTIVE',
+      type: { in: ['DEPOSIT_1', 'DEPOSIT_2', 'DEPOSIT_3', 'DAILY_DEPOSIT', 'REGISTRATION'] },
+    },
+    select: { id: true },
+    take: 200,
+  })
+  for (const b of stuck) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.bonus.update({ where: { id: b.id }, data: { wagerRequired: 0n } })
+        await releaseIfNoWager(tx, b.id)
+      })
+    } catch {
+      /* skip individual failures */
+    }
+  }
 }
 
 /** Apply bet volume to active bonuses (FIFO) and release any that complete. */

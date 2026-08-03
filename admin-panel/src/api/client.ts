@@ -111,7 +111,7 @@ export async function loginRequest(phone: string, password: string) {
     method: 'POST',
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone, password }),
+    body: JSON.stringify({ phone, password, app: 'admin' }),
   })
   const json = await res.json()
   if (!res.ok || !json.ok) throw new ApiError(res.status, json.error?.code || 'ERROR', json.error?.message || 'Login failed')

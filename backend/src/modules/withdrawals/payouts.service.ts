@@ -6,6 +6,7 @@ import { applyPct, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound } from '../../core/errors.js'
 import { notify } from '../../core/notify.js'
 import { queueWithdrawUpdate } from '../../core/walletPush.js'
+import { settleCommissionsForUser } from '../commission/commission.daily.js'
 
 function orderNo() {
   return 'PB' + Date.now() + Math.floor(Math.random() * 1000)
@@ -192,7 +193,10 @@ export async function submitPay(orderId: string, agentId: string, trxId: string,
       trxId: tid,
     })
 
-    return tx.collectionOrder.findUniqueOrThrow({ where: { id: orderId } })
+    return { order: await tx.collectionOrder.findUniqueOrThrow({ where: { id: orderId } }), userId: wd.userId }
+  }).then(({ order, userId }) => {
+    void settleCommissionsForUser(userId).catch(() => {})
+    return order
   })
 }
 

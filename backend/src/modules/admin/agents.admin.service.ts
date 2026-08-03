@@ -80,6 +80,7 @@ export async function setReferralAgentActive(userId: string, active: boolean) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) throw notFound('User not found')
   if (user.role === 'ADMIN') throw conflict('Cannot change admin referral-agent flag here')
+  if (user.role === 'MENTOR') throw conflict('Mentors are managed under Channels & Mentors, not Referral Agents')
   const updated = await prisma.user.update({
     where: { id: userId },
     data: { referralAgentActive: active },
@@ -126,7 +127,11 @@ export async function makeMentor(
   const codeClash = await prisma.channel.findUnique({ where: { code: channelCode } })
   if (codeClash && codeClash.ownerId !== userId) throw conflict('Channel code already exists')
 
-  const data: { role: 'MENTOR'; passwordHash?: string } = { role: 'MENTOR' }
+  const data: { role: 'MENTOR'; passwordHash?: string; referralAgentActive: boolean; walletsFilled: number } = {
+    role: 'MENTOR',
+    referralAgentActive: false,
+    walletsFilled: 0,
+  }
   let password: string | null = null
   if (input?.password?.trim()) {
     password = input.password.trim()

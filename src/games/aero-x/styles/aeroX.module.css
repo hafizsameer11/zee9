@@ -574,6 +574,10 @@
   background: linear-gradient(180deg, #8a3a3a 0%, #6a2424 100%);
 }
 
+.betBtnQueued {
+  background: linear-gradient(180deg, #4a5a8a 0%, #2a3a6a 55%, #1a2a50 100%);
+}
+
 .betBtnDisabled {
   background: linear-gradient(180deg, #2a2e38, #1a1e26);
   color: #8b91a0;

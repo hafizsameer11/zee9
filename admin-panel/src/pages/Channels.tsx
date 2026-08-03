@@ -28,6 +28,33 @@ interface MentorRow {
   channels: Array<{ id: string; code: string; name: string; enabled: boolean }>
 }
 
+type MentorDownlineRow = {
+  id: string
+  gameId: string
+  playerNo: number | null
+  name: string
+  phone: string
+  isReferralAgent: boolean
+  kind: string
+  level: number
+  ratePct: number
+  deposited: number
+  withdrawn: number
+  winLoss: number
+  commission: number
+  status: string
+  channelCode: string | null
+}
+
+type MentorDownlineTotals = {
+  members: number
+  agents: number
+  deposited: number
+  withdrawn: number
+  winLoss: number
+  commission: number
+}
+
 export default function Channels() {
   const { showToast } = useAdmin()
   const [channels, setChannels] = useState<Channel[]>([])
@@ -47,6 +74,19 @@ export default function Channels() {
   const [creds, setCreds] = useState<AgentCreds | null>(null)
   const [busy, setBusy] = useState(false)
   const [mentorQ, setMentorQ] = useState('')
+  const [downlineFor, setDownlineFor] = useState<MentorRow | null>(null)
+  const [downline, setDownline] = useState<MentorDownlineRow[]>([])
+  const [downlineTotals, setDownlineTotals] = useState<MentorDownlineTotals>({
+    members: 0,
+    agents: 0,
+    deposited: 0,
+    withdrawn: 0,
+    winLoss: 0,
+    commission: 0,
+  })
+  const [downlineQ, setDownlineQ] = useState('')
+  const [downlineAgentsOnly, setDownlineAgentsOnly] = useState(false)
+  const [downlineBusy, setDownlineBusy] = useState(false)
 
   async function load() {
     try {
@@ -152,6 +192,54 @@ export default function Channels() {
     await api.patch(`/admin/channels/${c.id}`, { enabled: !c.enabled }).catch(() => {})
     load()
   }
+
+  async function openMentorDownline(m: MentorRow, opts?: { q?: string; agentsOnly?: boolean }) {
+    setDownlineFor(m)
+    setDownlineBusy(true)
+    try {
+      const q = opts?.q ?? downlineQ
+      const agentsOnly = opts?.agentsOnly ?? downlineAgentsOnly
+      const qs = new URLSearchParams()
+      if (q.trim()) qs.set('q', q.trim())
+      if (agentsOnly) qs.set('agents', 'true')
+      const suffix = qs.toString() ? `?${qs}` : ''
+      const res = await api.get(`/admin/mentors/${m.id}/downline${suffix}`)
+      setDownline(
+        (res.items || []).map((row: any) => ({
+          id: row.id,
+          gameId: row.gameId,
+          playerNo: row.playerNo != null ? Number(row.playerNo) : null,
+          name: row.name,
+          phone: row.phone,
+          isReferralAgent: !!row.isReferralAgent,
+          kind: row.kind,
+          level: row.level,
+          ratePct: row.ratePct,
+          deposited: Number(row.deposited),
+          withdrawn: Number(row.withdrawn),
+          winLoss: Number(row.winLoss),
+          commission: Number(row.commission),
+          status: row.status,
+          channelCode: row.channelCode ?? null,
+        })),
+      )
+      const t = res.totals || {}
+      setDownlineTotals({
+        members: Number(t.members ?? 0),
+        agents: Number(t.agents ?? 0),
+        deposited: Number(t.deposited ?? 0),
+        withdrawn: Number(t.withdrawn ?? 0),
+        winLoss: Number(t.winLoss ?? 0),
+        commission: Number(t.commission ?? 0),
+      })
+    } catch (e: any) {
+      showToast(e?.message || 'Failed to load downline')
+      setDownline([])
+    } finally {
+      setDownlineBusy(false)
+    }
+  }
+
   async function remove(c: Channel) {
     await api.del(`/admin/channels/${c.id}`).catch((e: any) => showToast(e?.message || 'Delete failed'))
     load()
@@ -233,6 +321,9 @@ export default function Channels() {
                   <td className="t-right num">{money(m.commissionBalance)}</td>
                   <td className="t-right">
                     <div className="flex gap8" style={{ justifyContent: 'flex-end' }}>
+                      <button className="btn btn-light btn-sm" onClick={() => void openMentorDownline(m)}>
+                        Downline
+                      </button>
                       <button className="btn btn-light btn-sm" onClick={() => { setResetTarget(m); setResetPassword('') }}>
                         Reset password
                       </button>
@@ -416,6 +507,101 @@ export default function Channels() {
       )}
 
       {creds && <CredsModal creds={creds} onClose={() => setCreds(null)} />}
+
+      {downlineFor && (
+        <Modal
+          title={`Downline · ${downlineFor.displayName}`}
+          onClose={() => {
+            setDownlineFor(null)
+            setDownline([])
+            setDownlineQ('')
+            setDownlineAgentsOnly(false)
+          }}
+        >
+          <p className="section-sub" style={{ marginTop: 0 }}>
+            {downlineTotals.members} members · {downlineTotals.agents} agents · Commission{' '}
+            {money(downlineTotals.commission)}
+          </p>
+          <div className="flex gap8" style={{ marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              className="input"
+              style={{ minWidth: 200 }}
+              placeholder="Search Game ID / phone"
+              value={downlineQ}
+              onChange={(e) => setDownlineQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void openMentorDownline(downlineFor, { q: downlineQ })
+              }}
+            />
+            <label className="flex gap8" style={{ alignItems: 'center', fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={downlineAgentsOnly}
+                onChange={(e) => {
+                  const next = e.target.checked
+                  setDownlineAgentsOnly(next)
+                  void openMentorDownline(downlineFor, { agentsOnly: next })
+                }}
+              />
+              Agents only
+            </label>
+            <button
+              className="btn btn-outline btn-sm"
+              disabled={downlineBusy}
+              onClick={() => void openMentorDownline(downlineFor)}
+            >
+              {downlineBusy ? 'Loading…' : 'Search'}
+            </button>
+          </div>
+          <div className="table-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Game ID</th>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th className="t-right">Deposit</th>
+                  <th className="t-right">Win/Loss</th>
+                  <th className="t-right">Commission</th>
+                  <th>Profile</th>
+                </tr>
+              </thead>
+              <tbody>
+                {downline.map((row) => (
+                  <tr key={row.id}>
+                    <td className="num">{row.gameId}</td>
+                    <td>
+                      <Pill tone={row.isReferralAgent ? 'violet' : 'blue'}>
+                        {row.isReferralAgent ? 'Agent' : 'Member'}
+                      </Pill>
+                      <div className="cell-sub">L{row.level}</div>
+                    </td>
+                    <td>
+                      {row.name}
+                      <div className="cell-sub">{row.phone}</div>
+                    </td>
+                    <td className="t-right num">{money(row.deposited)}</td>
+                    <td className="t-right num">{money(row.winLoss)}</td>
+                    <td className="t-right num">{money(row.commission)}</td>
+                    <td>
+                      <Link className="btn btn-light btn-sm" to={`/users/${row.id}`} onClick={() => setDownlineFor(null)}>
+                        Open
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+                {downline.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="muted">
+                      {downlineBusy ? 'Loading…' : 'No downline yet.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

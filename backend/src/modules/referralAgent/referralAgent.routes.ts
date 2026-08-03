@@ -80,6 +80,8 @@ referralAgentRoutes.get(
       walletsFilled: u.walletsFilled,
       active: u.referralAgentActive,
       commissionBalance: toRupees(commissionBal),
+      gameBalance: toRupees(bal.MAIN),
+      salaryBalance: toRupees(commissionBal),
       salaryTransferOpen: u.salaryTransferOpen,
       salaryApproved: toRupees(approved),
       salaryHold: toRupees(hold),

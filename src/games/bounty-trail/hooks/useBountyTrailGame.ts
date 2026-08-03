@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { roundLossStatus } from '../../lib/roundResult'
 import {
   AUTO_SPIN_OPTIONS,
   BET_AMOUNTS,
@@ -20,9 +21,15 @@ import {
   type Cell,
   type ForceMode,
   type SpinResult,
+  type WayWin,
 } from '../engines/bountyTrailEngine'
 import type { BountySfx } from './useBountyTrailSound'
-import { isLivePlayer, preconnectSlot, serverSlotSpin } from '../../lib/serverSpin'
+import {
+  isLivePlayer,
+  preconnectSlot,
+  serverSlotBuyFeature,
+  serverSlotSpin,
+} from '../../lib/serverSpin'
 
 export type GamePhase =
   | 'loading'
@@ -51,6 +58,7 @@ type WalletFns = {
   canAfford: (n: number) => boolean
   debit: (n: number) => boolean
   credit: (n: number) => void
+  refresh?: () => Promise<void>
 }
 
 type Opts = WalletFns & {
@@ -59,12 +67,48 @@ type Opts = WalletFns & {
   reducedMotion?: boolean
 }
 
+type ServerFrame = {
+  grid: Cell[][]
+  wayWins: WayWin[]
+  lineWin: number
+  scatterCount: number
+  scatterWin: number
+  totalWin: number
+  multIndex: number
+  appliedMult: number
+  triggerFreeSpins: boolean
+  freeSpinsAwarded: number
+  goldActivated: Array<{ col: number; row: number; mult: number }>
+  freeSpins?: ServerFrame[]
+  featureTotal?: number
+}
+
 function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms))
 }
 
+function frameToResult(frame: ServerFrame): SpinResult {
+  return {
+    grid: frame.grid,
+    wayWins: frame.wayWins || [],
+    lineWin: frame.lineWin || 0,
+    scatterCount: frame.scatterCount || 0,
+    scatterWin: frame.scatterWin || 0,
+    totalWin: frame.totalWin || 0,
+    multIndex: frame.multIndex || 0,
+    appliedMult: frame.appliedMult || 1,
+    triggerFreeSpins: !!frame.triggerFreeSpins,
+    freeSpinsAwarded: frame.freeSpinsAwarded || 0,
+    goldActivated: frame.goldActivated || [],
+  }
+}
+
+function gameSlug(): 'wild-bounty' | 'bounty-trail' {
+  return 'wild-bounty'
+}
+
 export function useBountyTrailGame(opts: Opts) {
-  const { canAfford, debit, credit, playSfx, onMessage, reducedMotion } = opts
+  const { canAfford, debit, credit, refresh, playSfx, onMessage, reducedMotion } = opts
   const busy = useRef(false)
   const autoStop = useRef(false)
 
@@ -86,6 +130,7 @@ export function useBountyTrailGame(opts: Opts) {
   const [inFreeSpins, setInFreeSpins] = useState(false)
   const [winTier, setWinTier] = useState<'none' | 'small' | 'medium' | 'big'>('none')
   const [winningCells, setWinningCells] = useState<Set<string>>(new Set())
+  const [goldActivating, setGoldActivating] = useState<Set<string>>(new Set())
   const [history, setHistory] = useState<HistoryRound[]>([])
   const [shake, setShake] = useState(0)
   const [modal, setModal] = useState<
@@ -104,9 +149,11 @@ export function useBountyTrailGame(opts: Opts) {
   freeRef.current = { inFree: inFreeSpins, left: freeSpinsLeft, total: freeSpinTotalWin }
   const autoRef = useRef(0)
   autoRef.current = autoLeft
+  /** Server-authored free-spin queue waiting to play. */
+  const pendingFreeSpins = useRef<ServerFrame[]>([])
 
   useEffect(() => {
-    preconnectSlot(window.location.pathname.includes('wild-bounty') ? 'wild-bounty' : 'bounty-trail')
+    preconnectSlot(gameSlug())
   }, [])
 
   useEffect(() => {
@@ -120,12 +167,15 @@ export function useBountyTrailGame(opts: Opts) {
     return () => clearInterval(t)
   }, [phase, spinning, modal])
 
-  const openModal = useCallback((m: NonNullable<typeof modal>) => {
-    if (busy.current && m !== 'quit' && m !== 'menu') return
-    setModal(m)
-    setPhase((p) => (p === 'loading' ? p : 'modalOpen'))
-    playSfx('button', 0.4)
-  }, [playSfx])
+  const openModal = useCallback(
+    (m: NonNullable<typeof modal>) => {
+      if (busy.current && m !== 'quit' && m !== 'menu') return
+      setModal(m)
+      setPhase((p) => (p === 'loading' ? p : 'modalOpen'))
+      playSfx('button', 0.4)
+    },
+    [playSfx],
+  )
 
   const closeModal = useCallback(() => {
     setModal(null)
@@ -154,17 +204,20 @@ export function useBountyTrailGame(opts: Opts) {
     [playSfx, spinning],
   )
 
-  const countUpWin = useCallback(async (target: number) => {
-    const steps = reducedMotion ? 8 : 24
-    for (let i = 1; i <= steps; i++) {
-      setDisplayWin(Math.round(((target * i) / steps) * 100) / 100)
-      await sleep(reducedMotion ? 16 : 28)
-    }
-    setDisplayWin(target)
-  }, [reducedMotion])
+  const countUpWin = useCallback(
+    async (target: number) => {
+      const steps = reducedMotion ? 8 : 24
+      for (let i = 1; i <= steps; i++) {
+        setDisplayWin(Math.round(((target * i) / steps) * 100) / 100)
+        await sleep(reducedMotion ? 16 : 28)
+      }
+      setDisplayWin(target)
+    },
+    [reducedMotion],
+  )
 
   const presentWin = useCallback(
-    async (result: SpinResult) => {
+    async (result: SpinResult, opts?: { creditLocal?: boolean }) => {
       const win = result.totalWin
       setLastWin(win)
       const cells = new Set<string>()
@@ -193,23 +246,108 @@ export function useBountyTrailGame(opts: Opts) {
           playSfx('win', 0.4)
         }
         await countUpWin(win)
-        if (!isLivePlayer()) credit(win)
+        if (opts?.creditLocal) credit(win)
         await sleep(tier === 'big' ? 1400 : tier === 'medium' ? 700 : 380)
         setWinningCells(new Set())
       } else {
         setDisplayWin(0)
-        setStatusMsg('GOOD LUCK!')
+        const staked = betRef.current
+        setStatusMsg(roundLossStatus(staked))
+        onMessage?.(roundLossStatus(staked))
       }
     },
-    [countUpWin, credit, playSfx, reducedMotion],
+    [countUpWin, credit, onMessage, playSfx, reducedMotion],
+  )
+
+  const animateReelsTo = useCallback(
+    async (result: SpinResult) => {
+      setGrid(result.grid)
+      const duration = turboRef.current ? TURBO_SPIN_MS : SPIN_MS
+      const stagger = turboRef.current ? TURBO_STOP_STAGGER : REEL_STOP_STAGGER
+      await sleep(Math.max(200, duration - stagger * 5))
+      setPhase('reelStopping')
+      const stops = Array(6).fill(false) as boolean[]
+      for (let i = 0; i < 6; i++) {
+        await sleep(stagger)
+        stops[i] = true
+        setStoppingReels([...stops])
+        playSfx('stop', 0.25)
+        const col = result.grid[i]!
+        if (col.some((c) => c.id === 'scatter' || c.id === 'wild')) {
+          playSfx(col.some((c) => c.id === 'scatter') ? 'scatter' : 'wild', 0.4)
+        }
+      }
+      setSpinning(false)
+      setStoppingReels(Array(6).fill(false))
+      setLastResult(result)
+      setMultIndex(result.multIndex)
+      multRef.current = result.multIndex
+      if (result.goldActivated.length) {
+        playSfx('gold', 0.4)
+        const cells = new Set(result.goldActivated.map((g) => `${g.col}:${g.row}`))
+        setGoldActivating(cells)
+        await sleep(reducedMotion ? 200 : 500)
+        setGoldActivating(new Set())
+      }
+      setPhase('evaluating')
+    },
+    [playSfx, reducedMotion],
+  )
+
+  const playFreeSpinQueue = useCallback(
+    async (frames: ServerFrame[], seedTotal: number, authoritativeTotal?: number) => {
+      setInFreeSpins(true)
+      setFreeSpinsLeft(frames.length)
+      setFreeSpinTotalWin(seedTotal)
+      let total = seedTotal
+      for (let i = 0; i < frames.length; i++) {
+        const frame = frames[i]!
+        const left = frames.length - i
+        setFreeSpinsLeft(left)
+        setStatusMsg(`FREE SPIN · ${left}`)
+        setSpinning(true)
+        setStoppingReels(Array(6).fill(false))
+        setPhase('spinning')
+        setDisplayWin(0)
+        setWinningCells(new Set())
+        playSfx('spin', turboRef.current ? 0.35 : 0.55)
+        const result = frameToResult(frame)
+        await animateReelsTo(result)
+        await presentWin(result, { creditLocal: false })
+        total = Math.round((total + result.totalWin) * 100) / 100
+        setFreeSpinTotalWin(total)
+        if (result.triggerFreeSpins) {
+          setStatusMsg(`+${result.freeSpinsAwarded} FREE SPINS!`)
+          playSfx('feature', 0.55)
+          await sleep(600)
+        }
+      }
+      const finalTotal =
+        authoritativeTotal != null && authoritativeTotal >= 0 ? authoritativeTotal : total
+      setFreeSpinTotalWin(finalTotal)
+      setPhase('freeSpinsOutro')
+      setStatusMsg(`TOTAL BONUS WIN ${formatMoney(finalTotal)}`)
+      playSfx('bigwin', 0.55)
+      await sleep(1800)
+      setInFreeSpins(false)
+      setFreeSpinsLeft(0)
+      setMultIndex(0)
+      multRef.current = 0
+      pendingFreeSpins.current = []
+      setPhase('ready')
+    },
+    [animateReelsTo, playSfx, presentWin],
   )
 
   const runSpin = useCallback(
     async (opts?: { free?: boolean }) => {
       if (busy.current) return
+      // Server-authored free spins are played via playFreeSpinQueue — no local free loop.
+      if (opts?.free === true && isLivePlayer()) return
+
       const free = opts?.free === true || freeRef.current.inFree
       const currentBet = betRef.current
-      let serverWin: number | undefined
+      const live = isLivePlayer()
 
       if (!free) {
         if (!canAfford(currentBet)) {
@@ -218,23 +356,6 @@ export function useBountyTrailGame(opts: Opts) {
           setStatusMsg('INSUFFICIENT BALANCE')
           onMessage?.('Insufficient balance')
           setAutoLeft(0)
-          return
-        }
-        if (isLivePlayer()) {
-          try {
-            const slug = window.location.pathname.includes('wild-bounty')
-              ? 'wild-bounty'
-              : 'bounty-trail'
-            const settled = await serverSlotSpin(slug, currentBet)
-            serverWin = settled?.win ?? 0
-          } catch (e: any) {
-            playSfx('error')
-            onMessage?.(e?.message || 'Spin failed')
-            return
-          }
-        } else if (!debit(currentBet)) {
-          playSfx('error')
-          onMessage?.('Bet failed')
           return
         }
       }
@@ -251,73 +372,105 @@ export function useBountyTrailGame(opts: Opts) {
       setStatusMsg(free ? `FREE SPIN · ${freeRef.current.left}` : 'GOOD LUCK!')
       playSfx('spin', turboRef.current ? 0.35 : 0.55)
 
-      const force: ForceMode =
-        serverWin != null ? (serverWin > 0 ? 'small' : 'nowin') : readDevForce()
-      const result = evaluateSpin(currentBet, {
-        force,
-        freeSpin: free,
-        multIndex: free ? multRef.current : 0,
-      })
-      if (serverWin != null) {
-        result.totalWin = serverWin
-        result.triggerFreeSpins = false
-        result.freeSpinsAwarded = 0
-        result.scatterCount = 0
-        result.scatterWin = 0
-      }
+      let result: SpinResult
+      let freeSpinFrames: ServerFrame[] | undefined
+      let featureTotal: number | undefined
 
-      // Reveal final grid while columns are still spinning so stops can land on results.
-      setGrid(result.grid)
-
-      const duration = turboRef.current ? TURBO_SPIN_MS : SPIN_MS
-      const stagger = turboRef.current ? TURBO_STOP_STAGGER : REEL_STOP_STAGGER
-
-      // Spinning window then sequential stop
-      await sleep(Math.max(200, duration - stagger * 5))
-      setPhase('reelStopping')
-      const stops = Array(6).fill(false) as boolean[]
-      for (let i = 0; i < 6; i++) {
-        await sleep(stagger)
-        stops[i] = true
-        setStoppingReels([...stops])
-        playSfx('stop', 0.25)
-        // Special land anticipation
-        const col = result.grid[i]!
-        if (col.some((c) => c.id === 'scatter' || c.id === 'wild')) {
-          playSfx(col.some((c) => c.id === 'scatter') ? 'scatter' : 'wild', 0.4)
+      try {
+        if (live && !free) {
+          const settled = await serverSlotSpin(gameSlug(), currentBet)
+          if (!settled) throw new Error('Not authenticated')
+          const payload = settled.payload as unknown as ServerFrame
+          if (!payload?.grid) throw new Error('Invalid spin payload')
+          result = frameToResult(payload)
+          // Server already settled the full feature total (base + free spins)
+          result.totalWin = Number(settled.win ?? payload.featureTotal ?? payload.totalWin ?? 0)
+          freeSpinFrames = payload.freeSpins
+          featureTotal = payload.featureTotal
+          await refresh?.()
+        } else {
+          // Preview / demo path — local math
+          if (!free) {
+            if (!debit(currentBet)) {
+              playSfx('error')
+              onMessage?.('Bet failed')
+              busy.current = false
+              setSpinning(false)
+              return
+            }
+          }
+          const force: ForceMode = readDevForce()
+          result = evaluateSpin(currentBet, {
+            force,
+            freeSpin: free,
+            multIndex: free ? multRef.current : 0,
+          })
         }
+      } catch (e: any) {
+        busy.current = false
+        setSpinning(false)
+        setPhase('ready')
+        playSfx('error')
+        onMessage?.(e?.message || 'Spin failed')
+        return
       }
 
-      setSpinning(false)
-      setStoppingReels(Array(6).fill(false))
-      setLastResult(result)
-      setMultIndex(result.multIndex)
-      multRef.current = result.multIndex
+      await animateReelsTo(result)
 
-      if (result.goldActivated.length) playSfx('gold', 0.4)
-
-      setPhase('evaluating')
-      await presentWin(result)
+      // Present base-spin win then enter server-authored bonus
+      if (live && freeSpinFrames?.length) {
+        const baseOnly: SpinResult = {
+          ...result,
+          totalWin: Math.round(((result.lineWin || 0) + (result.scatterWin || 0)) * 100) / 100,
+        }
+        await presentWin(baseOnly, { creditLocal: false })
+      } else {
+        await presentWin(result, { creditLocal: !live })
+      }
 
       setHistory((h) =>
         [
           {
             id: `${Date.now()}`,
             bet: currentBet,
-            win: result.totalWin,
+            win: live && featureTotal != null ? featureTotal : result.totalWin,
             at: Date.now(),
-            note: result.triggerFreeSpins
-              ? `Free spins +${result.freeSpinsAwarded}`
-              : result.totalWin > 0
-                ? `${result.wayWins.length} ways`
-                : 'No win',
+            note:
+              freeSpinFrames?.length || result.triggerFreeSpins
+                ? `Free spins +${result.freeSpinsAwarded || freeSpinFrames?.length || 0}`
+                : result.totalWin > 0
+                  ? `${result.wayWins.length} ways`
+                  : 'No win',
           },
           ...h,
         ].slice(0, 40),
       )
 
-      // Free spins trigger
-      if (result.triggerFreeSpins && !free) {
+      // Live free-spin sequence (server-authored)
+      if (live && freeSpinFrames && freeSpinFrames.length > 0) {
+        autoStop.current = true
+        setAutoLeft(0)
+        setPhase('featureTriggered')
+        setStatusMsg('FREE SPINS TRIGGERED!')
+        playSfx('freespins', 0.7)
+        await sleep(900)
+        setPhase('freeSpinsIntro')
+        await sleep(1000)
+        setPhase('freeSpins')
+        const seed =
+          Math.round(((result.lineWin || 0) + (result.scatterWin || 0)) * 100) / 100
+        await playFreeSpinQueue(
+          freeSpinFrames,
+          seed,
+          featureTotal ?? result.totalWin,
+        )
+        await refresh?.()
+        busy.current = false
+        return
+      }
+
+      // Demo free-spin trigger
+      if (result.triggerFreeSpins && !free && !live) {
         autoStop.current = true
         setAutoLeft(0)
         setPhase('featureTriggered')
@@ -331,14 +484,14 @@ export function useBountyTrailGame(opts: Opts) {
         await sleep(1400)
         setPhase('freeSpins')
         busy.current = false
-        // Kick free spin loop
         window.setTimeout(() => {
           void runSpin({ free: true })
         }, 400)
         return
       }
 
-      if (free) {
+      // Demo free-spin continuation
+      if (free && !live) {
         const left = freeRef.current.left - 1
         const total = freeRef.current.total + result.totalWin
         setFreeSpinsLeft(left)
@@ -351,7 +504,7 @@ export function useBountyTrailGame(opts: Opts) {
         }
         if (left <= 0 && !result.triggerFreeSpins) {
           setPhase('freeSpinsOutro')
-          setStatusMsg(`TOTAL BONUS WIN ${total.toFixed(2)}`)
+          setStatusMsg(`TOTAL BONUS WIN ${formatMoney(total)}`)
           playSfx('bigwin', 0.55)
           await sleep(1800)
           setInFreeSpins(false)
@@ -369,7 +522,6 @@ export function useBountyTrailGame(opts: Opts) {
         return
       }
 
-      // Reset base game multiplier after paid spin
       if (!free) {
         setMultIndex(0)
         multRef.current = 0
@@ -378,9 +530,8 @@ export function useBountyTrailGame(opts: Opts) {
       setPhase('ready')
       busy.current = false
 
-      // Auto spin continuation
       if (autoRef.current > 0 && !autoStop.current) {
-        if (result.triggerFreeSpins) {
+        if (result.triggerFreeSpins || freeSpinFrames?.length) {
           setAutoLeft(0)
           autoRef.current = 0
           return
@@ -395,7 +546,16 @@ export function useBountyTrailGame(opts: Opts) {
         }
       }
     },
-    [canAfford, debit, onMessage, playSfx, presentWin, reducedMotion],
+    [
+      animateReelsTo,
+      canAfford,
+      debit,
+      onMessage,
+      playFreeSpinQueue,
+      playSfx,
+      presentWin,
+      refresh,
+    ],
   )
 
   const startAuto = useCallback(
@@ -421,24 +581,56 @@ export function useBountyTrailGame(opts: Opts) {
 
   const buyFeature = useCallback(async () => {
     if (busy.current || freeRef.current.inFree) return
-    if (isLivePlayer()) {
-      playSfx('error')
-      setStatusMsg('FEATURE BUY TEMPORARILY UNAVAILABLE')
-      onMessage?.('Feature Buy is unavailable in live play')
-      return
-    }
-    const cost = featureBuyCost(betRef.current)
+    const currentBet = betRef.current
+    const cost = featureBuyCost(currentBet)
+    const live = isLivePlayer()
+
     if (!canAfford(cost)) {
       playSfx('error')
       setStatusMsg('INSUFFICIENT BALANCE')
       return
     }
+
+    setModal(null)
+    playSfx('feature', 0.65)
+
+    if (live) {
+      busy.current = true
+      try {
+        const settled = await serverSlotBuyFeature(gameSlug(), currentBet)
+        if (!settled) throw new Error('Not authenticated')
+        const payload = settled.payload as unknown as ServerFrame
+        const frames = payload.freeSpins || []
+        const featureWin = Number(settled.win ?? payload.featureTotal ?? 0)
+        await refresh?.()
+        setPhase('freeSpinsIntro')
+        setStatusMsg('HIGH NOON FREE SPINS')
+        await sleep(1200)
+        setPhase('freeSpins')
+        if (frames.length === 0) {
+          setPhase('ready')
+          busy.current = false
+          onMessage?.(featureWin > 0 ? `Feature win ${formatMoney(featureWin)}` : 'No bonus win')
+          return
+        }
+        await playFreeSpinQueue(frames, 0, featureWin)
+        await refresh?.()
+        if (featureWin > 0) onMessage?.(`Feature win ${formatMoney(featureWin)}`)
+        busy.current = false
+      } catch (e: any) {
+        busy.current = false
+        setPhase('ready')
+        playSfx('error')
+        onMessage?.(e?.message || 'Feature buy failed')
+      }
+      return
+    }
+
+    // Demo path
     if (!debit(cost)) {
       playSfx('error')
       return
     }
-    setModal(null)
-    playSfx('feature', 0.65)
     setPhase('freeSpinsIntro')
     setInFreeSpins(true)
     setFreeSpinsLeft(FREE_SPIN_COUNT)
@@ -449,7 +641,7 @@ export function useBountyTrailGame(opts: Opts) {
     await sleep(1200)
     setPhase('freeSpins')
     void runSpin({ free: true })
-  }, [canAfford, debit, onMessage, playSfx, runSpin])
+  }, [canAfford, debit, onMessage, playFreeSpinQueue, playSfx, refresh, runSpin])
 
   const markReady = useCallback(() => {
     setPhase('ready')
@@ -493,6 +685,7 @@ export function useBountyTrailGame(opts: Opts) {
     inFreeSpins,
     winTier,
     winningCells,
+    goldActivating,
     history,
     shake,
     modal,

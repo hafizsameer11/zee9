@@ -5,7 +5,12 @@ import {
   type ChipValue,
   type DragonTigerBet,
 } from '../constants/gameConfig'
-import { aggregateByZone, potentialWin, totalStake } from '../utils/payoutCalculator'
+import {
+  aggregateByZone,
+  lockedBetSide,
+  potentialWin,
+  totalStake,
+} from '../utils/payoutCalculator'
 import { placeServerBet } from '../services/dragonTigerGameService'
 import { getAccess } from '../../../api/client'
 import type { DragonTigerSocketBet } from '../../lib/dragonTigerSocket'
@@ -51,6 +56,29 @@ type Opts = {
   onError?: (msg: string) => void
 }
 
+function betFailureMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error) return e.message
+  if (typeof (e as { message?: string })?.message === 'string') return (e as { message: string }).message
+  return fallback
+}
+
+function handleBetFailure(
+  e: unknown,
+  fallback: string,
+  handlers: Pick<Opts, 'onInsufficient' | 'onError' | 'onClosed'>,
+) {
+  const msg = betFailureMessage(e, fallback)
+  if (/insufficient/i.test(msg)) {
+    handlers.onInsufficient?.()
+    return
+  }
+  if (/betting closed/i.test(msg)) {
+    handlers.onClosed?.()
+    return
+  }
+  handlers.onError?.(msg)
+}
+
 export function useDragonTigerBets({
   canAfford,
   debit,
@@ -74,6 +102,7 @@ export function useDragonTigerBets({
   const stake = useMemo(() => totalStake(bets), [bets])
   const potential = useMemo(() => potentialWin(bets), [bets])
   const byZone = useMemo(() => aggregateByZone(bets), [bets])
+  const lockedSide = useMemo(() => lockedBetSide(bets), [bets])
 
   const syncFromServer = useCallback((rows: DragonTigerSocketBet[], phase: string, rid: string) => {
     if (phase === 'betting') {
@@ -91,6 +120,11 @@ export function useDragonTigerBets({
       }
       const amount = chipValue ?? selectedChip
       if (!amount || amount <= 0 || !CHIP_VALUES.includes(amount as ChipValue)) return false
+      const activeSide = lockedBetSide(bets)
+      if (activeSide && activeSide !== selection) {
+        onError?.('Choose one side per round — Dragon, Tie, or Tiger')
+        return false
+      }
       if (!canAfford(amount)) {
         onInsufficient?.()
         return false
@@ -101,23 +135,12 @@ export function useDragonTigerBets({
         setBusy(true)
         void placeServerBet(selection, amount)
           .then(() => {
-            setBets((prev) => [
-              ...prev,
-              {
-                id: nextBetId(),
-                roundId,
-                selection,
-                chipValue: amount,
-                amount,
-                createdAt: Date.now(),
-              },
-            ])
+            // Bets come from server state sync — local append would double amounts.
             onPlace?.()
             onWalletChange?.()
           })
-          .catch((e: any) => {
-            onError?.(e?.message || 'Bet failed')
-            onInsufficient?.()
+          .catch((e: unknown) => {
+            handleBetFailure(e, 'Bet failed', { onInsufficient, onError, onClosed })
           })
           .finally(() => setBusy(false))
         return true
@@ -144,6 +167,7 @@ export function useDragonTigerBets({
     [
       bettingOpen,
       selectedChip,
+      bets,
       canAfford,
       debit,
       roundId,
@@ -193,20 +217,11 @@ export function useDragonTigerBets({
       setBusy(true)
       void Promise.all(bets.map((b) => placeServerBet(b.selection, b.amount)))
         .then(() => {
-          setBets((prev) => [
-            ...prev,
-            ...prev.map((b) => ({
-              ...b,
-              id: nextBetId(),
-              createdAt: Date.now(),
-            })),
-          ])
           onPlace?.()
           onWalletChange?.()
         })
-        .catch((e: any) => {
-          onError?.(e?.message || 'Double failed')
-          onInsufficient?.()
+        .catch((e: unknown) => {
+          handleBetFailure(e, 'Double failed', { onInsufficient, onError, onClosed })
         })
         .finally(() => setBusy(false))
       return true
@@ -225,7 +240,7 @@ export function useDragonTigerBets({
     ])
     onPlace?.()
     return true
-  }, [bettingOpen, bets, canAfford, debit, onInsufficient, onPlace, live, busy, onWalletChange, onError])
+  }, [bettingOpen, bets, canAfford, debit, onInsufficient, onPlace, live, busy, onWalletChange, onError, onClosed])
 
   const snapshotForRound = useCallback(() => {
     lastRoundBetsRef.current = bets.map((b) => ({ ...b }))
@@ -251,20 +266,11 @@ export function useDragonTigerBets({
       setBusy(true)
       void Promise.all(prev.map((b) => placeServerBet(b.selection, b.amount)))
         .then(() => {
-          setBets(
-            prev.map((b) => ({
-              ...b,
-              id: nextBetId(),
-              roundId,
-              createdAt: Date.now(),
-            })),
-          )
           onPlace?.()
           onWalletChange?.()
         })
-        .catch((e: any) => {
-          onError?.(e?.message || 'Rebet failed')
-          onInsufficient?.()
+        .catch((e: unknown) => {
+          handleBetFailure(e, 'Rebet failed', { onInsufficient, onError, onClosed })
         })
         .finally(() => setBusy(false))
       return true
@@ -290,7 +296,7 @@ export function useDragonTigerBets({
       }))
     })
     return true
-  }, [bettingOpen, canAfford, debit, credit, onInsufficient, onPlace, roundId, live, busy, onWalletChange, onError])
+  }, [bettingOpen, canAfford, debit, credit, onInsufficient, onPlace, roundId, live, busy, onWalletChange, onError, onClosed])
 
   return {
     bets,
@@ -299,6 +305,7 @@ export function useDragonTigerBets({
     stake,
     potential,
     byZone,
+    lockedSide,
     placeBet,
     undo,
     clear,

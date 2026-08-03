@@ -435,11 +435,7 @@ export default function WingoLotteryDesignUI({
     if (phase === 'START_BETTING') sound.play('open', { volume: 0.3 })
   }, [phase])
 
-  const hist = useMemo(() => {
-    const h = [...history].slice(-11)
-    while (h.length < 10) h.unshift(Math.floor(Math.random() * 10))
-    return h.slice(-11)
-  }, [history])
+  const hist = useMemo(() => history.slice(-11), [history])
 
   useEffect(() => {
     if (phase !== 'BETTING_OPEN') return

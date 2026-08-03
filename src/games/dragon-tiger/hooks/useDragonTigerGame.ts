@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { roundLossMessage, roundWinMessage } from '../../lib/roundResult'
 import {
   BETTING_CLOSING_SECONDS,
   BETTING_SECONDS,
@@ -116,6 +117,28 @@ export function useDragonTigerGame({
   const prevPhaseRef = useRef<string | null>(null)
   const animForRoundRef = useRef<string | null>(null)
   const paidAnnounceRef = useRef<string | null>(null)
+  const toastTimerRef = useRef<number | null>(null)
+
+  const clearToast = useCallback(() => {
+    if (toastTimerRef.current != null) {
+      window.clearTimeout(toastTimerRef.current)
+      toastTimerRef.current = null
+    }
+    onMessageRef.current?.(null)
+  }, [])
+
+  const toast = useCallback(
+    (message: string | null, ms = 2500) => {
+      clearToast()
+      if (!message) return
+      onMessageRef.current?.(message)
+      toastTimerRef.current = window.setTimeout(() => {
+        if (mountedRef.current) onMessageRef.current?.(null)
+        toastTimerRef.current = null
+      }, ms)
+    },
+    [clearToast],
+  )
 
   const clearTimers = useCallback(() => {
     if (intervalRef.current != null) {
@@ -143,17 +166,24 @@ export function useDragonTigerGame({
     roundId,
     onInsufficient: () => {
       playSfxRef.current?.('error')
-      onMessageRef.current?.('Insufficient balance')
+      toast('Insufficient balance', 2200)
     },
-    onPlace: () => playSfxRef.current?.('chip'),
+    onPlace: () => {
+      playSfxRef.current?.('chip')
+      clearToast()
+    },
     onRemove: () => playSfxRef.current?.('click'),
     onClosed: () => {
+      clearToast()
       setClosedNotice(true)
       playSfxRef.current?.('error')
       later(() => setClosedNotice(false), 1600)
     },
     onWalletChange: () => onWalletChangeRef.current?.(),
-    onError: (msg) => onMessageRef.current?.(msg),
+  onError: (msg) => {
+    playSfxRef.current?.('error')
+    toast(msg, 2200)
+  },
   })
 
   const betsApiRef = useRef(betsApi)
@@ -233,11 +263,16 @@ export function useDragonTigerGame({
                       setStatusText(`You win ${payout}`)
                       playSfxRef.current?.('win')
                       playSfxRef.current?.('coin')
-                      onMessageRef.current?.(`Won ${payout}`)
+                      toast(roundWinMessage(payout))
                     } else if ((st.myBets || []).length > 0) {
+                      const staked = (st.myBets || []).reduce(
+                        (sum, b) => sum + (Number(b.amount) || 0),
+                        0,
+                      )
                       setShowVictory(false)
-                      setStatusText('No win')
+                      setStatusText(roundLossMessage(staked))
                       playSfxRef.current?.('lose')
+                      toast(roundLossMessage(staked))
                     } else {
                       setShowVictory(false)
                       setStatusText('Next round')
@@ -251,7 +286,7 @@ export function useDragonTigerGame({
         }, DEAL_MS * scale)
       }, STOP_BANNER_MS * scale)
     },
-    [later],
+    [later, toast],
   )
 
   const applyServerState = useCallback(
@@ -275,6 +310,7 @@ export function useDragonTigerGame({
         setWinner(null)
         setLastPayout(0)
         setDealingPhase('idle')
+        clearToast()
         betsApiRef.current.clearAfterRound()
       }
 
@@ -301,11 +337,13 @@ export function useDragonTigerGame({
         }
         if (prevPhaseRef.current && prevPhaseRef.current !== 'betting') {
           playSfxRef.current?.('softClick')
+          clearToast()
         }
       }
 
       if (st.phase === 'locked') {
         setCountdown(0)
+        clearToast()
         if (prevPhaseRef.current === 'betting' || animForRoundRef.current !== st.roundId) {
           // Wait for reveal cards — show stop / dealing until then
           if (animForRoundRef.current !== st.roundId) {
@@ -331,7 +369,7 @@ export function useDragonTigerGame({
 
       prevPhaseRef.current = st.phase
     },
-    [runRevealAnim],
+    [runRevealAnim, clearToast],
   )
 
   /* ---------- DEMO: local timer loop (logged-out only) ---------- */
@@ -358,11 +396,12 @@ export function useDragonTigerGame({
     return () => {
       mountedRef.current = false
       clearTimers()
+      clearToast()
       bindDragonTigerSocket(null)
       socketRef.current?.close()
       socketRef.current = null
     }
-  }, [clearTimers])
+  }, [clearTimers, clearToast])
 
   useEffect(() => {
     if (!assetsReady || startedRef.current) return

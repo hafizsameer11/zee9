@@ -26,38 +26,41 @@ export default function BetPanel({
   onClickSfx,
 }: Props) {
   const flying = phase === 'flying'
-  const waiting = phase === 'waiting' || phase === 'loading'
+  const canQueue = flying || phase === 'flewAway' || phase === 'launching'
   const isActive = slot.phase === 'active'
   const isPending = slot.phase === 'pending'
   const isCashed = slot.phase === 'cashed'
+  const isQueued = slot.pendingNext
 
   let btnLabel = 'BET'
   let btnSub = formatRs(slot.amount)
-  let btnHint = 'Next Round'
+  let btnHint = canQueue && !isQueued ? 'Next Round' : ''
   let btnClass = styles.betBtnGreen
 
-  if (isCashed) {
-    btnLabel = 'CASHED'
-    btnSub = 'Out'
-    btnHint = ''
-    btnClass = styles.betBtnDisabled
-  } else if (isActive && flying) {
+  if (isActive && flying) {
     const pot = Math.floor(slot.wager * mult * 100) / 100
     btnLabel = 'CASH OUT'
     btnSub = formatRs(pot)
     btnHint = ''
     btnClass = styles.betBtnOrange
+  } else if (isQueued) {
+    btnLabel = 'QUEUED'
+    btnSub = formatRs(slot.amount)
+    btnHint = 'Tap to cancel'
+    btnClass = styles.betBtnQueued
   } else if (isPending) {
     btnLabel = 'CANCEL'
     btnSub = formatRs(slot.wager)
     btnHint = 'Waiting'
     btnClass = styles.betBtnCancel
+  } else if (isCashed && !canQueue) {
+    btnLabel = 'CASHED'
+    btnSub = 'Out'
+    btnHint = ''
+    btnClass = styles.betBtnDisabled
   }
 
-  const disabled =
-    isCashed ||
-    (!isActive && !isPending && !waiting) ||
-    (isActive && !flying)
+  const disabled = isActive && !flying
 
   return (
     <div
@@ -73,7 +76,7 @@ export default function BetPanel({
               onClickSfx()
               onAmount(stepBet(slot.amount, -1))
             }}
-            disabled={isPending || isActive}
+            disabled={isActive}
           >
             <img src={CTRL.minus} alt="" />
           </button>
@@ -85,7 +88,7 @@ export default function BetPanel({
               onClickSfx()
               onAmount(stepBet(slot.amount, 1))
             }}
-            disabled={isPending || isActive}
+            disabled={isActive}
           >
             <img src={CTRL.plus} alt="" />
           </button>
@@ -97,7 +100,7 @@ export default function BetPanel({
               key={q}
               type="button"
               className={styles.quickBtn}
-              disabled={isPending || isActive}
+              disabled={isActive}
               onClick={() => {
                 onClickSfx()
                 onAmount(q)
@@ -153,7 +156,7 @@ export default function BetPanel({
               min={1.01}
               step={0.1}
               value={slot.autoAt}
-              disabled={isPending || isActive}
+              disabled={isActive}
               onChange={(e) => onAutoAt(Math.max(1.01, Number(e.target.value) || 1.01))}
             />
             <span>x</span>
@@ -163,7 +166,7 @@ export default function BetPanel({
         <button
           type="button"
           className={`${styles.betBtn} ${btnClass}`}
-          disabled={disabled && !isPending && !isActive}
+          disabled={disabled}
           onClick={onAction}
         >
           <span className={styles.betBtnMain}>{btnLabel}</span>

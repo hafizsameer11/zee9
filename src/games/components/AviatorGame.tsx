@@ -5,6 +5,7 @@ import { usePlayerAuth } from '../../api/auth'
 import { sound } from '../../lib/sound'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import type { GameComponentProps } from '../types'
+import { roundLossMessage } from '../lib/roundResult'
 import AviatorArena from './AviatorArena'
 import { connectAviatorSocket } from '../lib/aviatorSocket'
 import {
@@ -206,7 +207,15 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
         }
         if (nextPhase === 'crashed' && prevPhase.current === 'flying') {
           sound.play('crash')
-          onMessage?.('💥 Crashed!')
+          const lostWager = slotsRef.current.reduce((sum, slot) => {
+            if (slot.phase === 'active' || slot.phase === 'lost') {
+              return sum + (slot.wager || slot.bet || 0)
+            }
+            return sum
+          }, 0)
+          onMessage?.(
+            lostWager > 0 ? `💥 Crashed! ${roundLossMessage(lostWager)}` : '💥 Crashed!',
+          )
           void refresh()
         }
         if (nextPhase === 'waiting') {

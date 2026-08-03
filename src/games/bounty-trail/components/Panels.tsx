@@ -153,7 +153,7 @@ export function QuitModal({ onConfirm, onClose }: { onConfirm: () => void; onClo
     <div className={`${styles.dim} ${styles.dimCenter}`} onClick={onClose} role="presentation">
       <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Quit">
         <div className={styles.sheetTitle} style={{ marginBottom: 10 }}>
-          Leave Bounty Trail?
+          Leave Wild Bounty?
         </div>
         <div className={styles.modalBody}>Your session progress stays in this browser wallet.</div>
         <div className={styles.sheetActions}>

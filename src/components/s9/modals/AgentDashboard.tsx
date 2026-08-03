@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../../api/client'
 import { useWallet } from '../../../context/WalletContext'
 import styles from './AgentDashboard.module.css'
-import { ReferGuideModal, ShareLinkModal } from './ReferSubModals'
+import { AgentRulesModal, ShareLinkModal } from './ReferSubModals'
 import AgentHistoryModal from './AgentHistoryModal'
 
 type Team = {
@@ -21,6 +21,8 @@ type AgentRef = {
   userId: string
   playerNo?: number
   commissionBalance: number
+  gameBalance?: number
+  salaryBalance?: number
   totalCommission: number
   todayCommission?: number
   salaryTransferOpen?: boolean
@@ -104,12 +106,12 @@ function fmtDay(iso?: string) {
 }
 
 export default function AgentDashboard({ onClose, data, onToast }: Props) {
-  const { refresh } = useWallet()
+  const { refresh, balance: gameWallet } = useWallet()
   const [team, setTeam] = useState<Team>(
     data.team || { members: 0, deposit: 0, winLoss: 0, rollover: 0, commission: 0, date: todayIso() },
   )
   const [date, setDate] = useState(team.date || todayIso())
-  const [sales, setSales] = useState(data.commissionBalance)
+  const [sales, setSales] = useState(data.salaryBalance ?? data.commissionBalance)
   const [transferOpen, setTransferOpen] = useState(!!data.salaryTransferOpen)
   const [approved, setApproved] = useState(Number(data.salaryApproved ?? data.transferable ?? 0))
   const [hold, setHold] = useState(Number(data.salaryHold ?? 0))
@@ -144,14 +146,14 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
   const refreshSales = useCallback(async () => {
     try {
       const s = await api.get('/referral-agent/summary')
-      setSales(Number(s.commissionBalance) || 0)
+      setSales(Number(s.salaryBalance ?? s.commissionBalance) || 0)
       setTransferOpen(!!s.salaryTransferOpen)
       setApproved(Number(s.salaryApproved ?? s.transferable ?? 0) || 0)
       setHold(Number(s.salaryHold) || 0)
     } catch {
       try {
         const r = await api.get('/referrals')
-        setSales(Number(r.commissionBalance) || 0)
+        setSales(Number(r.salaryBalance ?? r.commissionBalance) || 0)
         setTransferOpen(!!r.salaryTransferOpen)
         setApproved(Number(r.salaryApproved ?? r.transferable ?? 0) || 0)
         setHold(Number(r.salaryHold) || 0)
@@ -219,7 +221,7 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
 
   const transferToBalance = async () => {
     if (busy || !transferOpen || approved <= 0) {
-      onToast?.(transferOpen ? 'No approved salary to transfer' : 'Transfer closed by admin')
+      onToast?.(transferOpen ? 'No approved salary to transfer' : 'Withdraw frozen by admin')
       return
     }
     setBusy(true)
@@ -260,8 +262,19 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
             </div>
 
             <div className={styles.salesCard}>
-              <div className={styles.salesAmount}>{fmt(sales)}</div>
-              <div className={styles.salesLabel}>Salary Commission</div>
+              <div className={styles.walletSplit}>
+                <div>
+                  <div className={styles.walletK}>Game wallet</div>
+                  <div className={styles.walletV}>{fmt(gameWallet)}</div>
+                  <div className={styles.walletHint}>Deposits + wins only</div>
+                </div>
+                <div>
+                  <div className={styles.walletK}>Salary wallet</div>
+                  <div className={styles.salesAmount}>{fmt(sales)}</div>
+                  <div className={styles.walletHint}>Team commission — not playable</div>
+                </div>
+              </div>
+              <div className={styles.salesLabel}>Salary Commission (on hold)</div>
               {(hold > 0 || approved > 0) && (
                 <div className={styles.holdLine}>
                   {transferOpen ? (
@@ -322,7 +335,7 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
               </div>
               <div className={`${styles.statBox} ${styles.statGreen}`}>
                 <strong>{fmt(team.commission)}</strong>
-                <span>Commission</span>
+                <span>Team earn ({date.slice(8, 10)}/{date.slice(5, 7)})</span>
               </div>
             </div>
           </section>
@@ -377,7 +390,7 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
         </aside>
 
         {showHistory && <AgentHistoryModal onClose={() => setShowHistory(false)} />}
-        {showRules && <ReferGuideModal onClose={() => setShowRules(false)} />}
+        {showRules && <AgentRulesModal onClose={() => setShowRules(false)} />}
         {showShare && <ShareLinkModal onClose={() => setShowShare(false)} shareUrl={data.shareUrl} />}
 
         {showMembers && (

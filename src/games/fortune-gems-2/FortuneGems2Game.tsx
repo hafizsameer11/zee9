@@ -244,13 +244,22 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
             </div>
           </div>
 
-          {showWinOverlay && (
+          {showWinOverlay && game.result && (
             <div className={styles.overlay}>
               <div className={styles.winBurst}>
                 <img
-                  src={game.result?.wheelTriggered || game.result?.fullBoard ? ASSET.bonusBanner : ASSET.winBanner}
+                  src={game.result.wheelTriggered || game.result.fullBoard ? ASSET.bonusBanner : ASSET.winBanner}
                   alt=""
                 />
+                {game.result.basePayout > 0 &&
+                  game.result.multiplier > 1 &&
+                  !game.result.wheelTriggered && (
+                    <div className={styles.winMath}>
+                      <span>{formatMoney(game.result.basePayout)}</span>
+                      <span className={styles.winMathMult}>× {game.result.multiplier}</span>
+                      <span className={styles.winMathEq}>=</span>
+                    </div>
+                  )}
                 <div className={styles.winAmount}>{formatMoney(game.displayWin)}</div>
               </div>
             </div>

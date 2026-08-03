@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePlayerAuth } from '../api/auth'
-import { clearReferral, getReferral } from '../api/referral'
+import { captureReferral, clearReferral, getReferral } from '../api/referral'
 import styles from './Login.module.css'
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login, register } = usePlayerAuth()
+  const { login, register, blocked } = usePlayerAuth()
   const captured = getReferral()
   const [mode, setMode] = useState<'login' | 'register'>(
     captured.playerId || captured.shareCode || captured.channel ? 'register' : 'login',
@@ -17,6 +17,14 @@ export default function Login() {
   const [referral, setReferral] = useState(captured.playerId || captured.shareCode || '')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    captureReferral()
+    const capturedNow = getReferral()
+    if (capturedNow.playerId || capturedNow.shareCode) {
+      setReferral(capturedNow.playerId || capturedNow.shareCode || '')
+    }
+  }, [])
 
   async function submit() {
     setErr('')
@@ -40,7 +48,9 @@ export default function Login() {
           (/^\d{6,10}$/.test(code) ? code : undefined)
         await register(phone.trim(), password, name.trim(), {
           playerId,
-          shareCode: code || undefined,
+          shareCode: code || captured.shareCode || captured.playerId || undefined,
+          referralCode:
+            captured.bindCode || (code && !/^\d{6,10}$/.test(code) ? code : undefined),
           channel: captured.channel,
           bindCode: captured.bindCode,
         })
@@ -110,7 +120,9 @@ export default function Login() {
         </p>
       )}
 
-      {err && <p style={{ color: '#ff8a80', fontSize: 11, maxWidth: 240, textAlign: 'center' }}>{err}</p>}
+      {(err || blocked) && (
+        <p style={{ color: '#ff8a80', fontSize: 11, maxWidth: 240, textAlign: 'center' }}>{err || blocked}</p>
+      )}
 
       <button type="button" onClick={submit} disabled={busy}>
         {busy ? 'Please wait…' : mode === 'login' ? 'Login' : 'Create account'}

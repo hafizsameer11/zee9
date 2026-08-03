@@ -1,5 +1,5 @@
 import type { PaymentMethod, BonusType, Role } from '@prisma/client'
-import { prisma } from '../../lib/prisma.js'
+import { prisma, type Tx } from '../../lib/prisma.js'
 import { runMoneyTx } from '../../core/tx.js'
 import { post, getBalances } from '../../core/ledger.js'
 import { getSettings } from '../../core/settings.js'
@@ -7,9 +7,10 @@ import { toPaisa, applyPct, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { accrueForDeposit, updateAgentship } from '../commission/commission.service.js'
 import { notify } from '../../core/notify.js'
-import { releaseIfNoWager, getEffectiveWager } from '../../core/wager.js'
-import { pushDepositToMerchant } from '../agents/agent.realtime.js'
+import { creditInstantBonus } from '../../core/wager.js'
+import { pushDepositToMerchant, pushDepositResolvedToMerchant } from '../agents/agent.realtime.js'
 import { pushPlayerWallet } from '../wallet/player.realtime.js'
+import { balances as walletBalances } from '../wallet/wallet.service.js'
 
 function methodEnabled(s: Awaited<ReturnType<typeof getSettings>>, method: PaymentMethod) {
   if (method === 'JAZZCASH') return s.methodJazzcash
@@ -47,13 +48,51 @@ type AgentAcc = {
 }
 
 /**
- * Pick a live merchant account.
+ * Spendable float per merchant: MAIN balance minus the amount already committed to
+ * open DEPOSIT orders. Orders that the player never paid for (no TID past the pay
+ * window) are about to be expired by the sweeper, so they don't hold float.
+ */
+export async function availableFloatByAgent(client: typeof prisma | Tx, agentIds: string[]) {
+  const float = new Map<string, bigint>()
+  if (!agentIds.length) return float
+
+  const [accounts, committed] = await Promise.all([
+    client.ledgerAccount.findMany({
+      where: { ownerId: { in: agentIds }, bucket: 'MAIN', currency: 'PKR' },
+      select: { ownerId: true, balance: true },
+    }),
+    client.collectionOrder.groupBy({
+      by: ['agentId'],
+      where: {
+        agentId: { in: agentIds },
+        type: 'DEPOSIT',
+        status: { in: ['PENDING', 'CHECKING', 'PROCESSING'] },
+        OR: [{ submittedAt: { not: null } }, { createdAt: { gte: new Date(Date.now() - PAY_WINDOW_MS) } }],
+      },
+      _sum: { amount: true },
+    }),
+  ])
+
+  for (const a of accounts) if (a.ownerId) float.set(a.ownerId, a.balance)
+  for (const c of committed) {
+    if (!c.agentId) continue
+    float.set(c.agentId, (float.get(c.agentId) ?? 0n) - (c._sum.amount ?? 0n))
+  }
+  return float
+}
+
+/**
+ * Pick a live merchant account that can actually settle `amount` from its float.
  * Relative `orderSharePct` on each merchant biases how often they receive collections
  * (e.g. 30 / 50 / 70 → normalized weights). Still avoids reusing the same number for
  * the same player when alternatives exist.
  */
-async function pickRotatedAgentAccount(method: PaymentMethod, playerId: string): Promise<AgentAcc | null> {
-  const candidates = await prisma.agentAccount.findMany({
+async function pickRotatedAgentAccount(
+  method: PaymentMethod,
+  playerId: string,
+  amount: bigint,
+): Promise<AgentAcc | null> {
+  const all = await prisma.agentAccount.findMany({
     where: {
       method,
       enabled: true,
@@ -62,6 +101,10 @@ async function pickRotatedAgentAccount(method: PaymentMethod, playerId: string):
     },
     include: { user: { select: { id: true, role: true, agentActive: true, orderSharePct: true } } },
   })
+  if (!all.length) return null
+
+  const float = await availableFloatByAgent(prisma, [...new Set(all.map((c) => c.userId))])
+  const candidates = all.filter((c) => (float.get(c.userId) ?? 0n) >= amount)
   if (!candidates.length) return null
 
   const recent = await prisma.deposit.findMany({
@@ -191,9 +234,28 @@ export async function create(userId: string, input: {
     }
   }
 
+  const methodLabel =
+    input.method === 'JAZZCASH' ? 'JazzCash' : input.method === 'EASYPAISA' ? 'Easypaisa' : input.method
+  const noFloatMsg = `No ${methodLabel} merchant can take Rs ${toRupees(amount).toLocaleString('en-PK')} right now. Please try a smaller amount or another method.`
+
+  let collectionOrderId: string | null = null
+
+  // A merchant may only be handed an order it can settle from its own float.
+  if (agentAccount) {
+    const float = await availableFloatByAgent(prisma, [agentAccount.userId])
+    if ((float.get(agentAccount.userId) ?? 0n) < amount) {
+      const rotated =
+        input.method === 'JAZZCASH' || input.method === 'EASYPAISA'
+          ? await pickRotatedAgentAccount(input.method, userId, amount)
+          : null
+      if (!rotated) throw unprocessable(noFloatMsg)
+      agentAccount = rotated
+    }
+  }
+
   if (!agentAccount && wantAuto) {
-    agentAccount = await pickRotatedAgentAccount(input.method, userId)
-    if (!agentAccount) throw unprocessable('No C2C merchant available right now. Please try again shortly.')
+    agentAccount = await pickRotatedAgentAccount(input.method, userId, amount)
+    if (!agentAccount) throw unprocessable(noFloatMsg)
   }
 
   // Legacy platform PaymentChannel fallback
@@ -230,7 +292,7 @@ export async function create(userId: string, input: {
       },
     })
 
-    let order: { orderNo: string; collectionAccount: string | null; status: string } | null = null
+    let order: { id: string; orderNo: string; collectionAccount: string | null; status: string } | null = null
 
     // Route to the agent's C2C queue when an agent account was used
     if (agentAccount) {
@@ -250,7 +312,17 @@ export async function create(userId: string, input: {
           trxId: input.trxId ?? null,
         },
       })
-      order = { orderNo: created.orderNo, collectionAccount: created.collectionAccount, status: created.status }
+      order = {
+        id: created.id,
+        orderNo: created.orderNo,
+        collectionAccount: created.collectionAccount,
+        status: created.status,
+      }
+      collectionOrderId = created.id
+
+      // Re-check inside the serializable tx so parallel deposits can't oversell one float.
+      const float = await availableFloatByAgent(tx, [agentAccount.userId])
+      if ((float.get(agentAccount.userId) ?? 0n) < 0n) throw unprocessable(noFloatMsg)
     }
 
     const account = agentAccount
@@ -299,7 +371,7 @@ export async function create(userId: string, input: {
         type: 'deposit_new',
         title: 'New deposit order',
         body: `${player?.displayName || 'Player'} started a Rs ${Number(result.amount).toLocaleString('en-PK')} ${result.method} deposit`,
-        orderId: result.id,
+        orderId: collectionOrderId ?? result.id,
         orderNo: result.orderNo,
         amount: Number(result.amount),
         method: String(result.method),
@@ -362,6 +434,20 @@ export async function submitProof(
   }
 
   const submittedAt = new Date()
+
+  // Don't alert merchant for deposits they can never settle from float.
+  if (order.agentId) {
+    const bal = await walletBalances(order.agentId)
+    if ((bal.MAIN ?? 0n) < order.amount) {
+      await agentRejectDeposit(
+        order.id,
+        order.agentId,
+        'Merchant float insufficient — please create a new deposit',
+      )
+      throw unprocessable('This payment account cannot accept your deposit right now. Please try again.')
+    }
+  }
+
   await prisma.$transaction([
     prisma.deposit.update({
       where: { id: order.deposit.id },
@@ -418,18 +504,14 @@ export async function bonusEstimate(userId: string, amountRupees: number) {
   const s = await getSettings()
   const amount = toPaisa(amountRupees)
   const priorApproved = await prisma.deposit.count({ where: { userId, status: 'APPROVED' } })
-  let bonusPct = 0
-  let label = 'No bonus'
-  if (priorApproved < 3) {
-    bonusPct = [s.depositBonus1, s.depositBonus2, s.depositBonus3][priorApproved]!
-    label = `${priorApproved + 1}${priorApproved === 0 ? 'st' : priorApproved === 1 ? 'nd' : 'rd'} deposit bonus`
-  } else {
-    const since = new Date(); since.setHours(0, 0, 0, 0)
-    const dailyToday = await prisma.bonus.count({ where: { userId, type: 'DAILY_DEPOSIT', createdAt: { gte: since } } })
-    if (dailyToday === 0) { bonusPct = s.dailyDepositBonus; label = 'Daily deposit bonus' }
-  }
+  const bonusPct = s.dailyDepositBonus
   const bonusAmount = applyPct(amount, bonusPct)
-  return { pct: bonusPct, bonusAmount: Number(bonusAmount) / 100, label, depositNumber: priorApproved + 1 }
+  return {
+    pct: bonusPct,
+    bonusAmount: Number(bonusAmount) / 100,
+    label: bonusPct > 0 ? `${bonusPct}% deposit bonus` : 'No bonus',
+    depositNumber: priorApproved + 1,
+  }
 }
 
 export function adminList(status?: string) {
@@ -491,36 +573,28 @@ export async function creditDeposit(tx: any, depositId: string, processedById: s
   })
 
   const priorApproved = await tx.deposit.count({ where: { userId: dep.userId, status: 'APPROVED', id: { not: dep.id } } })
-  let bonusPct = 0
-  let bonusType: BonusType | null = null
-  if (priorApproved < 3) {
-    bonusPct = [s.depositBonus1, s.depositBonus2, s.depositBonus3][priorApproved]!
-    bonusType = DEPOSIT_BONUS_TYPE[priorApproved]!
-  } else {
-    const since = new Date(); since.setHours(0, 0, 0, 0)
-    const dailyToday = await tx.bonus.count({ where: { userId: dep.userId, type: 'DAILY_DEPOSIT', createdAt: { gte: since } } })
-    if (dailyToday === 0) { bonusPct = s.dailyDepositBonus; bonusType = 'DAILY_DEPOSIT' }
-  }
+  const bonusPct = s.dailyDepositBonus
+  const bonusType: BonusType | null =
+    bonusPct > 0
+      ? priorApproved < 3
+        ? DEPOSIT_BONUS_TYPE[priorApproved]!
+        : 'DAILY_DEPOSIT'
+      : null
   // Agent float top-ups credit MAIN only — no player deposit bonuses / referral accrual
   const isAgentFloat = dep.user.role === 'AGENT' || dep.user.role === 'ADMIN'
+  let bonusAmt = 0n
   if (!isAgentFloat && bonusType && bonusPct > 0) {
-    const bonusAmt = applyPct(dep.amount, bonusPct)
+    bonusAmt = applyPct(dep.amount, bonusPct)
     if (bonusAmt > 0n) {
-      await post(tx, {
-        type: 'DEPOSIT_BONUS',
+      await creditInstantBonus(tx, {
+        userId: dep.userId,
+        amount: bonusAmt,
+        type: bonusType,
+        ledgerType: 'DEPOSIT_BONUS',
         referenceType: 'deposit',
         referenceId: dep.id,
         idempotencyKey: `deposit-bonus:${dep.id}`,
-        legs: [
-          { account: { system: 'BONUS_POOL' }, direction: 'DEBIT', amount: bonusAmt },
-          { account: { userId: dep.userId, bucket: 'BONUS' }, direction: 'CREDIT', amount: bonusAmt },
-        ],
       })
-      const { bonusWager } = await getEffectiveWager(dep.userId, tx)
-      const bonus = await tx.bonus.create({
-        data: { userId: dep.userId, type: bonusType, amount: bonusAmt, wagerRequired: applyPct(bonusAmt, bonusWager * 100), status: 'ACTIVE' },
-      })
-      await releaseIfNoWager(tx, bonus.id)
     }
   }
 
@@ -538,7 +612,9 @@ export async function creditDeposit(tx: any, depositId: string, processedById: s
     isAgentFloat ? 'Float top-up approved' : 'Deposit approved',
     isAgentFloat
       ? `Rs ${toRupees(dep.amount).toLocaleString('en-PK')} was added to your agent float.`
-      : `Your deposit of Rs ${toRupees(dep.amount).toLocaleString('en-PK')} has been approved and added to your wallet.`,
+      : bonusAmt > 0n
+        ? `Your deposit of Rs ${toRupees(dep.amount).toLocaleString('en-PK')} is approved. Rs ${toRupees(bonusAmt).toLocaleString('en-PK')} bonus added to your balance.`
+        : `Your deposit of Rs ${toRupees(dep.amount).toLocaleString('en-PK')} has been approved and added to your wallet.`,
   )
 
   return dep
@@ -659,11 +735,14 @@ export async function agentConfirmDeposit(orderId: string, agentId: string, trxI
     return tx.collectionOrder.findUniqueOrThrow({ where: { id: found.id } })
   })
   if (userId) void pushPlayerWallet(userId, 'deposit_approved')
+  if (order.agentId) {
+    pushDepositResolvedToMerchant(order.agentId, { id: order.id, orderNo: order.orderNo, status: 'SUCCESS' })
+  }
   return order
 }
 
 export async function agentRejectDeposit(orderId: string, agentId: string, reason = 'Not received') {
-  return runMoneyTx(async (tx) => {
+  const order = await runMoneyTx(async (tx) => {
     const order = await tx.collectionOrder.findFirst({ where: { id: orderId, agentId, type: 'DEPOSIT' } })
     if (!order) throw notFound('Order not found')
     if (order.status === 'SUCCESS' || order.status === 'FAIL') throw conflict('Order already resolved')
@@ -686,6 +765,8 @@ export async function agentRejectDeposit(orderId: string, agentId: string, reaso
 
     return tx.collectionOrder.findUniqueOrThrow({ where: { id: order.id } })
   })
+  pushDepositResolvedToMerchant(agentId, { id: order.id, orderNo: order.orderNo, status: 'FAIL' })
+  return order
 }
 
 /**
