@@ -38,7 +38,11 @@ export const settingsPatchSchema = z
     commissionL1: pct,
     commissionL2: pct,
     commissionL3: pct,
+    mentorCommissionL1: pct,
+    mentorCommissionL2: pct,
+    mentorCommissionL3: pct,
     minDepositToQualify: money,
+    withdrawAutoC2cRelease: z.boolean(),
 
     walletsRequired: z.number().int().min(1).max(50),
     minPerWallet: money,

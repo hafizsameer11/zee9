@@ -483,6 +483,9 @@
 }
 
 .balance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   font-weight: 700;
   color: #ffd080;
@@ -490,6 +493,17 @@
   padding: 4px 10px;
   border-radius: 12px;
   border: 1px solid rgba(212, 168, 72, 0.35);
+}
+
+.practiceTag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #1a1208;
+  background: #ffd080;
+  padding: 2px 5px;
+  border-radius: 6px;
 }
 
 .fxLayer {

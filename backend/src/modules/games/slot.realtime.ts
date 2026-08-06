@@ -74,7 +74,7 @@ function attachSlug(slug: string) {
               spin: async (m) => slot.spin(client.userId, slug, m.bet),
               buyFeature: async (m) => slot.buyFeature(client.userId, slug, m.bet),
               completeFeatureBuy: async (m) =>
-                slot.completeFeatureBuy(client.userId, slug, String(m.settlementId || '')),
+                slot.completeFeatureBuy(client.userId, slug, String(m.settlementId ?? '')),
             })
           } catch {
             /* ignore */

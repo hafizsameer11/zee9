@@ -104,10 +104,13 @@ export default function UserProfileScreen({ onDeposit, onWithdraw, onHistory, on
         ) : (
           <div style={{ padding: '8px 12px' }}>
             {bets.map((b) => (
-              <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(139,105,20,.15)', fontSize: 12, color: '#e8d0a0' }}>
-                <span>{b.game} · Rs {b.bet}</span>
-                <span style={{ color: b.payout > b.bet ? '#8bd98b' : '#ef9a9a' }}>
-                  {b.state === 'BUST' ? 'Lost' : `+Rs ${b.payout}`}
+              <div key={b.id} className={styles.betRow}>
+                <div>
+                  <strong>{b.game}</strong>
+                  <span>Rs {b.bet.toLocaleString('en-PK')}</span>
+                </div>
+                <span className={b.state === 'BUST' ? styles.betLoss : styles.betWin}>
+                  {b.state === 'BUST' ? 'Lost' : `+Rs ${b.payout.toLocaleString('en-PK')}`}
                 </span>
               </div>
             ))}

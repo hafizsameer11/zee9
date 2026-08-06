@@ -17,17 +17,7 @@ export type MerchantDepositEvent = {
   status?: 'SUCCESS' | 'FAIL'
 }
 
-export type MerchantWithdrawEvent = {
-  type: 'withdraw_new'
-  withdrawalId: string
-  amount: number
-  method: string
-  playerName?: string | null
-  title: string
-  body: string
-}
-
-export type MerchantRealtimeEvent = MerchantDepositEvent | MerchantWithdrawEvent
+export type MerchantRealtimeEvent = MerchantDepositEvent
 
 function wsUrl(token: string) {
   const base = API_BASE.replace(/\/$/, '')
@@ -59,7 +49,7 @@ export function requestNotificationPermission() {
   }
 }
 
-/** Keep a live WebSocket to the backend; call onEvent for deposit / withdraw alerts. */
+/** Keep a live WebSocket to the backend; call onEvent for deposit alerts. */
 export function useMerchantRealtime(enabled: boolean, onEvent: (ev: MerchantRealtimeEvent) => void) {
   const onEventRef = useRef(onEvent)
   onEventRef.current = onEvent
@@ -103,13 +93,6 @@ export function useMerchantRealtime(enabled: boolean, onEvent: (ev: MerchantReal
       ws.onmessage = (msg) => {
         try {
           const parsed = JSON.parse(String(msg.data))
-          if (parsed?.type === 'withdraw_new') {
-            const data = parsed.data as MerchantWithdrawEvent
-            data.type = 'withdraw_new'
-            showBrowserNotification(data.title, data.body, 'zee9-c2c-withdraw')
-            onEventRef.current(data)
-            return
-          }
           if (
             parsed?.type === 'deposit_submitted' ||
             parsed?.type === 'deposit_resolved'

@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useStore } from './data/store'
 import DepositAlertModal from './components/DepositAlertModal'
-import WithdrawAlertModal from './components/WithdrawAlertModal'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 import LoginPassword from './pages/LoginPassword'
@@ -23,14 +22,10 @@ export default function App() {
     snoozeDepositAlert,
     rejectDepositAlert,
     openDepositAlert,
-    withdrawAlert,
-    snoozeWithdrawAlert,
-    openWithdrawAlert,
   } = useStore()
 
   const onHome = location.pathname === '/'
   const showDepositAlert = depositAlert && onHome
-  const showWithdrawAlert = !showDepositAlert && withdrawAlert && onHome
 
   return (
     <>
@@ -56,13 +51,6 @@ export default function App() {
           onLater={snoozeDepositAlert}
           onReject={() => void rejectDepositAlert()}
           onOpen={openDepositAlert}
-        />
-      )}
-      {showWithdrawAlert && (
-        <WithdrawAlertModal
-          alert={withdrawAlert}
-          onLater={snoozeWithdrawAlert}
-          onOpen={openWithdrawAlert}
         />
       )}
     </>

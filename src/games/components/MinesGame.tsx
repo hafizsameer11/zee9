@@ -8,6 +8,7 @@ import type { GameComponentProps } from '../types'
 import { roundLossMessage } from '../lib/roundResult'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
 import {
   BackChevronIcon,
   CartWagonIcon,
@@ -50,6 +51,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef)
   const { balance, refresh, canAfford } = useWallet()
+  const { holdWin, releaseWinHold } = useWinPresentationHold('mines')
   const { play } = useSound()
 
   const [betAmount, setBetAmount] = useState(defaultBet || 10)
@@ -155,9 +157,12 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
         } else if (res.state === 'CASHED_OUT') {
           play('gem')
           setTimeout(() => play('win'), 200)
+          const payout = res.payout ?? 0
+          if (payout > 0) holdWin(payout)
           setRound((r) => (r ? { ...r, active: false, gems: new Set([...r.gems, index]), mines: new Set(res.mines), multiplier: res.multiplier ?? 0 } : r))
-          onMessage?.(`Won Rs ${formatCompact(res.payout ?? 0)}`)
+          onMessage?.(`Won Rs ${formatCompact(payout)}`)
           void refresh()
+          if (payout > 0) window.setTimeout(() => releaseWinHold(), 700)
         } else {
           play('gem')
           setRound((r) => (r ? { ...r, gems: new Set([...r.gems, index]), multiplier: res.multiplier ?? 0 } : r))
@@ -169,7 +174,7 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
         setBusy(false)
       }
     },
-    [busy, onMessage, play, refresh, round],
+    [busy, holdWin, onMessage, play, refresh, releaseWinHold, round],
   )
 
   const cashOut = useCallback(async () => {
@@ -184,16 +189,19 @@ export default function MinesGame({ bet: defaultBet, onMessage }: GameComponentP
       )
       play('cashout')
       setTimeout(() => play('coin'), 220)
+      const payout = res.payout
+      if (payout > 0) holdWin(payout)
       setRound((r) => (r ? { ...r, active: false, mines: new Set(res.mines), multiplier: res.multiplier } : r))
-      onMessage?.(`Won Rs ${formatCompact(res.payout)}`)
+      onMessage?.(`Won Rs ${formatCompact(payout)}`)
       void refresh()
+      if (payout > 0) window.setTimeout(() => releaseWinHold(), 700)
     } catch (e: any) {
       play('error')
       onMessage?.(e?.message || 'Cash out failed')
     } finally {
       setBusy(false)
     }
-  }, [busy, onMessage, play, refresh, round])
+  }, [busy, holdWin, onMessage, play, refresh, releaseWinHold, round])
 
   const reset = useCallback(() => {
     play('whoosh', { volume: 0.5 })

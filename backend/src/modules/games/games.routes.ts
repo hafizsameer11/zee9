@@ -14,8 +14,6 @@ import * as doubleCrash from './doubleCrash.service.js'
 import * as wingo from './wingo.service.js'
 import * as lottery from './wingoLottery.service.js'
 import * as roulette from './roulette.service.js'
-import * as carRoulette from './carRoulette.service.js'
-import * as zooRoulette from './zooRoulette.service.js'
 import * as dragonTiger from './dragonTiger.service.js'
 import * as sevenUp from './sevenUp.service.js'
 import * as chickenRoad from './chickenRoad.service.js'
@@ -351,72 +349,6 @@ gamesRoutes.post(
   }),
 )
 
-/* ---------------- Car Roulette (shared multiplayer table) ---------------- */
-const carRouletteBetSchema = z.object({
-  brand: z.enum(['zephyra', 'kavaro', 'nordheim', 'ashlyne', 'taurion', 'regalis', 'scudera', 'vornik']),
-  amount: z.number().positive().max(1_000_000),
-})
-
-gamesRoutes.get(
-  '/car-roulette/state',
-  authenticate,
-  asyncHandler(async (req, res) => {
-    ok(res, await carRoulette.getState(req.user!.id))
-  }),
-)
-
-gamesRoutes.post(
-  '/car-roulette/bet',
-  authenticate,
-  validate({ body: carRouletteBetSchema }),
-  asyncHandler(async (req, res) => {
-    ok(res, await carRoulette.placeBet(req.user!.id, req.body.brand, req.body.amount), 201)
-  }),
-)
-
-gamesRoutes.post(
-  '/car-roulette/rebet',
-  authenticate,
-  asyncHandler(async (req, res) => {
-    ok(res, await carRoulette.rebet(req.user!.id))
-  }),
-)
-
-/* ---------------- Zoo Roulette (shared multiplayer table) ---------------- */
-const zooRouletteBetSchema = z.object({
-  zone: z.enum([
-    'monkey', 'rabbit', 'lion', 'panda',
-    'swallow', 'pigeon', 'peacock', 'eagle',
-    'shark', 'beast', 'bird',
-  ]),
-  amount: z.number().positive().max(1_000_000),
-})
-
-gamesRoutes.get(
-  '/zoo-roulette/state',
-  authenticate,
-  asyncHandler(async (req, res) => {
-    ok(res, await zooRoulette.getState(req.user!.id))
-  }),
-)
-
-gamesRoutes.post(
-  '/zoo-roulette/bet',
-  authenticate,
-  validate({ body: zooRouletteBetSchema }),
-  asyncHandler(async (req, res) => {
-    ok(res, await zooRoulette.placeBet(req.user!.id, req.body.zone, req.body.amount), 201)
-  }),
-)
-
-gamesRoutes.post(
-  '/zoo-roulette/rebet',
-  authenticate,
-  asyncHandler(async (req, res) => {
-    ok(res, await zooRoulette.rebet(req.user!.id))
-  }),
-)
-
 /* ---------------- Dragon Tiger ---------------- */
 const dtBetSchema = z.object({
   side: z.enum(['dragon', 'tiger', 'tie']),
@@ -502,7 +434,6 @@ gamesRoutes.post(
 
 /* ---------------- Slots (money-coming, fortune-gems-2, bounty-trail, wild-bounty, super-ace) ---------------- */
 const slotSpinSchema = z.object({ bet: z.number().positive() })
-const slotCompleteFeatureSchema = z.object({ settlementId: z.string().min(8).max(128) })
 
 for (const slug of slot.SLOT_SLUGS) {
   gamesRoutes.post(
@@ -513,24 +444,6 @@ for (const slug of slot.SLOT_SLUGS) {
       ok(res, await slot.spin(req.user!.id, slug, req.body.bet))
     }),
   )
-  gamesRoutes.post(
-    `/${slug}/buy-feature`,
-    authenticate,
-    validate({ body: slotSpinSchema }),
-    asyncHandler(async (req, res) => {
-      ok(res, await slot.buyFeature(req.user!.id, slug, req.body.bet))
-    }),
-  )
-  if (slug === 'bounty-trail' || slug === 'wild-bounty') {
-    gamesRoutes.post(
-      `/${slug}/complete-feature`,
-      authenticate,
-      validate({ body: slotCompleteFeatureSchema }),
-      asyncHandler(async (req, res) => {
-        ok(res, await slot.completeFeatureBuy(req.user!.id, slug, req.body.settlementId))
-      }),
-    )
-  }
 }
 
 // Public: single game config for the player UI (winPct is admin-only — never exposed).

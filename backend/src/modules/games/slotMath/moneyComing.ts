@@ -1,4 +1,11 @@
-import { chance, lossBias, pickWeighted, unitRand } from './rtp.js'
+import {
+  chance,
+  forcedLossRate,
+  guaranteedSmallWinPayout,
+  highWinPctInjectRate,
+  pickWeighted,
+  unitRand,
+} from './rtp.js'
 
 export const MC_NUMBERS = [0, 1, 2, 3, 5, 10] as const
 export type McNumber = (typeof MC_NUMBERS)[number]
@@ -151,7 +158,7 @@ function resolveChain(bet: number): { steps: McStep[]; totalWin: number } {
 }
 
 export function spinMoneyComing(betRupees: number, winPct: number): MoneyComingOutcome {
-  const q = lossBias(naturalEv(), winPct)
+  const q = forcedLossRate(naturalEv(), winPct)
   if (chance(q)) {
     const reels = lossReels()
     const mult: McMult = pickWeighted(['—', '2x', '5x', '10x'] as const, [50, 25, 15, 10])
@@ -163,6 +170,21 @@ export function spinMoneyComing(betRupees: number, winPct: number): MoneyComingO
 
   const { steps, totalWin } = resolveChain(betRupees)
   const last = steps[steps.length - 1]!
+  if (totalWin <= 0) {
+    const injectP = highWinPctInjectRate(winPct)
+    if (injectP > 0 && chance(injectP)) {
+      const payout = guaranteedSmallWinPayout(betRupees, winPct)
+      return {
+        winRupees: payout,
+        payload: { reels: [1, 1, 1], mult: '—', win: payout },
+      }
+    }
+    return {
+      winRupees: 0,
+      payload: { reels: last.reels, mult: last.mult, win: 0, steps: steps.length > 1 ? steps : undefined },
+    }
+  }
+
   return {
     winRupees: totalWin,
     payload: {

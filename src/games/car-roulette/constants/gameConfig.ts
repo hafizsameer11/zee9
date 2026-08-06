@@ -93,6 +93,9 @@ export const PAYOUT_MS = 2400
 export const RESET_MS = 900
 export const HISTORY_LIMIT = 12
 
+/** Max distinct cars a player may bet on in one round. */
+export const MAX_BET_POSITIONS = 2
+
 export const DESIGN_W = 896
 export const DESIGN_H = 414
 

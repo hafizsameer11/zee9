@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../../api/client'
 import { useConfig } from '../../../api/hooks'
+import { usePlayerAuth } from '../../../api/auth'
 import { useWallet } from '../../../context/WalletContext'
 import { METHOD_LABEL, maskAccountNumber, type PayoutAccount } from '../../../api/payoutAccount'
 import { sound } from '../../../lib/sound'
@@ -29,6 +30,7 @@ type Eligibility = {
   wagerRemaining: number
   wagerOk: boolean
   reason: string | null
+  hasWithdrawPin?: boolean
 }
 
 function parseAmount(label: string, custom: string, _min: number, _max: number): number | null {
@@ -46,6 +48,7 @@ const r = (paisa: number | bigint | undefined) => Number(paisa ?? 0) / 100
 export default function WithdrawScreen({ onClose, account, onChangeAccount, onSuccess }: Props) {
   const config = useConfig()
   const { balance, refresh } = useWallet()
+  const { player, refreshPlayer } = usePlayerAuth()
   const minW = config?.limits.minWithdraw ?? 600
   const maxW = config?.limits.maxWithdraw ?? 50000
   const methodOk = config?.methods?.[account.method] !== false
@@ -63,6 +66,12 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
   const [err, setErr] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [pin, setPin] = useState('')
+  const [setupPin, setSetupPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+  const [setupBusy, setSetupBusy] = useState(false)
+
+  const hasPin = player?.hasWithdrawPin ?? elig?.hasWithdrawPin ?? false
 
   const rupees = parseAmount(amount, custom, minW, maxW)
   const eligibleRs = elig ? r(elig.eligibleAmount) : balance
@@ -80,9 +89,33 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
     setShowHistory(true)
   }
 
+  async function saveWithdrawPin() {
+    if (!/^\d{6}$/.test(setupPin)) return setErr('PIN must be exactly 6 digits')
+    if (setupPin !== confirmPin) return setErr('PINs do not match')
+    setErr(null)
+    setSetupBusy(true)
+    try {
+      await api.post('/me/withdraw-pin', { pin: setupPin })
+      await refreshPlayer()
+      setSetupPin('')
+      setConfirmPin('')
+      sound.play('success')
+      try {
+        setElig(await api.get('/withdrawals/eligibility'))
+      } catch { /* ignore */ }
+    } catch (e: any) {
+      sound.play('error')
+      setErr(e?.message || 'PIN setup failed')
+    } finally {
+      setSetupBusy(false)
+    }
+  }
+
   async function submit() {
     if (submitLock.current || busy || done) return
     setErr(null)
+    if (!hasPin) return setErr('Pehle 6-digit withdraw PIN set karein')
+    if (!/^\d{6}$/.test(pin)) return setErr('6-digit withdraw PIN enter karein')
     if (!methodOk) return setErr(`${METHOD_LABEL[account.method]} withdrawals are disabled`)
     if (!rupees) return setErr('Enter a valid amount')
     if (rupees < minW) return setErr(`Minimum withdrawal is Rs ${minW}`)
@@ -106,6 +139,7 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
           title: account.title,
           ...(account.bank ? { bank: account.bank } : {}),
         },
+        pin,
       })
       sound.play('success')
       await refresh()
@@ -121,6 +155,57 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
     } finally {
       setBusy(false)
     }
+  }
+
+  if (!hasPin) {
+    return (
+      <div className={ps.overlay}>
+        <div className={ps.screen}>
+          <header className={ps.header}>
+            <button type="button" className={ps.back} onClick={onClose} aria-label="Back">↩</button>
+            <h1 className={ps.title}>Withdraw PIN</h1>
+          </header>
+
+          {err && <div style={{ background: '#c62828', color: '#fff', padding: '8px 14px', fontSize: 12, fontWeight: 700 }}>{err}</div>}
+
+          <div className={styles.pinSetup}>
+            <p className={styles.pinSetupTitle}>Withdraw ke liye 6-digit PIN set karein</p>
+            <p className={styles.pinSetupHint}>Har withdraw par yeh PIN verify hoga.</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={setupPin}
+              onChange={(e) => setSetupPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="6-digit PIN"
+              className={styles.pinInput}
+              autoComplete="new-password"
+            />
+            <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              value={confirmPin}
+              onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="Confirm PIN"
+              className={styles.pinInput}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className={ps.goldBtn}
+              style={{ marginTop: 16, width: '100%' }}
+              disabled={setupBusy || setupPin.length !== 6 || confirmPin.length !== 6}
+              onClick={() => void saveWithdrawPin()}
+            >
+              {setupBusy ? 'Saving…' : 'Save PIN & Continue'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (done) {
@@ -231,13 +316,28 @@ export default function WithdrawScreen({ onClose, account, onChangeAccount, onSu
               </div>
             )}
 
+            <div className={styles.pinRow}>
+              <label className={styles.pinLabel}>Withdraw PIN</label>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6-digit PIN"
+                className={styles.pinInput}
+                autoComplete="off"
+              />
+            </div>
+
             <div className={styles.rightFooter}>
               <span className={styles.fee}>Min Rs {minW} · Max Rs {maxW.toLocaleString('en-PK')}</span>
               <button
                 type="button"
                 className={ps.goldBtn}
                 onClick={submit}
-                disabled={busy || (elig != null && !elig.canWithdraw) || !methodOk}
+                disabled={busy || pin.length !== 6 || (elig != null && !elig.canWithdraw) || !methodOk}
               >
                 {busy ? 'Submitting…' : 'Withdraw'}
               </button>

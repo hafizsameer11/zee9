@@ -55,6 +55,7 @@ interface Store extends State {
   releaseWithdrawalsToC2c: (count: number) => Promise<void>
   recallWithdrawalsFromC2c: (count: number) => Promise<void>
   releaseWithdrawalIdsToC2c: (ids: string[]) => Promise<void>
+  notifyC2cPool: (count: number) => Promise<void>
   updateOffer: (id: string, p: Partial<Offer>) => void
   updateCashback: (id: string, p: Partial<CashbackTier>) => void
   addCashback: () => void
@@ -339,23 +340,50 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       run(async () => { await api.post(`/admin/withdrawals/${id}/assign`, { agentId }); await loadAll() }, 'Assigned to agent')
     },
     releaseWithdrawalsToC2c: async (count) => {
-      await run(async () => {
-        const r = await api.post('/admin/withdrawals/release-c2c', { count })
+      try {
+        const r = await api.post('/admin/withdrawals/release-c2c', { count }) as { released?: number; requested?: number }
         await loadAll()
-        return r
-      }, `Sent ${count} to C2C pool`)
+        const n = r?.released ?? 0
+        if (n <= 0) showToast('Nothing on admin hold to transfer — turn off auto-C2C or wait for new withdraws')
+        else showToast(`Transferred ${n} withdrawal${n === 1 ? '' : 's'} to C2C pool`)
+      } catch (e: any) {
+        showToast(e?.message || 'Transfer failed')
+        await loadAll().catch(() => {})
+      }
     },
     recallWithdrawalsFromC2c: async (count) => {
-      await run(async () => {
-        await api.post('/admin/withdrawals/recall-c2c', { count })
+      try {
+        const r = await api.post('/admin/withdrawals/recall-c2c', { count }) as { recalled?: number }
         await loadAll()
-      }, `Recalled ${count} from C2C`)
+        const n = r?.recalled ?? 0
+        if (n <= 0) showToast('Nothing in C2C pool to recall')
+        else showToast(`Recalled ${n} from C2C pool`)
+      } catch (e: any) {
+        showToast(e?.message || 'Recall failed')
+        await loadAll().catch(() => {})
+      }
     },
     releaseWithdrawalIdsToC2c: async (ids) => {
-      await run(async () => {
-        await api.post('/admin/withdrawals/release-c2c', { ids })
+      try {
+        const r = await api.post('/admin/withdrawals/release-c2c', { ids }) as { released?: number }
         await loadAll()
-      }, `Sent ${ids.length} to C2C pool`)
+        const n = r?.released ?? 0
+        if (n <= 0) showToast('Selected items are not on admin hold')
+        else showToast(`Transferred ${n} to C2C pool`)
+      } catch (e: any) {
+        showToast(e?.message || 'Transfer failed')
+        await loadAll().catch(() => {})
+      }
+    },
+    notifyC2cPool: async (count) => {
+      try {
+        const r = await api.post('/admin/withdrawals/notify-c2c', { count }) as { notified?: number }
+        const n = r?.notified ?? 0
+        if (n <= 0) showToast('No unclaimed withdrawals in C2C pool')
+        else showToast(`Notified merchants about ${n} pool withdrawal${n === 1 ? '' : 's'}`)
+      } catch (e: any) {
+        showToast(e?.message || 'Notify failed')
+      }
     },
     updateOffer: (id, p) => {
       patch('offers', (o) => listPatch(o, id, p))

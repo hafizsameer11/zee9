@@ -26,7 +26,9 @@ export default function Commissions() {
               <b>
                 L{r.level} · {r.source}
               </b>
-              <span>{fmt(r.amount)}</span>
+              <span style={{ color: r.amount < 0 ? '#e74c3c' : '#2ecc71', fontWeight: 700 }}>
+                {fmt(r.amount)}
+              </span>
             </div>
             <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
               {r.status} · {new Date(r.at).toLocaleString()}

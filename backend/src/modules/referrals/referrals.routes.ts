@@ -9,28 +9,35 @@ import { toRupees, toPaisa } from '../../lib/money.js'
 import { allocatePlayerNo } from '../../lib/playerNo.js'
 import { forbidden } from '../../core/errors.js'
 import { countValidDirectReferrals, promoterLevelFromCount } from './promoterLevel.js'
+import { pktDayBounds } from '../../lib/pktDay.js'
 
 export const referralRoutes = Router()
 
 referralRoutes.use(authenticate)
 
-function dayRange(dateStr?: string) {
-  const d = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date()
-  if (Number.isNaN(d.getTime())) {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-    const end = new Date(now)
-    end.setDate(end.getDate() + 1)
-    return { start: now, end }
+/** Per-member commission for one PKT day — commission rows match agent UI (separate +loss / −claw lines). */
+async function memberCommissionMap(agentId: string, memberIds: string[], pktKey: string) {
+  if (memberIds.length === 0) return {} as Record<string, bigint>
+
+  const { start, end } = pktDayBounds(pktKey)
+  const rows = await prisma.commission.findMany({
+    where: {
+      agentId,
+      sourceUserId: { in: memberIds },
+      createdAt: { gte: start, lt: end },
+    },
+    select: { sourceUserId: true, amount: true },
+  })
+
+  const map: Record<string, bigint> = {}
+  for (const row of rows) {
+    map[row.sourceUserId] = (map[row.sourceUserId] ?? 0n) + row.amount
   }
-  d.setHours(0, 0, 0, 0)
-  const end = new Date(d)
-  end.setDate(end.getDate() + 1)
-  return { start: d, end }
+  return map
 }
 
 async function teamStatsFor(userId: string, dateStr?: string) {
-  const { start, end } = dayRange(dateStr)
+  const { key, start, end } = pktDayBounds(dateStr)
   const edges = await prisma.referralEdge.findMany({
     where: { ancestorId: userId, level: { lte: 3 } },
     select: { descendantId: true },
@@ -45,7 +52,7 @@ async function teamStatsFor(userId: string, dateStr?: string) {
       winLoss: 0,
       rollover: 0,
       commission: 0,
-      date: start.toISOString().slice(0, 10),
+      date: key,
     }
   }
 
@@ -79,8 +86,12 @@ async function teamStatsFor(userId: string, dateStr?: string) {
     }),
   ])
 
+  const ledgerCommMap = await memberCommissionMap(userId, memberIds, key)
+  const ledgerCommission = Object.values(ledgerCommMap).reduce((sum, n) => sum + n, 0n)
+  const tableCommission = dayCommission._sum.amount ?? 0n
   const wagered = betAgg._sum.amount ?? 0n
   const won = winAgg._sum.amount ?? 0n
+  const commissionTotal = ledgerCommission !== 0n ? ledgerCommission : tableCommission
   // Player P/L for the day (negative = team net loss → agent salary basis)
   const winLoss = won - wagered
 
@@ -89,8 +100,8 @@ async function teamStatsFor(userId: string, dateStr?: string) {
     deposit: toRupees(dep._sum.amount ?? 0n),
     winLoss: toRupees(winLoss),
     rollover: toRupees(wagered),
-    commission: toRupees(dayCommission._sum.amount ?? 0n),
-    date: start.toISOString().slice(0, 10),
+    commission: toRupees(commissionTotal),
+    date: key,
   }
 }
 
@@ -380,7 +391,7 @@ referralRoutes.get(
     const agentId = req.user!.id
     const s = await getSettings()
     const dateQ = String(req.query.date || '').trim()
-    const { start, end } = dayRange(dateQ || undefined)
+    const { key, start, end } = pktDayBounds(dateQ || undefined)
 
     const edges = await prisma.referralEdge.findMany({
       where: { ancestorId: agentId, level: { lte: 3 } },
@@ -405,11 +416,11 @@ referralRoutes.get(
 
     const memberIds = [...new Set(edges.map((e) => e.descendantId))]
     if (memberIds.length === 0) {
-      ok(res, { items: [], date: start.toISOString().slice(0, 10) })
+      ok(res, { items: [], date: key })
       return
     }
 
-    const [deps, betAgg, winAgg, commRows, subCounts, gameDay, lastRounds] = await Promise.all([
+    const [deps, betAgg, winAgg, commLedgerMap, subCounts, gameDay, lastRounds] = await Promise.all([
       prisma.deposit.groupBy({
         by: ['userId'],
         where: {
@@ -439,15 +450,7 @@ referralRoutes.get(
         },
         _sum: { amount: true },
       }),
-      prisma.commission.groupBy({
-        by: ['sourceUserId'],
-        where: {
-          agentId,
-          sourceUserId: { in: memberIds },
-          createdAt: { gte: start, lt: end },
-        },
-        _sum: { amount: true },
-      }),
+      memberCommissionMap(agentId, memberIds, key),
       prisma.referralEdge.groupBy({
         by: ['ancestorId'],
         where: { ancestorId: { in: memberIds }, level: 1 },
@@ -491,7 +494,7 @@ referralRoutes.get(
       if (!oid) continue
       winMap[oid] = (winMap[oid] ?? 0n) + (w._sum.amount ?? 0n)
     }
-    const commMap = Object.fromEntries(commRows.map((c) => [c.sourceUserId, c._sum.amount ?? 0n]))
+    const commMap = commLedgerMap
     const subMap = Object.fromEntries(subCounts.map((c) => [c.ancestorId, c._count._all]))
     const lastGameMap = Object.fromEntries(
       lastRounds.map((r) => [
@@ -557,13 +560,13 @@ referralRoutes.get(
         lastLogin: last,
         lastGame,
         games,
-        date: start.toISOString().slice(0, 10),
+        date: key,
       }
     })
 
     // High winners first — easier to spot abnormal winning
     items.sort((a, b) => b.winLoss - a.winLoss || b.bet - a.bet)
 
-    ok(res, { items, date: start.toISOString().slice(0, 10), total: items.length })
+    ok(res, { items, date: key, total: items.length })
   }),
 )

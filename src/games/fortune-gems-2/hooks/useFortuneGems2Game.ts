@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { roundLossMessage } from '../../lib/roundResult'
 import {
   BET_AMOUNTS,
   MULT_SPIN_MS,
@@ -43,6 +42,10 @@ export type Fg2GameApi = {
   credit: (n: number) => void
   getBalance?: () => number
   refresh?: () => Promise<void> | void
+  holdWin?: (amount: number) => void
+  releaseWinHold?: () => void
+  beginLiveWin?: (serverWin: number) => Promise<void>
+  endLiveWin?: () => Promise<void>
   play: (id: Fg2Sfx, volume?: number) => void
   onMessage?: (msg: string | null) => void
 }
@@ -69,6 +72,25 @@ function coerceGrid(raw: unknown): Fg2Symbol[] | null {
   return raw.slice(0, 9).map(coerceSymbol)
 }
 
+/** On live play, force presentation amounts to match server settlement. */
+function applyServerWin(res: Fg2SpinResult, serverWin: number | null): Fg2SpinResult {
+  if (serverWin == null || !isLivePlayer()) return res
+  if (serverWin <= 0) {
+    return { ...res, payout: 0, basePayout: 0, lines: [], wheelReward: 0, wheelTriggered: false }
+  }
+  if (Math.abs(res.payout - serverWin) < 0.01) return res
+  const ratio = res.payout > 0 ? serverWin / res.payout : 1
+  return {
+    ...res,
+    payout: serverWin,
+    basePayout: Math.round(res.basePayout * ratio * 100) / 100,
+    lines: res.lines.map((l) => ({
+      ...l,
+      payout: Math.round(l.payout * ratio * 100) / 100,
+    })),
+  }
+}
+
 export function useFortuneGems2Game(api: Fg2GameApi) {
   const [phase, setPhase] = useState<Fg2Phase>('idle')
   const [betIndex, setBetIndex] = useState(2)
@@ -91,13 +113,12 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
   const [autoLeft, setAutoLeft] = useState(0)
   const [extraBet, setExtraBet] = useState(false)
   const [busy, setBusy] = useState(false)
-  /** Live play: mask wallet WS updates until win/loss presentation finishes */
-  const [balanceHold, setBalanceHold] = useState<number | null>(null)
 
   const baseBetAmount = BET_AMOUNTS[betIndex]
   const betAmount = extraBet ? baseBetAmount * 1.5 : baseBetAmount
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   const spinningRef = useRef(false)
+  const liveServerWinRef = useRef<number | null>(null)
   const apiRef = useRef(api)
   apiRef.current = api
 
@@ -131,64 +152,64 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
   const finishRound = useCallback(
     (res: Fg2SpinResult) => {
       const a = apiRef.current
-      setResult(res)
+      const serverWin = liveServerWinRef.current
+      const finalRes = applyServerWin(res, serverWin)
+      setResult(finalRes)
       setPhase('presenting')
       const cells = new Set<number>()
-      if (res.fullBoard) {
+      if (finalRes.fullBoard) {
         for (let i = 0; i < 9; i++) cells.add(i)
       } else {
-        res.lines.forEach((l) => l.cells.forEach((c) => cells.add(c)))
+        finalRes.lines.forEach((l) => l.cells.forEach((c) => cells.add(c)))
       }
       // If server paid but local lines empty, still light the middle row as fallback
-      if (cells.size === 0 && res.payout > 0) {
+      if (cells.size === 0 && finalRes.payout > 0 && !finalRes.wheelTriggered) {
         ;[3, 4, 5].forEach((i) => cells.add(i))
       }
       setWinCells(cells)
 
-      if (res.payout > 0) {
-        setLastWin(res.payout)
-        const countMs = Math.min(1800, 600 + res.payout * 2)
-        countUp(res.payout, countMs)
+      if (finalRes.payout > 0) {
+        setLastWin(finalRes.payout)
+        const countMs = Math.min(1800, 600 + finalRes.payout * 2)
+        countUp(finalRes.payout, countMs)
         later(() => {
-          if (!isLivePlayer()) a.credit(res.payout)
-          else {
-            setBalanceHold(null)
-            void a.refresh?.()
-          }
+          if (!isLivePlayer()) a.credit(finalRes.payout)
+          else void a.endLiveWin?.()
         }, countMs)
-        if (res.fullBoard) {
+        if (finalRes.fullBoard) {
           setBanner('Full-board reward!')
           a.play('bigwin', 0.7)
-        } else if (res.wheelTriggered) {
+        } else if (finalRes.wheelTriggered) {
           setBanner('Lucky Wheel reward!')
           a.play('wheelWin', 0.65)
-        } else if (res.basePayout > 0 && res.multiplier > 1) {
-          setBanner(`${formatMoney(res.basePayout)} × ${res.multiplier}`)
-          a.play(res.lines.some((l) => l.symbol === 'wild') ? 'wild' : 'win', 0.55)
-        } else if (res.multiplier >= 10) {
-          setBanner(`${res.multiplier}× Multiplier!`)
+        } else if (finalRes.basePayout > 0 && finalRes.multiplier > 1) {
+          setBanner(`${formatMoney(finalRes.basePayout)} × ${finalRes.multiplier}`)
+          a.play(finalRes.lines.some((l) => l.symbol === 'wild') ? 'wild' : 'win', 0.55)
+        } else if (finalRes.multiplier >= 10) {
+          setBanner(`${finalRes.multiplier}× Multiplier!`)
           a.play('win', 0.6)
         } else {
           setBanner('Winning amount multiplied')
-          a.play(res.lines.some((l) => l.symbol === 'wild') ? 'wild' : 'win', 0.55)
+          a.play(finalRes.lines.some((l) => l.symbol === 'wild') ? 'wild' : 'win', 0.55)
         }
         const breakdown =
-          res.basePayout > 0 && res.multiplier > 1 && !res.wheelTriggered
-            ? `${formatMoney(res.basePayout)} × ${res.multiplier} = ${formatMoney(res.payout)}`
-            : res.payout.toLocaleString()
+          finalRes.wheelTriggered && finalRes.wheelReward > 0
+            ? `${formatMoney(betAmount)} × ${finalRes.wheelReward} = ${formatMoney(finalRes.payout)}`
+            : finalRes.basePayout > 0 && finalRes.multiplier > 1 && !finalRes.wheelTriggered
+            ? `${formatMoney(finalRes.basePayout)} × ${finalRes.multiplier} = ${formatMoney(finalRes.payout)}`
+            : finalRes.payout.toLocaleString()
         a.onMessage?.(
-          res.fullBoard
-            ? `Full board · ${res.payout.toLocaleString()}`
+          finalRes.fullBoard
+            ? `Full board · ${finalRes.payout.toLocaleString()}`
             : `Win · ${breakdown}`,
         )
       } else {
         setLastWin(0)
         setDisplayWin(0)
         setBanner('Spin again for fortune')
-        a.onMessage?.(roundLossMessage(betAmount))
+        a.onMessage?.(null)
         if (isLivePlayer()) {
           later(() => {
-            setBalanceHold(null)
             void a.refresh?.()
           }, WIN_HOLD_MS)
         }
@@ -198,6 +219,7 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
         setPhase('idle')
         setBusy(false)
         spinningRef.current = false
+        liveServerWinRef.current = null
         // Keep winCells briefly on idle, clear next spin
         if (auto && autoLeft > 1) {
           setAutoLeft((n) => n - 1)
@@ -205,19 +227,19 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
           setAuto(false)
           setAutoLeft(0)
         }
-      }, WIN_HOLD_MS + (res.payout > 0 ? 600 : 0))
+      }, WIN_HOLD_MS + (finalRes.payout > 0 ? 600 : 0))
     },
     [auto, autoLeft, betAmount, countUp, later],
   )
 
   const runWheel = useCallback(
-    (gridFinal: Fg2Symbol[], specialFinal: SpecialToken) => {
+    (gridFinal: Fg2Symbol[], specialFinal: SpecialToken, serverWheelReward: number | null = null) => {
       const a = apiRef.current
       setPhase('wheelSpin')
       setWheelSpinning(true)
       setBanner('Lucky Wheel activated')
       a.play('wheelStart', 0.6)
-      const reward = spinWheelReward()
+      const reward = serverWheelReward ?? spinWheelReward()
       setWheelReward(reward)
       const rewards = [3, 5, 8, 10, 15, 20, 30, 50, 100, 200, 500, 1000]
       const idx = Math.max(0, rewards.indexOf(reward))
@@ -252,15 +274,19 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
 
     let serverGrid: Fg2Symbol[] | null = null
     let serverSpecial: SpecialToken | null = null
-
-    const balanceBeforeSpin = a.getBalance?.() ?? 0
+    let serverWheelReward: number | null = null
+    liveServerWinRef.current = null
 
     if (isLivePlayer()) {
       try {
         const settled = await serverSlotSpin('fortune-gems-2', betAmount)
         serverGrid = coerceGrid(settled?.payload?.grid)
         if (settled?.payload?.special) serverSpecial = coerceSpecial(settled.payload.special)
-        setBalanceHold(Math.round((balanceBeforeSpin - betAmount) * 100) / 100)
+        const wr = Number(settled?.payload?.wheelReward)
+        if (Number.isFinite(wr) && wr > 0) serverWheelReward = wr
+        const serverWin = Number(settled?.win ?? settled?.payload?.win ?? 0)
+        liveServerWinRef.current = serverWin
+        await a.beginLiveWin?.(serverWin)
       } catch (e: any) {
         a.play('error')
         a.onMessage?.(e?.message || 'Spin failed')
@@ -325,7 +351,7 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
         a.play('multLock', 0.5)
         later(() => {
           if (finalSpecial.kind === 'wheel') {
-            runWheel(finalGrid, finalSpecial)
+            runWheel(finalGrid, finalSpecial, serverWheelReward)
           } else {
             const res = evaluateSpin(finalGrid, finalSpecial, betAmount, 0)
             if (finalSpecial.kind === 'mult') {
@@ -411,7 +437,6 @@ export function useFortuneGems2Game(api: Fg2GameApi) {
     auto,
     autoLeft,
     busy,
-    balanceHold,
     spin,
     betPlus,
     betMinus,

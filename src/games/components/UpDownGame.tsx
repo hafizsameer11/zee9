@@ -9,6 +9,8 @@ import type { GameComponentProps } from '../types'
 import { roundLossMessage, formatRoundAmount } from '../lib/roundResult'
 import { useDesignScale } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
 import UpDownDesignUI, {
   type AiPlayer,
   type FlyingChip,
@@ -103,9 +105,17 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef)
   const { balance, canAfford, refresh } = useWallet()
+  const { holdWin, releaseWinHold } = useWinPresentationHold('up-down')
+  const holdWinRef = useRef(holdWin)
+  holdWinRef.current = holdWin
+  const releaseWinHoldRef = useRef(releaseWinHold)
+  releaseWinHoldRef.current = releaseWinHold
   const live = !!getAccess()
 
   const [betAmount, setBetAmount] = useState(defaultBet >= 10 ? defaultBet : 100)
+
+  useAutoAffordableChip(balance, CHIP_VALUES, setBetAmount)
+
   const [phase, setPhase] = useState<'betting' | 'rolling' | 'result'>('betting')
   const [countdown, setCountdown] = useState(ROUND_SEC)
   const [history, setHistory] = useState(INITIAL_HISTORY)
@@ -213,6 +223,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
     (totalWin: number, staked: number) => {
       const won = totalWin > 0
       if (won) {
+        releaseWinHoldRef.current()
         sound.play('win')
         onMessage?.(`Won ${formatRoundAmount(totalWin)} chips!`)
         const floatId = nextChipId()
@@ -354,6 +365,7 @@ export default function UpDownGame({ bet: defaultBet, onMessage }: GameComponent
         }
         const winZone = (state.winningZone as UpDownChoice) || zoneForSum(sum)
         const totalWin = Number(state.myPayout ?? 0)
+        if (totalWin > 0) holdWinRef.current(totalWin)
         const staked =
           (Number(state.myBets?.down) || 0) +
           (Number(state.myBets?.seven) || 0) +

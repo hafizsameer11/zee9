@@ -11,6 +11,7 @@ import { ASSET, DESIGN_H, DESIGN_W, formatMoney } from './constants/gameConfig'
 import { BAND, CTRL_BTN, SPIN_SIZE } from './constants/layoutConfig'
 import { preloadDoubleFortuneAssets } from './constants/assetManifest'
 import { useDoubleFortuneGame } from './hooks/useDoubleFortuneGame'
+import { useLiveSlotWinPresentation } from '../../hooks/useLiveSlotWinPresentation'
 import { useDoubleFortuneSound } from './hooks/useDoubleFortuneSound'
 import ReelMachine from './components/ReelMachine'
 import LoadingFlow from './components/LoadingFlow'
@@ -83,41 +84,20 @@ export default function DoubleFortuneGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, debit, credit, canAfford } = useWallet()
   const { muted, toggleMute, play, unlock, startAmbience } = useDoubleFortuneSound()
-  const [demoBal, setDemoBal] = useState<number | null>(null)
   const [spinPressed, setSpinPressed] = useState(false)
   const bootRef = useRef(false)
-  const isPreview =
-    typeof window !== 'undefined' && window.location.pathname.includes('/preview/')
-  const liveBalance = isPreview || demoBal != null ? (demoBal ?? 5000) : balance
 
-  const walletApi = useMemo(
-    () => ({
-      canAfford: (n: number) =>
-        isPreview || demoBal != null ? (demoBal ?? 5000) >= n : canAfford(n),
-      debit: (n: number) => {
-        if (isPreview || demoBal != null) {
-          setDemoBal((b) => Math.max(0, (b ?? 5000) - n))
-          return true
-        }
-        return debit(n)
-      },
-      credit: (n: number) => {
-        if (isPreview || demoBal != null) {
-          setDemoBal((b) => (b ?? 5000) + n)
-          return
-        }
-        credit(n)
-      },
-      refresh,
-      demo: isPreview,
-    }),
-    [canAfford, credit, debit, demoBal, isPreview, refresh],
-  )
+  const liveWin = useLiveSlotWinPresentation('double-fortune')
 
   const g = useDoubleFortuneGame({
-    ...walletApi,
+    canAfford,
+    debit,
+    credit,
+    refresh: liveWin.refresh,
+    beginLiveWin: liveWin.beginLiveWin,
+    endLiveWin: liveWin.endLiveWin,
     playSfx: play,
     onMessage,
   })
@@ -310,7 +290,7 @@ export default function DoubleFortuneGame({ onMessage }: GameComponentProps) {
 
                 <div className={styles.infoStrip} style={{ top: BAND.infoY }}>
                   <img className={styles.infoBg} src={ASSET.infoStrip} alt="" draggable={false} />
-                  <span className={styles.infoVal}>{formatMoney(liveBalance)}</span>
+                  <span className={styles.infoVal}>{formatMoney(balance)}</span>
                   <span className={styles.infoCenter}>Z9</span>
                   <span className={styles.infoVal}>
                     {formatMoney(g.displayWin > 0 ? g.displayWin : g.bet)}

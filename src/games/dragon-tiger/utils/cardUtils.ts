@@ -1,5 +1,6 @@
 import type { BetSelection, PlayingCard, Rank, Suit } from '../constants/gameConfig'
 import { TOTAL_RETURN } from '../constants/gameConfig'
+import { formatChipAmount } from '../../lib/formatChipAmount'
 
 export const RANK_VALUE: Record<Rank, number> = {
   A: 1,
@@ -45,8 +46,7 @@ export function compareCards(dragon: PlayingCard, tiger: PlayingCard): BetSelect
 }
 
 export function formatChipLabel(v: number): string {
-  if (v >= 1000) return `${v / 1000}K`
-  return String(v)
+  return formatChipAmount(v)
 }
 
 export function cardFaceSrc(card: PlayingCard): string {

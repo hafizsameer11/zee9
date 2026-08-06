@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { api } from '../api/client'
 import { stopAlertSound } from '../api/alertSound'
-import { useMerchantRealtime, type MerchantDepositEvent, type MerchantWithdrawEvent } from '../api/realtime'
+import { useMerchantRealtime, type MerchantDepositEvent } from '../api/realtime'
 import type { BankAccount, CollectionOrder } from './mock'
 
 export interface StatGroup {
@@ -80,9 +80,6 @@ interface Store {
   openDepositAlert: () => void
   /** Merchant opened order page — stop checking popups for this order. */
   markCheckingOrderOpened: (orderId: string) => void
-  withdrawAlert: MerchantWithdrawEvent | null
-  snoozeWithdrawAlert: () => void
-  openWithdrawAlert: () => void
 }
 
 const StoreCtx = createContext<Store | null>(null)
@@ -161,8 +158,6 @@ const CO_KEY = 'c2c-collections-on'
 const CHECKING_SNOOZE_MS = 10_000
 const DISMISSED_KEY = 'c2c-dismissed-orders'
 const OPENED_CHECKING_KEY = 'c2c-opened-checking-orders'
-const WITHDRAW_DISMISSED_KEY = 'c2c-dismissed-withdrawals'
-const WITHDRAW_SNOOZE_MS = 10_000
 
 const OPEN_DEPOSIT_STATUSES = new Set<CollectionOrder['status']>(['pending', 'checking', 'processing'])
 
@@ -196,28 +191,9 @@ function saveOpenedChecking(set: Set<string>) {
   }
 }
 
-function loadWithdrawDismissed(): Set<string> {
-  try {
-    const raw = sessionStorage.getItem(WITHDRAW_DISMISSED_KEY)
-    if (!raw) return new Set()
-    const arr = JSON.parse(raw) as string[]
-    return new Set(Array.isArray(arr) ? arr : [])
-  } catch {
-    return new Set()
-  }
-}
-
 function saveDismissed(set: Set<string>) {
   try {
     sessionStorage.setItem(DISMISSED_KEY, JSON.stringify([...set]))
-  } catch {
-    /* ignore */
-  }
-}
-
-function saveWithdrawDismissed(set: Set<string>) {
-  try {
-    sessionStorage.setItem(WITHDRAW_DISMISSED_KEY, JSON.stringify([...set]))
   } catch {
     /* ignore */
   }
@@ -262,11 +238,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [openedCheckingIds, setOpenedCheckingIds] = useState<Set<string>>(() => loadOpenedChecking())
   const openedCheckingRef = useRef(openedCheckingIds)
   openedCheckingRef.current = openedCheckingIds
-  const [withdrawAlerts, setWithdrawAlerts] = useState<MerchantWithdrawEvent[]>([])
-  const [dismissedWithdrawIds, setDismissedWithdrawIds] = useState<Set<string>>(() => loadWithdrawDismissed())
-  const dismissedWithdrawRef = useRef(dismissedWithdrawIds)
-  dismissedWithdrawRef.current = dismissedWithdrawIds
-  const [withdrawSnoozeUntil, setWithdrawSnoozeUntil] = useState<Record<string, number>>({})
   const [tick, setTick] = useState(Date.now())
 
   const markCheckingOrderOpened = useCallback((orderId: string) => {
@@ -308,23 +279,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return next
     })
     stopAlertSound()
-  }, [])
-
-  const dismissWithdrawAlert = useCallback((withdrawalId: string) => {
-    if (!withdrawalId) return
-    setDismissedWithdrawIds((prev) => {
-      const next = new Set(prev)
-      next.add(withdrawalId)
-      saveWithdrawDismissed(next)
-      return next
-    })
-    setWithdrawAlerts((q) => q.filter((a) => a.withdrawalId !== withdrawalId))
-    setWithdrawSnoozeUntil((prev) => {
-      if (!prev[withdrawalId]) return prev
-      const next = { ...prev }
-      delete next[withdrawalId]
-      return next
-    })
   }, [])
 
   const showToast = useCallback((m: string) => {
@@ -398,17 +352,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return waiting[0] ?? null
   }, [checkingById, snoozeUntil, dismissedOrderIds, openedCheckingIds, tick])
 
-  const withdrawAlert = useMemo(() => {
-    const now = tick
-    return (
-      withdrawAlerts.find(
-        (a) =>
-          !dismissedWithdrawIds.has(a.withdrawalId) &&
-          (withdrawSnoozeUntil[a.withdrawalId] ?? 0) <= now,
-      ) ?? null
-    )
-  }, [withdrawAlerts, dismissedWithdrawIds, withdrawSnoozeUntil, tick])
-
   const snoozeDepositAlert = useCallback(() => {
     const cur = depositAlert
     if (!cur) return
@@ -422,23 +365,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     stopAlertSound()
     markCheckingOrderOpened(cur.orderId)
   }, [depositAlert, markCheckingOrderOpened])
-
-  const snoozeWithdrawAlert = useCallback(() => {
-    const cur = withdrawAlert
-    if (!cur) return
-    stopAlertSound()
-    setWithdrawSnoozeUntil((prev) => ({
-      ...prev,
-      [cur.withdrawalId]: Date.now() + WITHDRAW_SNOOZE_MS,
-    }))
-  }, [withdrawAlert])
-
-  const openWithdrawAlert = useCallback(() => {
-    const cur = withdrawAlert
-    if (!cur) return
-    stopAlertSound()
-    dismissWithdrawAlert(cur.withdrawalId)
-  }, [withdrawAlert, dismissWithdrawAlert])
 
   const reload = useCallback(async () => {
     const safe = async <T,>(fn: () => Promise<T>, fallback: T) => {
@@ -474,17 +400,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     pruneDepositAlerts(mappedOrders, dismissed, opened)
     syncCheckingFromOrders(mappedOrders, dismissed, opened)
-    const availIds = new Set(mappedAvail.map((w) => w.id))
-    setWithdrawAlerts((prev) =>
-      prev.filter((a) => availIds.has(a.withdrawalId) && !dismissedWithdrawRef.current.has(a.withdrawalId)),
-    )
-    setWithdrawSnoozeUntil((prev) => {
-      const keep: Record<string, number> = {}
-      for (const [id, until] of Object.entries(prev)) {
-        if (availIds.has(id) && !dismissedWithdrawRef.current.has(id)) keep[id] = until
-      }
-      return keep
-    })
     setStats({ today: mapStat(agentStats.today), week: mapStat(agentStats.week), month: mapStat(agentStats.month) })
     setTransactions(txns.map(mapTxn))
     setPayouts(pays.map(mapPayout))
@@ -495,7 +410,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       available: r(earn.available),
       holdDays: earn.holdDays ?? 7,
     })
-    setWalletAccount(mappedAccs.find((a: BankAccount) => a.on)?.number ?? mappedAccs[0]?.number ?? '—')
+    setWalletAccount(mappedAccs.find((a: BankAccount) => a.on)?.number ?? '')
     setLoading(false)
   }, [syncCheckingFromOrders, pruneDepositAlerts])
 
@@ -518,22 +433,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     reload().catch((e) => { showToast(e?.message || 'Failed to load'); setLoading(false) })
   }, [reload, showToast])
 
-  // Live deposit / withdraw alerts from players
+  // Live deposit alerts from players
   useMerchantRealtime(true, (ev) => {
-    if (ev.type === 'withdraw_new') {
-      if (dismissedWithdrawRef.current.has(ev.withdrawalId)) return
-      void reload()
-      setWithdrawAlerts((q) => {
-        if (q.some((a) => a.withdrawalId === ev.withdrawalId)) return q
-        return [...q, ev]
-      })
-      setWithdrawSnoozeUntil((prev) => {
-        const next = { ...prev }
-        delete next[ev.withdrawalId]
-        return next
-      })
-      return
-    }
     if (ev.type === 'deposit_resolved' && ev.orderId) {
       dismissOrderAlert(ev.orderId)
       markCheckingOrderOpened(ev.orderId)
@@ -631,7 +532,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       availablePayouts,
       claimPayout: async (withdrawalId) => {
         await api.post(`/agent/payouts/${withdrawalId}/claim`)
-        dismissWithdrawAlert(withdrawalId)
         showToast('Claimed — pay the player now')
         await reload()
       },
@@ -659,11 +559,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       rejectDepositAlert,
       openDepositAlert,
       markCheckingOrderOpened,
-      withdrawAlert,
-      snoozeWithdrawAlert,
-      openWithdrawAlert,
     }),
-    [balance, freeze, walletAccount, stats, transactions, payouts, availablePayouts, earnings, loading, collectionsOn, setCollectionsOn, accounts, orders, toast, showToast, reload, depositAlert, snoozeDepositAlert, rejectDepositAlert, openDepositAlert, markCheckingOrderOpened, withdrawAlert, snoozeWithdrawAlert, openWithdrawAlert, dismissWithdrawAlert],
+    [balance, freeze, walletAccount, stats, transactions, payouts, availablePayouts, earnings, loading, collectionsOn, setCollectionsOn, accounts, orders, toast, showToast, reload, depositAlert, snoozeDepositAlert, rejectDepositAlert, openDepositAlert, markCheckingOrderOpened],
   )
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>

@@ -8,7 +8,9 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
 import {
   ASSET,
   CHIP_VALUES,
@@ -61,6 +63,8 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
   const lastBotSfx = useRef(0)
   const stackSeq = useRef(0)
 
+  const { holdWin, releaseWinHold } = useWinPresentationHold('dragon-tiger')
+
   const game = useDragonTigerGame({
     canAfford,
     debit,
@@ -73,12 +77,16 @@ export default function DragonTigerGame({ onMessage }: GameComponentProps) {
     onWalletChange: () => {
       void refresh()
     },
+    holdWin,
+    releaseWinHold,
   })
 
   const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
     hasActiveBet: game.bets.length > 0,
     stakeAmount: game.stake,
   })
+
+  useAutoAffordableChip(balance, CHIP_VALUES, game.setSelectedChip)
 
   const showOutcome =
     game.state === 'SHOWING_WINNER' || game.state === 'PAYOUT' || game.state === 'RESETTING'

@@ -17,6 +17,7 @@ import {
 import { MC_ASSETS, MC_AUDIO, preloadMoneyComingAssets } from '../engines/moneyComingAssets'
 import { useDesignScale } from '../hooks/useDesignScale'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
 import type { GameComponentProps } from '../types'
 import MoneyComingDesignUI from './MoneyComingDesignUI'
 import styles from './moneyComing.module.css'
@@ -59,7 +60,8 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, MC_DESIGN_W, MC_DESIGN_H)
-  const { balance, credit, canAfford, refresh } = useWallet()
+  const { balance, credit, canAfford } = useWallet()
+  const { holdWin, releaseWinHold } = useWinPresentationHold('money-coming')
   const busyRef = useRef(false)
   const spinAudioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -210,7 +212,7 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
             console.warn('[money-coming] paytable drift', { local: local.win, server: winAmount, next, nextMult })
           }
         }
-        await refresh()
+        if (winAmount > 0) holdWin(winAmount)
       } else if (free) {
         await new Promise((r) => setTimeout(r, duration))
         next = [randomNumber(), randomNumber(), randomNumber()]
@@ -255,6 +257,7 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
 
     if (winAmount > 0) {
       if (!live) credit(winAmount)
+      else releaseWinHold()
       setLastWin(winAmount)
       sound.play('win', { volume: 0.75 })
       sound.play('coin', { volume: 0.4 })
@@ -268,7 +271,7 @@ export default function MoneyComingGame({ onMessage }: GameComponentProps) {
 
     setShine(false)
     busyRef.current = false
-  }, [betAmount, canAfford, credit, onMessage, refresh, spinning, turbo])
+  }, [betAmount, canAfford, credit, holdWin, onMessage, releaseWinHold, spinning, turbo])
 
   useEffect(() => {
     if (!auto || spinning || busyRef.current) return

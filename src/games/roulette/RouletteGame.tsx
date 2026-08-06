@@ -8,7 +8,6 @@ import {
   getDesignScaleShellStyle,
   useDesignScale,
 } from '../hooks/useDesignScale'
-import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import { ASSET, CHIP_VALUES, type ChipValue } from './constants/rouletteConfig'
 import { GameFooter, GameHeader } from './components/GameChrome'
 import RouletteLoadingScreen, { WinningOverlay } from './components/RouletteLoadingScreen'
@@ -16,6 +15,8 @@ import RouletteTable from './components/RouletteTable'
 import RouletteWheel from './components/RouletteWheel'
 import SidePlayers, { DEMO_LEFT, DEMO_RIGHT, type SidePlayer } from './components/SidePlayers'
 import { useRouletteGame } from './hooks/useRouletteGame'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
+import { useSyncWinHold } from '../../hooks/useWinPresentationHold'
 import { usePreloadAssets, usePrefersReducedMotion, useRouletteSound } from './hooks/useRouletteSound'
 import type { CellAggregate } from './utils/payoutCalculator'
 import styles from './styles/roulette.module.css'
@@ -198,6 +199,14 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
     onPublicBet,
   })
 
+  useSyncWinHold(
+    'roulette',
+    game.lastPayout,
+    game.state === 'RESULT' || game.state === 'PAYOUT',
+  )
+
+  useAutoAffordableChip(balance, CHIP_VALUES, game.setSelectedChip)
+
   const side = useMemo(() => seatsToSidePlayers(game.seats), [game.seats])
 
   // Sync other players' stacks from server totals (exclude own bets)
@@ -238,11 +247,6 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
   }, [game.state, game.lastPayout])
 
   const showOutcome = game.state === 'RESULT' || game.state === 'PAYOUT'
-
-  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
-    hasActiveBet: game.bets.length > 0,
-    stakeAmount: game.stake,
-  })
 
   const onPlace = useCallback(
     async (input: {
@@ -292,7 +296,7 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
             muted={muted}
             onBack={() => {
               sound.playClick()
-              requestLeave()
+              navigate('/home')
             }}
             onToggleSound={toggle}
             onHelp={() => {
@@ -434,7 +438,6 @@ export default function RouletteGame({ onMessage }: GameComponentProps) {
           )}
         </div>
       </div>
-      {LeaveModal}
     </div>
   )
 }

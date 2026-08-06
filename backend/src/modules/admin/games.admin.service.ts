@@ -11,7 +11,92 @@ export type GameLiveStats = {
   activeRounds: number
 }
 
-/** Aggregate real round data per game slug (ignores seeded Game.plays/ggr). */
+const emptyStats = (): GameLiveStats => ({
+  plays: 0,
+  wagered: 0n,
+  playerWins: 0,
+  playerLosses: 0,
+  playerWonAmount: 0n,
+  playerLostAmount: 0n,
+  houseProfit: 0n,
+  activeRounds: 0,
+})
+
+/** Aggregate settled bets/wins from the ledger (slots, crash, table games, etc.). */
+export async function ledgerStatsBySlug(): Promise<Map<string, GameLiveStats>> {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      slug: string
+      plays: number
+      wagered: bigint
+      playerWins: number
+      playerWonAmount: bigint
+    }>
+  >`
+    WITH bet_rows AS (
+      SELECT t.meta->>'game' AS slug, e.amount AS bet
+      FROM "LedgerTransaction" t
+      JOIN "LedgerEntry" e ON e."transactionId" = t.id
+      JOIN "LedgerAccount" a ON a.id = e."accountId"
+      WHERE t.type = 'GAME_BET'
+        AND a.bucket = 'MAIN'
+        AND e.direction = 'DEBIT'
+        AND t.meta->>'game' IS NOT NULL
+    ),
+    win_rows AS (
+      SELECT t.meta->>'game' AS slug, e.amount AS win
+      FROM "LedgerTransaction" t
+      JOIN "LedgerEntry" e ON e."transactionId" = t.id
+      JOIN "LedgerAccount" a ON a.id = e."accountId"
+      WHERE t.type = 'GAME_WIN'
+        AND a.bucket = 'MAIN'
+        AND e.direction = 'CREDIT'
+        AND t.meta->>'game' IS NOT NULL
+    )
+    SELECT
+      b.slug,
+      COUNT(*)::int AS plays,
+      COALESCE(SUM(b.bet), 0) AS wagered,
+      (SELECT COUNT(*)::int FROM win_rows w WHERE w.slug = b.slug) AS "playerWins",
+      (SELECT COALESCE(SUM(w.win), 0) FROM win_rows w WHERE w.slug = b.slug) AS "playerWonAmount"
+    FROM bet_rows b
+    GROUP BY b.slug
+  `
+
+  const map = new Map<string, GameLiveStats>()
+  for (const row of rows) {
+    const playerLosses = Math.max(0, row.plays - row.playerWins)
+    const wagered = BigInt(row.wagered ?? 0)
+    const playerWonAmount = BigInt(row.playerWonAmount ?? 0)
+    const playerLostAmount =
+      row.plays > 0 ? (wagered * BigInt(playerLosses)) / BigInt(row.plays) : 0n
+    map.set(row.slug, {
+      plays: row.plays,
+      wagered,
+      playerWins: row.playerWins,
+      playerLosses,
+      playerWonAmount,
+      playerLostAmount,
+      houseProfit: wagered - playerWonAmount,
+      activeRounds: 0,
+    })
+  }
+  return map
+}
+
+/** Active in-progress rounds (mines, chicken-road). */
+export async function activeRoundStatsBySlug(): Promise<Map<string, number>> {
+  const rows = await prisma.gameRound.groupBy({
+    by: ['gameSlug'],
+    where: { state: 'ACTIVE' },
+    _count: { _all: true },
+  })
+  const map = new Map<string, number>()
+  for (const row of rows) map.set(row.gameSlug, row._count._all)
+  return map
+}
+
+/** Aggregate real round data per game slug (mines / chicken-road settled rounds). */
 export async function statsBySlug(): Promise<Map<string, GameLiveStats>> {
   const rounds = await prisma.gameRound.groupBy({
     by: ['gameSlug', 'state'],
@@ -70,25 +155,16 @@ export async function statsBySlug(): Promise<Map<string, GameLiveStats>> {
 }
 
 export async function listGamesWithStats() {
-  const [games, stats] = await Promise.all([
+  const [games, ledgerStats, activeRounds] = await Promise.all([
     prisma.game.findMany({ orderBy: { order: 'asc' } }),
-    statsBySlug(),
+    ledgerStatsBySlug(),
+    activeRoundStatsBySlug(),
   ])
 
   return games.map((g) => {
-    const s = stats.get(g.slug) ?? {
-      plays: 0,
-      wagered: 0n,
-      playerWins: 0,
-      playerLosses: 0,
-      playerWonAmount: 0n,
-      playerLostAmount: 0n,
-      houseProfit: 0n,
-      activeRounds: 0,
-    }
+    const s = ledgerStats.get(g.slug) ?? emptyStats()
     return {
       ...g,
-      // Live stats override stale seeded counters
       plays: s.plays,
       wagered: s.wagered,
       playerWins: s.playerWins,
@@ -97,7 +173,7 @@ export async function listGamesWithStats() {
       playerLostAmount: s.playerLostAmount,
       houseProfit: s.houseProfit,
       ggr: s.houseProfit,
-      activeRounds: s.activeRounds,
+      activeRounds: activeRounds.get(g.slug) ?? 0,
     }
   })
 }

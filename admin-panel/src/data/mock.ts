@@ -156,6 +156,8 @@ export interface Settings {
   mentorCommissionL3: number
   walletsRequired: number
   minPerWallet: number
+  /** When true, new withdraws skip admin hold and go straight to C2C pool. */
+  withdrawAutoC2cRelease: boolean
   // limits
   minWithdraw: number
   maxWithdraw: number
@@ -215,6 +217,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mentorCommissionL3: 10,
   walletsRequired: 5,
   minPerWallet: 1000,
+  withdrawAutoC2cRelease: false,
   minWithdraw: 600,
   maxWithdraw: 50000,
   minDeposit: 300,

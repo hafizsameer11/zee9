@@ -6,7 +6,7 @@ import { getBalances } from '../../core/ledger.js'
 import { toPaisa } from '../../lib/money.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { recordWagerAndRelease } from '../../core/wager.js'
-import { accrueForLoss } from '../commission/commission.service.js'
+import { accrueForLoss, clawbackForWin } from '../commission/commission.service.js'
 
 const GRID = 25
 
@@ -191,6 +191,12 @@ async function cashoutInner(tx: any, roundId: string, userId: string, bet: bigin
         { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: payout },
         { account: { userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: payout },
       ],
+    })
+    await clawbackForWin(tx, {
+      userId,
+      winAmount: payout,
+      referenceType: 'mines-win',
+      referenceId: roundId,
     })
   }
 

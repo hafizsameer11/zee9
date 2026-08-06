@@ -2,7 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
 export function fmt(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const abs = n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (n < 0) return `-${abs}`
+  return abs
 }
 
 /** Deprecated faux iOS status bar — kept as no-op so pages don't show native chrome. */

@@ -245,6 +245,34 @@ export default function Channels() {
     load()
   }
 
+  async function demoteMentor(m: MentorRow) {
+    if (!window.confirm(`Remove mentor ${m.displayName}? They become a normal player.`)) return
+    setBusy(true)
+    try {
+      await api.post(`/admin/users/${m.id}/demote-mentor`)
+      showToast(`${m.displayName} demoted from mentor`)
+      load()
+    } catch (e: any) {
+      showToast(e?.message || 'Demote failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removeFromTree(memberId: string, memberName: string) {
+    if (!window.confirm(`Remove ${memberName} from the referral tree?`)) return
+    setBusy(true)
+    try {
+      await api.post(`/admin/users/${memberId}/unlink-referral`)
+      showToast(`${memberName} removed from referral tree`)
+      if (downlineFor) void openMentorDownline(downlineFor)
+    } catch (e: any) {
+      showToast(e?.message || 'Remove failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <PageHead
@@ -326,6 +354,9 @@ export default function Channels() {
                       </button>
                       <button className="btn btn-light btn-sm" onClick={() => { setResetTarget(m); setResetPassword('') }}>
                         Reset password
+                      </button>
+                      <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void demoteMentor(m)}>
+                        Remove
                       </button>
                       <Link className="btn btn-ghost btn-sm" to={`/users/${m.id}`}>
                         Profile
@@ -564,6 +595,7 @@ export default function Channels() {
                   <th className="t-right">Win/Loss</th>
                   <th className="t-right">Commission</th>
                   <th>Profile</th>
+                  <th>Remove</th>
                 </tr>
               </thead>
               <tbody>
@@ -587,6 +619,16 @@ export default function Channels() {
                       <Link className="btn btn-light btn-sm" to={`/users/${row.id}`} onClick={() => setDownlineFor(null)}>
                         Open
                       </Link>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        disabled={busy}
+                        onClick={() => void removeFromTree(row.id, row.name)}
+                      >
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 ))}

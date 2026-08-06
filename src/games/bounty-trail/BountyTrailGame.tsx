@@ -8,6 +8,7 @@ import {
   useDesignScale,
 } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useLiveSlotWinPresentation } from '../../hooks/useLiveSlotWinPresentation'
 import Zee9LoadingScreen from '../../components/Zee9LoadingScreen'
 import { ASSET, BET_AMOUNTS, DESIGN_H, DESIGN_W, formatMoney } from './constants/gameConfig'
 import {
@@ -48,11 +49,11 @@ import {
 } from './components/Panels'
 import styles from './styles/stage.module.css'
 
-export default function BountyTrailGame({ onMessage }: GameComponentProps) {
+export default function BountyTrailGame({ gameId, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, debit, credit, canAfford } = useWallet()
   const { muted, toggleMute, play, unlock } = useBountyTrailSound()
   const [reducedMotion, setReducedMotion] = useState(false)
   const [readyGate, setReadyGate] = useState(false)
@@ -66,14 +67,19 @@ export default function BountyTrailGame({ onMessage }: GameComponentProps) {
     return () => mq.removeEventListener?.('change', apply)
   }, [])
 
+  const liveWin = useLiveSlotWinPresentation(gameId === 'bounty-trail' ? 'bounty-trail' : 'wild-bounty')
+
   const game = useBountyTrailGame({
     canAfford,
     debit,
     credit,
-    refresh,
+    refresh: liveWin.refresh,
     playSfx: play,
     onMessage,
     reducedMotion,
+    beginLiveWin: liveWin.beginLiveWin,
+    endLiveWin: liveWin.endLiveWin,
+    gameId,
   })
 
   const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {

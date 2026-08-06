@@ -80,6 +80,8 @@ type WalletApi = {
   debit: (n: number) => boolean
   credit: (n: number) => void
   canAfford: (n: number) => boolean
+  holdWin?: (amount: number) => void
+  releaseWinHold?: () => void
 }
 
 export function useJhandiGame(
@@ -231,6 +233,7 @@ export function useJhandiGame(
             setLastBets({ ...myBetsRef.current })
             if (totalPayout > 0) {
               wallet.credit(totalPayout)
+              wallet.holdWin?.(totalPayout)
               sound.play('win')
               const best = SYMBOL_ORDER.reduce<{ sym: JhandiSymbol; mult: number } | null>((acc, sym) => {
                 const stake = myBetsRef.current[sym]
@@ -249,6 +252,7 @@ export function useJhandiGame(
               onMessage?.(roundLossMessage(myStake))
             }
             window.setTimeout(() => {
+              wallet.releaseWinHold?.()
               setPhase('payout')
               window.setTimeout(() => {
                 setHistory((h) => [jhandiCounts(rolled), ...h].slice(0, 8))

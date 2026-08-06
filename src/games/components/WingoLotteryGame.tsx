@@ -12,6 +12,7 @@ import {
 } from '../engines/wingoLottery'
 import { useDesignScale } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import {
   connectLotterySocket,
@@ -62,6 +63,7 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, WL_DESIGN_W, WL_DESIGN_H)
   const { balance, canAfford, refresh } = useWallet()
+  const { holdWin, releaseWinHold } = useWinPresentationHold('wingo-lottery')
 
   const [selectedChip, setSelectedChip] = useState<ChipDenom>(10)
   const [chips, setChips] = useState<PlacedChip[]>([])
@@ -139,6 +141,7 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
     if (visualRunning.current) return
     visualRunning.current = true
     setResult(n)
+    if (outcome?.won && outcome.won > 0) holdWin(outcome.won)
     let delay = 0
     const timers: number[] = []
     for (const step of VISUAL) {
@@ -151,6 +154,7 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
               setLastWin(outcome.won)
               sound.play('win', { volume: 0.75 })
               onMessage?.(roundWinMessage(outcome.won))
+              releaseWinHold()
               window.setTimeout(() => onMessage?.(null), 2200)
             } else if (outcome.hadBets && outcome.staked > 0) {
               sound.play('lose', { volume: 0.3 })
@@ -189,7 +193,7 @@ export default function WingoLotteryGame({ onMessage }: GameComponentProps) {
       visualRunning.current = false
     }
   },
-    [onMessage, refresh],
+    [holdWin, onMessage, refresh, releaseWinHold],
   )
 
   useEffect(() => {

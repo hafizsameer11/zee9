@@ -6,7 +6,7 @@ import { post, getBalances } from '../../core/ledger.js'
 import { toPaisa, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { recordWagerAndRelease } from '../../core/wager.js'
-import { accrueForLoss } from '../commission/commission.service.js'
+import { accrueForLoss, clawbackForWin } from '../commission/commission.service.js'
 
 const GAME_SLUG = 'wingo'
 const LOCK_MS = 5_000
@@ -213,7 +213,7 @@ async function settleRound(roundId: string, winPct: number) {
         // Support 1.5x / 4.5x via hundredths
         const payout = (bet.amount * BigInt(Math.round(mult * 100))) / 100n
         await post(tx, {
-          type: 'ADMIN_ADJUST',
+          type: 'GAME_WIN',
           referenceType: 'wingo-win',
           referenceId: bet.id,
           meta: { game: GAME_SLUG, kind: 'win', resultNumber, mult, roundId },
@@ -221,6 +221,12 @@ async function settleRound(roundId: string, winPct: number) {
             { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: payout },
             { account: { userId: bet.userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: payout },
           ],
+        })
+        await clawbackForWin(tx, {
+          userId: bet.userId,
+          winAmount: payout,
+          referenceType: 'wingo-win',
+          referenceId: bet.id,
         })
         await tx.wingoBet.update({
           where: { id: bet.id },
@@ -487,7 +493,7 @@ export async function placeBet(
     })
 
     await post(tx, {
-      type: 'ADMIN_ADJUST',
+      type: 'GAME_BET',
       referenceType: 'wingo-bet',
       referenceId: row.id,
       meta: { game: GAME_SLUG, kind: 'bet', mode: modeRaw, betType: type, value, roundId: round.id },
@@ -534,7 +540,7 @@ export async function revokeBets(userId: string, modeRaw: string) {
     let refunded = 0n
     for (const bet of bets) {
       await post(tx, {
-        type: 'ADMIN_ADJUST',
+        type: 'GAME_REFUND',
         referenceType: 'wingo-revoke',
         referenceId: bet.id,
         meta: { game: GAME_SLUG, kind: 'revoke', roundId: round.id },

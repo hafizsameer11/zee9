@@ -8,7 +8,7 @@ import {
   mentorCommissionRateBps,
   type Settings,
 } from '../../core/settings.js'
-import { applyBps } from '../../lib/money.js'
+import { applyBps, toPaisa } from '../../lib/money.js'
 import {
   countValidDirectReferrals,
   promoterCommissionRateBps,
@@ -19,6 +19,19 @@ const CHECK_MS = 30_000
 
 type Bounds = { key: string; start: Date; end: Date; displayAt: Date }
 type Recipient = { agentId: string; level: number; rateBps: number }
+
+async function playerQualifiesForCommission(
+  tx: Tx,
+  userId: string,
+  settings: Settings,
+): Promise<boolean> {
+  const qualMin = toPaisa(settings.minDepositToQualify)
+  const depSum = await tx.deposit.aggregate({
+    where: { userId, status: 'APPROVED' },
+    _sum: { amount: true },
+  })
+  return (depSum._sum.amount ?? 0n) >= qualMin
+}
 
 function dateKeyAt(timestamp: number): string {
   return new Date(timestamp + PKT_OFFSET_MS).toISOString().slice(0, 10)
@@ -105,6 +118,185 @@ function principalLossTarget(funding: bigint, wagered: bigint, won: bigint): big
   return netLoss < funding ? netLoss : funding
 }
 
+async function sumPaidWithdrawals(
+  tx: Tx,
+  userId: string,
+  from: Date,
+  before: Date,
+): Promise<bigint> {
+  const result = await tx.withdrawal.aggregate({
+    where: {
+      userId,
+      status: 'PAID',
+      processedAt: { gte: from, lt: before },
+    },
+    _sum: { amount: true },
+  })
+  return result._sum.amount ?? 0n
+}
+
+async function commissionFundingBetween(
+  tx: Tx,
+  userId: string,
+  from: Date,
+  before: Date,
+): Promise<bigint> {
+  const [deposits, bonuses] = await Promise.all([
+    tx.deposit.aggregate({
+      where: {
+        userId,
+        status: 'APPROVED',
+        OR: [
+          { processedAt: { gte: from, lt: before } },
+          { processedAt: null, createdAt: { gte: from, lt: before } },
+        ],
+      },
+      _sum: { amount: true },
+    }),
+    tx.ledgerEntry.aggregate({
+      where: {
+        account: { ownerId: userId, bucket: 'MAIN' },
+        direction: 'CREDIT',
+        createdAt: { gte: from, lt: before },
+        transaction: {
+          type: { in: ['REGISTRATION_BONUS', 'DEPOSIT_BONUS'] },
+          status: 'POSTED',
+        },
+      },
+      _sum: { amount: true },
+    }),
+  ])
+  return (deposits._sum.amount ?? 0n) + (bonuses._sum.amount ?? 0n)
+}
+
+type FundingEvent = { time: Date; amount: bigint }
+
+/** Deposits + signup/deposit bonuses in [from, before) as timeline events. */
+async function fundingEventsBetween(
+  tx: Tx,
+  userId: string,
+  from: Date,
+  before: Date,
+): Promise<FundingEvent[]> {
+  const [deposits, bonuses] = await Promise.all([
+    tx.deposit.findMany({
+      where: {
+        userId,
+        status: 'APPROVED',
+        OR: [
+          { processedAt: { gte: from, lt: before } },
+          { processedAt: null, createdAt: { gte: from, lt: before } },
+        ],
+      },
+      select: { amount: true, processedAt: true, createdAt: true },
+      orderBy: [{ processedAt: 'asc' }, { createdAt: 'asc' }],
+    }),
+    tx.ledgerEntry.findMany({
+      where: {
+        account: { ownerId: userId, bucket: 'MAIN' },
+        direction: 'CREDIT',
+        createdAt: { gte: from, lt: before },
+        transaction: {
+          type: { in: ['REGISTRATION_BONUS', 'DEPOSIT_BONUS'] },
+          status: 'POSTED',
+        },
+      },
+      select: { amount: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ])
+
+  const events: FundingEvent[] = []
+  for (const d of deposits) {
+    events.push({ time: d.processedAt ?? d.createdAt, amount: d.amount })
+  }
+  for (const b of bonuses) {
+    events.push({ time: b.createdAt, amount: b.amount })
+  }
+  events.sort((a, b) => a.time.getTime() - b.time.getTime())
+  return events
+}
+
+/**
+ * Withdraw clawback base = profit withdrawn, not gross withdraw.
+ * Per deposit→withdraw cycle: max(0, sum(withdrawals) − sum(deposits+bonuses in that cycle).
+ * Example: deposit 105,150 → withdraw 205,000 → base 99,850 (10% claw = 9,985).
+ * Re-deposit then loss does not re-claw prior withdraws.
+ */
+async function withdrawClawProfitBase(
+  tx: Tx,
+  userId: string,
+  day: Bounds,
+): Promise<bigint> {
+  const withdrawals = await tx.withdrawal.findMany({
+    where: {
+      userId,
+      status: 'PAID',
+      processedAt: { gte: day.start, lt: day.end },
+    },
+    orderBy: { processedAt: 'asc' },
+    select: { amount: true, processedAt: true },
+  })
+  if (withdrawals.length === 0) return 0n
+
+  const priorWd = await tx.withdrawal.findFirst({
+    where: { userId, status: 'PAID', processedAt: { lt: day.start } },
+    orderBy: { processedAt: 'desc' },
+    select: { processedAt: true },
+  })
+  const epoch = new Date(0)
+  const cycleStart = priorWd?.processedAt ?? epoch
+
+  let cycleFunding = await commissionFundingBetween(tx, userId, cycleStart, day.start)
+  let cycleWithdraw = 0n
+  let clawTotal = 0n
+  let cursor = cycleStart
+
+  const dayFundingEvents = await fundingEventsBetween(tx, userId, day.start, day.end)
+
+  const closeCycle = () => {
+    if (cycleWithdraw <= 0n) return
+    const profit = cycleWithdraw > cycleFunding ? cycleWithdraw - cycleFunding : 0n
+    clawTotal += profit
+    cycleWithdraw = 0n
+    cycleFunding = 0n
+  }
+
+  for (const wd of withdrawals) {
+    const wdTime = wd.processedAt!
+    for (const event of dayFundingEvents) {
+      if (event.time > cursor && event.time <= wdTime) {
+        closeCycle()
+        cycleFunding += event.amount
+      }
+    }
+    cycleWithdraw += wd.amount
+    cursor = wdTime
+  }
+
+  for (const event of dayFundingEvents) {
+    if (event.time > cursor) {
+      closeCycle()
+      cycleFunding += event.amount
+    }
+  }
+  closeCycle()
+
+  return clawTotal
+}
+
+/** Commission credit when member's principal loss increases (bets only — wins do not claw back). */
+function lossCommissionDesired(lossDelta: bigint, rateBps: number): bigint {
+  if (lossDelta <= 0n) return 0n
+  return applyBps(lossDelta, rateBps)
+}
+
+/** Commission debit when member withdraws winnings (30% of clawback base). */
+function withdrawClawDesired(clawbackBase: bigint, rateBps: number): bigint {
+  if (clawbackBase <= 0n) return 0n
+  return -applyBps(clawbackBase, rateBps)
+}
+
 async function recipientsFor(
   tx: Tx,
   sourceUserId: string,
@@ -179,16 +371,16 @@ async function commissionBalance(tx: Tx, userId: string): Promise<bigint> {
 async function commissionLedgerNet(
   tx: Tx,
   agentId: string,
-  sourceUserId: string,
-  day: Bounds,
+  referenceType: 'daily-principal-loss' | 'daily-withdraw-claw',
+  referenceId: string,
 ): Promise<bigint> {
   const entries = await tx.ledgerEntry.findMany({
     where: {
       account: { ownerId: agentId, bucket: 'COMMISSION', currency: 'PKR' },
       transaction: {
         type: 'COMMISSION',
-        referenceType: 'daily-principal-loss',
-        referenceId: `${day.key}:${sourceUserId}`,
+        referenceType,
+        referenceId,
         status: 'POSTED',
       },
     },
@@ -198,6 +390,195 @@ async function commissionLedgerNet(
     (sum, entry) => sum + (entry.direction === 'CREDIT' ? entry.amount : -entry.amount),
     0n,
   )
+}
+
+async function applyCommissionTarget(
+  tx: Tx,
+  recipient: Recipient,
+  sourceUserId: string,
+  day: Bounds,
+  referenceType: 'daily-principal-loss' | 'daily-withdraw-claw',
+  referenceId: string,
+  desired: bigint,
+  meta: Record<string, unknown>,
+): Promise<bigint> {
+  const ledgerNet = await commissionLedgerNet(tx, recipient.agentId, referenceType, referenceId)
+  const requestedAdjustment = desired - ledgerNet
+  let appliedAdjustment = 0n
+
+  if (requestedAdjustment > 0n) {
+    const posted = await post(tx, {
+      type: 'COMMISSION',
+      referenceType,
+      referenceId,
+      idempotencyKey: `commission-daily:${referenceType}:${referenceId}:${recipient.agentId}:${recipient.level}:from:${ledgerNet}:to:${desired}`,
+      meta: { settlementDate: day.key, sourceUserId, level: recipient.level, ...meta },
+      legs: [
+        { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: requestedAdjustment },
+        { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'CREDIT', amount: requestedAdjustment },
+      ],
+    })
+    if (posted.created) appliedAdjustment = requestedAdjustment
+  } else if (requestedAdjustment < 0n) {
+    const available = await commissionBalance(tx, recipient.agentId)
+    const requestedDebit = -requestedAdjustment
+    const debit = requestedDebit < available ? requestedDebit : available
+    if (debit > 0n) {
+      const posted = await post(tx, {
+        type: 'COMMISSION',
+        referenceType,
+        referenceId,
+        idempotencyKey: `commission-daily:${referenceType}:${referenceId}:${recipient.agentId}:${recipient.level}:from:${ledgerNet}:to:${desired}`,
+        meta: { settlementDate: day.key, sourceUserId, level: recipient.level, adjustment: 'debit', ...meta },
+        legs: [
+          { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: debit },
+          { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'DEBIT', amount: debit },
+        ],
+      })
+      if (posted.created) appliedAdjustment = -debit
+    }
+  }
+
+  return ledgerNet + appliedAdjustment
+}
+
+/** One-shot reversal for orphaned consolidated loss refs (idempotency-safe). */
+async function clearCommissionRef(
+  tx: Tx,
+  recipient: Recipient,
+  sourceUserId: string,
+  day: Bounds,
+  referenceType: 'daily-principal-loss' | 'daily-withdraw-claw',
+  referenceId: string,
+): Promise<void> {
+  const ledgerNet = await commissionLedgerNet(tx, recipient.agentId, referenceType, referenceId)
+  if (ledgerNet <= 0n) return
+  const posted = await post(tx, {
+    type: 'COMMISSION',
+    referenceType,
+    referenceId,
+    idempotencyKey: `commission-clear:v2:${referenceType}:${referenceId}:${recipient.agentId}:${recipient.level}`,
+    meta: { settlementDate: day.key, sourceUserId, level: recipient.level, cleared: true },
+    legs: [
+      { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: ledgerNet },
+      { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'DEBIT', amount: ledgerNet },
+    ],
+  })
+  if (!posted.created) return
+}
+
+type LossCommissionPart = { referenceSuffix: string; base: bigint }
+
+async function depositFundingAmount(tx: Tx, userId: string, depositId: string, depositAmount: bigint): Promise<bigint> {
+  const bonus = await tx.ledgerEntry.aggregate({
+    where: {
+      account: { ownerId: userId, bucket: 'MAIN' },
+      direction: 'CREDIT',
+      transaction: {
+        type: 'DEPOSIT_BONUS',
+        referenceType: 'deposit',
+        referenceId: depositId,
+        status: 'POSTED',
+      },
+    },
+    _sum: { amount: true },
+  })
+  return depositAmount + (bonus._sum.amount ?? 0n)
+}
+
+async function depositsBetween(
+  tx: Tx,
+  userId: string,
+  from: Date,
+  before: Date,
+): Promise<Array<{ id: string; amount: bigint; time: Date }>> {
+  const rows = await tx.deposit.findMany({
+    where: {
+      userId,
+      status: 'APPROVED',
+      OR: [
+        { processedAt: { gt: from, lt: before } },
+        { processedAt: null, createdAt: { gt: from, lt: before } },
+      ],
+    },
+    select: { id: true, amount: true, processedAt: true, createdAt: true },
+    orderBy: [{ processedAt: 'asc' }, { createdAt: 'asc' }],
+  })
+  return rows.map((row) => ({
+    id: row.id,
+    amount: row.amount,
+    time: row.processedAt ?? row.createdAt,
+  }))
+}
+
+async function principalLossAt(
+  tx: Tx,
+  accountId: string,
+  userId: string,
+  at: Date,
+): Promise<bigint> {
+  const [funding, wagered, won] = await Promise.all([
+    commissionFundingBefore(tx, userId, at),
+    sumGameEntries(tx, accountId, 'GAME_BET', at),
+    sumGameEntries(tx, accountId, 'GAME_WIN', at),
+  ])
+  return principalLossTarget(funding, wagered, won)
+}
+
+/**
+ * Loss commission parts:
+ * - Before first withdraw: principal-loss delta only.
+ * - After each withdraw: 10% on each new deposit (full deposit+bonus) if member lost after depositing.
+ */
+async function lossCommissionParts(
+  tx: Tx,
+  userId: string,
+  accountId: string,
+  day: Bounds,
+): Promise<LossCommissionPart[]> {
+  const withdrawals = await tx.withdrawal.findMany({
+    where: {
+      userId,
+      status: 'PAID',
+      processedAt: { gte: day.start, lt: day.end },
+    },
+    orderBy: { processedAt: 'asc' },
+    select: { processedAt: true },
+  })
+
+  const dayFundingEvents = await fundingEventsBetween(tx, userId, day.start, day.end)
+  const parts: LossCommissionPart[] = []
+
+  if (withdrawals.length === 0) {
+    const lossStart = await principalLossAt(tx, accountId, userId, day.start)
+    const lossEnd = await principalLossAt(tx, accountId, userId, day.end)
+    const delta = lossEnd > lossStart ? lossEnd - lossStart : 0n
+    if (delta > 0n) parts.push({ referenceSuffix: '', base: delta })
+    return parts
+  }
+
+  // Withdrawals same day: claw on withdraw profit only; loss commission on post-withdraw deposits.
+  for (let w = 0; w < withdrawals.length; w++) {
+    const wdTime = withdrawals[w].processedAt!
+    const segmentEnd = withdrawals[w + 1]?.processedAt ?? day.end
+    const depositsInSegment = await depositsBetween(tx, userId, wdTime, segmentEnd)
+    if (depositsInSegment.length === 0) continue
+
+    const wagerAtFirstDep = await sumGameEntries(tx, accountId, 'GAME_BET', depositsInSegment[0].time)
+    const wagerAtSegmentEnd = await sumGameEntries(tx, accountId, 'GAME_BET', segmentEnd)
+    if (wagerAtSegmentEnd <= wagerAtFirstDep) continue
+
+    for (let i = 0; i < depositsInSegment.length; i++) {
+      const dep = depositsInSegment[i]
+      const funding = await depositFundingAmount(tx, userId, dep.id, dep.amount)
+      parts.push({
+        referenceSuffix: `:postwd:${w}:${dep.id}`,
+        base: funding,
+      })
+    }
+  }
+
+  return parts
 }
 
 async function settlePlayer(
@@ -243,6 +624,14 @@ async function settlePlayer(
     const lossAtStart = principalLossTarget(fundingAtStart, wageredAtStart, wonAtStart)
     const lossAtEnd = principalLossTarget(fundingAtEnd, wageredAtEnd, wonAtEnd)
     const lossDelta = lossAtEnd - lossAtStart
+    const withdrawnInDay = await sumPaidWithdrawals(tx, sourceUserId, day.start, day.end)
+    const clawbackBase = await withdrawClawProfitBase(tx, sourceUserId, day)
+    const depositQualified = await playerQualifiesForCommission(tx, sourceUserId, settings)
+    const lossParts = depositQualified
+      ? await lossCommissionParts(tx, sourceUserId, accountId, day)
+      : []
+    const effectiveClawbackBase = depositQualified ? clawbackBase : 0n
+    const withdrawRefId = `${day.key}:${sourceUserId}`
     const recipients = await recipientsFor(tx, sourceUserId, settings)
 
     // Include old per-bet recipients so their entries can be consolidated or reversed.
@@ -261,46 +650,83 @@ async function settlePlayer(
     }
 
     for (const recipient of recipients.values()) {
-      const ledgerNet = await commissionLedgerNet(tx, recipient.agentId, sourceUserId, day)
-      const magnitude = applyBps(lossDelta < 0n ? -lossDelta : lossDelta, recipient.rateBps)
-      const desired = lossDelta < 0n ? -magnitude : magnitude
-      const requestedAdjustment = desired - ledgerNet
-      let appliedAdjustment = 0n
+      const withdrawDesired = withdrawClawDesired(effectiveClawbackBase, recipient.rateBps)
+      const legacyLossRef = `${day.key}:${sourceUserId}`
+      const activeLossRefIds = new Set<string>()
 
-      if (requestedAdjustment > 0n) {
-        const posted = await post(tx, {
-          type: 'COMMISSION',
-          referenceType: 'daily-principal-loss',
-          referenceId: `${day.key}:${sourceUserId}`,
-          idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:from:${ledgerNet}:to:${desired}`,
-          meta: { settlementDate: day.key, sourceUserId, level: recipient.level },
-          legs: [
-            { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: requestedAdjustment },
-            { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'CREDIT', amount: requestedAdjustment },
-          ],
-        })
-        if (posted.created) appliedAdjustment = requestedAdjustment
-      } else if (requestedAdjustment < 0n) {
-        const available = await commissionBalance(tx, recipient.agentId)
-        const requestedDebit = -requestedAdjustment
-        const debit = requestedDebit < available ? requestedDebit : available
-        if (debit > 0n) {
-          const posted = await post(tx, {
-            type: 'COMMISSION',
-            referenceType: 'daily-principal-loss',
-            referenceId: `${day.key}:${sourceUserId}`,
-            idempotencyKey: `commission-daily:${day.key}:${sourceUserId}:${recipient.agentId}:${recipient.level}:from:${ledgerNet}:to:${desired}`,
-            meta: { settlementDate: day.key, sourceUserId, level: recipient.level, adjustment: 'debit' },
-            legs: [
-              { account: { system: 'HOUSE' }, direction: 'CREDIT', amount: debit },
-              { account: { userId: recipient.agentId, bucket: 'COMMISSION' }, direction: 'DEBIT', amount: debit },
-            ],
-          })
-          if (posted.created) appliedAdjustment = -debit
-        }
+      // Always zero legacy consolidated daily loss before per-deposit rows.
+      await clearCommissionRef(
+        tx,
+        recipient,
+        sourceUserId,
+        day,
+        'daily-principal-loss',
+        legacyLossRef,
+      )
+
+      for (const part of lossParts) {
+        const refId = `${day.key}:${sourceUserId}${part.referenceSuffix}`
+        activeLossRefIds.add(refId)
+        const desired = lossCommissionDesired(part.base, recipient.rateBps)
+        await applyCommissionTarget(
+          tx,
+          recipient,
+          sourceUserId,
+          day,
+          'daily-principal-loss',
+          refId,
+          desired,
+          { lossBase: part.base.toString(), part: part.referenceSuffix },
+        )
       }
 
-      const finalAmount = ledgerNet + appliedAdjustment
+      // Clear legacy consolidated loss row and stale per-deposit parts.
+      const staleLossRefs = await tx.ledgerTransaction.findMany({
+        where: {
+          type: 'COMMISSION',
+          referenceType: 'daily-principal-loss',
+          referenceId: { startsWith: `${day.key}:${sourceUserId}` },
+        },
+        select: { referenceId: true },
+        distinct: ['referenceId'],
+      })
+      for (const row of staleLossRefs) {
+        if (!row.referenceId || activeLossRefIds.has(row.referenceId)) continue
+        await applyCommissionTarget(
+          tx,
+          recipient,
+          sourceUserId,
+          day,
+          'daily-principal-loss',
+          row.referenceId,
+          0n,
+          { cleared: true },
+        )
+      }
+
+      const withdrawFinal = await applyCommissionTarget(
+        tx,
+        recipient,
+        sourceUserId,
+        day,
+        'daily-withdraw-claw',
+        withdrawRefId,
+        withdrawDesired,
+        {
+          clawbackBase: clawbackBase.toString(),
+          withdrawnInDay: withdrawnInDay.toString(),
+          clawbackProfit: clawbackBase.toString(),
+        },
+      )
+
+      const lossAccruedRows: bigint[] = []
+      for (const part of lossParts) {
+        const refId = `${day.key}:${sourceUserId}${part.referenceSuffix}`
+        const net = await commissionLedgerNet(tx, recipient.agentId, 'daily-principal-loss', refId)
+        if (net > 0n) lossAccruedRows.push(net)
+      }
+      const lossFinal = lossAccruedRows.reduce((sum, n) => sum + n, 0n)
+      const finalAmount = lossFinal + withdrawFinal
       await tx.commission.deleteMany({
         where: {
           agentId: recipient.agentId,
@@ -309,7 +735,32 @@ async function settlePlayer(
           createdAt: { gte: day.start, lt: day.end },
         },
       })
-      if (finalAmount !== 0n) {
+      for (const amount of lossAccruedRows) {
+        await tx.commission.create({
+          data: {
+            agentId: recipient.agentId,
+            sourceUserId,
+            level: recipient.level,
+            rateBps: recipient.rateBps,
+            amount,
+            status: 'ACCRUED',
+            createdAt: day.displayAt,
+          },
+        })
+      }
+      if (withdrawFinal < 0n) {
+        await tx.commission.create({
+          data: {
+            agentId: recipient.agentId,
+            sourceUserId,
+            level: recipient.level,
+            rateBps: recipient.rateBps,
+            amount: withdrawFinal,
+            status: 'PAID',
+            createdAt: day.displayAt,
+          },
+        })
+      } else if (lossFinal < 0n && finalAmount !== 0n) {
         await tx.commission.create({
           data: {
             agentId: recipient.agentId,
@@ -317,7 +768,7 @@ async function settlePlayer(
             level: recipient.level,
             rateBps: recipient.rateBps,
             amount: finalAmount,
-            status: finalAmount > 0n ? 'ACCRUED' : 'PAID',
+            status: 'PAID',
             createdAt: day.displayAt,
           },
         })
@@ -423,22 +874,12 @@ async function collectSettlementPlayers(day: Bounds): Promise<Map<string, string
 
   const inDay = { gte: day.start, lt: day.end }
 
-  const [betRows, winRows, wdRows, commissioned] = await Promise.all([
+  const [betRows, wdRows, commissioned] = await Promise.all([
     prisma.ledgerEntry.findMany({
       where: {
         createdAt: inDay,
         direction: 'DEBIT',
         transaction: { type: 'GAME_BET', status: 'POSTED' },
-        account: { bucket: 'MAIN', ownerId: { not: null } },
-      },
-      select: { account: { select: { ownerId: true } } },
-      distinct: ['accountId'],
-    }),
-    prisma.ledgerEntry.findMany({
-      where: {
-        createdAt: inDay,
-        direction: 'CREDIT',
-        transaction: { type: 'GAME_WIN', status: 'POSTED' },
         account: { bucket: 'MAIN', ownerId: { not: null } },
       },
       select: { account: { select: { ownerId: true } } },
@@ -456,9 +897,6 @@ async function collectSettlementPlayers(day: Bounds): Promise<Map<string, string
   ])
 
   for (const r of betRows) {
-    if (r.account.ownerId) await addUser(r.account.ownerId)
-  }
-  for (const r of winRows) {
     if (r.account.ownerId) await addUser(r.account.ownerId)
   }
   for (const w of wdRows) await addUser(w.userId)

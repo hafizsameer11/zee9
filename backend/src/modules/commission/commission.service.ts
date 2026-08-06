@@ -19,7 +19,7 @@ const DAILY_PRINCIPAL_SETTLEMENT = true
  * Mentors: channel owner with MENTOR role, using mentor rates, for channel members.
  */
 export async function accrueForLoss(tx: Tx, input: LossInput, settings?: Settings) {
-  // Commissions are consolidated by the PKT end-of-day settlement.
+  // Realtime: settle today's principal-loss commission after this tx commits.
   if (DAILY_PRINCIPAL_SETTLEMENT) {
     queueCommissionSettlement(input.userId)
     return
@@ -137,7 +137,7 @@ export async function clawbackForWin(
   input: { userId: string; winAmount: bigint; referenceType: string; referenceId: string },
   settings?: Settings,
 ) {
-  // Wins are netted against losses by the PKT end-of-day settlement.
+  // Realtime: member win reduces principal loss → claw back after this tx commits.
   if (DAILY_PRINCIPAL_SETTLEMENT) {
     queueCommissionSettlement(input.userId)
     return

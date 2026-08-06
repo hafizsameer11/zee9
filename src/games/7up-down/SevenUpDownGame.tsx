@@ -8,6 +8,8 @@ import { sound } from '../../lib/sound'
 import { type UpDownChoice } from '../engines/dice'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
 import { connectSevenUpSocket } from '../lib/sevenUpSocket'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import type { GameComponentProps } from '../types'
@@ -85,12 +87,20 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
   const sceneRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
   const { balance, refresh } = useWallet()
+  const { holdWin, releaseWinHold } = useWinPresentationHold('7up-down')
+  const holdWinRef = useRef(holdWin)
+  holdWinRef.current = holdWin
+  const releaseWinHoldRef = useRef(releaseWinHold)
+  releaseWinHoldRef.current = releaseWinHold
   const { player } = usePlayerAuth()
   const authed = !!getAccess()
 
   const [betAmount, setBetAmount] = useState<ChipValue>(
     (CHIP_VALUES.find((v) => v === defaultBet) ?? 100) as ChipValue,
   )
+
+  useAutoAffordableChip(balance, CHIP_VALUES, setBetAmount)
+
   const [phase, setPhase] = useState<UiPhase>('betting')
   const [countdown, setCountdown] = useState(ROUND_SEC)
   const [period, setPeriod] = useState<string | null>(null)
@@ -264,6 +274,9 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
           return
         }
 
+        const pendingPayout = Number(state.myPayout ?? 0)
+        if (pendingPayout > 0) holdWinRef.current(pendingPayout)
+
         const applyResult = () => {
           const win = (state.winningZone as UpDownChoice) ?? null
           const got = Number(state.myPayout ?? 0)
@@ -283,6 +296,7 @@ export default function SevenUpDownGame({ bet: defaultBet, onMessage }: GameComp
             setLastBets(staked)
             const total = staked.down + staked.seven + staked.up
             if (got > 0) {
+              releaseWinHoldRef.current()
               sound.play('win')
               showToast(roundWinMessage(got))
               const id = nextId()

@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
-import { DEMO_BALANCE } from '../../data/s9Games'
 import type { GameComponentProps } from '../types'
 import {
   getDesignCanvasStyle,
@@ -10,6 +9,8 @@ import {
   useDesignScale,
 } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useSyncWinHold } from '../../hooks/useWinPresentationHold'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
 import {
   ANIMALS,
   ASSET,
@@ -22,7 +23,6 @@ import {
   type BetZoneId,
   type ChipValue,
 } from './constants/gameConfig'
-import { useZooRoulette } from './hooks/useZooRoulette'
 import { useLiveZooRoulette } from './hooks/useLiveZooRoulette'
 import { useGameToast } from './hooks/useGameToast'
 import {
@@ -60,7 +60,7 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const flyLayerRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, canAfford, refresh } = useWallet()
   const reducedMotion = usePrefersReducedMotion()
   const pageVisible = usePageVisible()
   const { muted, toggle, play } = useZooRouletteSound()
@@ -68,55 +68,14 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
   const [helpOpen, setHelpOpen] = useState(false)
   const [chipStacks, setChipStacks] = useState<ChipStack[]>([])
   const [pools, setPools] = useState<Map<BetZoneId, number>>(() => new Map())
-  const [demoBal, setDemoBal] = useState<number | null>(null)
   const [dismissInsufficient, setDismissInsufficient] = useState(false)
   const stackSeq = useRef(0)
   const lastBotSfx = useRef(0)
   const mountedOk = useRef(true)
   const toast = useGameToast(onMessage)
 
-  const isPreview =
-    typeof window !== 'undefined' && window.location.pathname.includes('/preview/')
-  const liveBalance = isPreview || demoBal != null ? (demoBal ?? DEMO_BALANCE) : balance
-
-  const walletApi = useMemo(
-    () => ({
-      canAfford: (n: number) =>
-        isPreview || demoBal != null ? (demoBal ?? DEMO_BALANCE) >= n : canAfford(n),
-      debit: (n: number) => {
-        if (isPreview || demoBal != null) {
-          setDemoBal((b) => Math.max(0, (b ?? DEMO_BALANCE) - n))
-          return true
-        }
-        return debit(n)
-      },
-      credit: (n: number) => {
-        if (isPreview || demoBal != null) {
-          setDemoBal((b) => (b ?? DEMO_BALANCE) + n)
-          return
-        }
-        void credit(n)
-      },
-    }),
-    [isPreview, demoBal, canAfford, debit, credit],
-  )
-
-  const demoGame = useZooRoulette({
-    assetsReady: ready && isPreview,
-    assetProgress: progress,
-    reducedMotion,
-    canAfford: walletApi.canAfford,
-    debit: walletApi.debit,
-    credit: walletApi.credit,
-    playSfx: play,
-    onToast: toast,
-    onWalletChange: () => {
-      if (!isPreview) void refresh()
-    },
-  })
-
-  const liveGame = useLiveZooRoulette({
-    enabled: !isPreview,
+  const game = useLiveZooRoulette({
+    enabled: true,
     assetsReady: ready,
     assetProgress: progress,
     reducedMotion,
@@ -125,12 +84,19 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
     onToast: toast,
     onWalletChange: () => void refresh(),
   })
-  const game = isPreview ? demoGame : liveGame
 
   const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
     hasActiveBet: game.stake > 0,
     stakeAmount: game.stake,
   })
+
+  useSyncWinHold(
+    'zoo-roulette',
+    game.settledPayout ?? 0,
+    ['CLOSING', 'SPINNING', 'RESULT'].includes(game.state),
+  )
+
+  useAutoAffordableChip(balance, CHIP_VALUES, game.setSelectedChip)
 
   useEffect(() => {
     if (game.insufficient) setDismissInsufficient(false)
@@ -153,14 +119,13 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
   }, [game.state])
 
   useEffect(() => {
-    if (isPreview) return
     const next = new Map<BetZoneId, number>()
     for (const zone of game.bettableZones) {
-      const total = liveGame.cellTotals[zone] ?? 0
+      const total = game.cellTotals[zone] ?? 0
       if (total > 0) next.set(zone, total)
     }
     setPools(next)
-  }, [isPreview, liveGame.cellTotals, liveGame.roundId])
+  }, [game.bettableZones, game.cellTotals, game.roundId])
 
   const toCanvasPoint = useCallback(
     (rect: DOMRect) => {
@@ -263,63 +228,8 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
   )
 
   useEffect(() => {
-    if (!game.bettingOpen || !ready || !pageVisible) return
-    if (!isPreview) return
-    let cancelled = false
-    const timers: number[] = []
-    const zones = game.bettableZones
-
-    const fire = () => {
-      if (cancelled || !canvasRef.current) return
-      const zone = zones[Math.floor(Math.random() * zones.length)]!
-      const denom = CHIP_VALUES[Math.floor(Math.random() * CHIP_VALUES.length)]!
-      const cellEl = canvasRef.current.querySelector(`[data-bet="${zone}"]`) as HTMLElement | null
-      if (!cellEl) return
-      const edge = Math.floor(Math.random() * 4)
-      const from =
-        edge === 0
-          ? { x: Math.random() * DESIGN_W, y: -20 }
-          : edge === 1
-            ? { x: DESIGN_W + 20, y: Math.random() * DESIGN_H * 0.7 }
-            : edge === 2
-              ? { x: Math.random() * DESIGN_W, y: DESIGN_H + 20 }
-              : { x: -20, y: Math.random() * DESIGN_H * 0.7 }
-      const cell = cellEl.getBoundingClientRect()
-      const to = toCanvasPoint(cell)
-      to.x += (Math.random() - 0.5) * Math.min(38, cell.width * 0.38)
-      to.y += (Math.random() - 0.5) * Math.min(26, cell.height * 0.34)
-      spawnFly(
-        ASSET.chip(denom, true),
-        from,
-        to,
-        () => {
-          if (cancelled) return
-          setPools((prev) => {
-            const next = new Map(prev)
-            next.set(zone, (next.get(zone) ?? 0) + denom)
-            return next
-          })
-          pushStack(zone, denom, false)
-        },
-        { soft: true, size: 20 },
-      )
-    }
-
-    for (let i = 0; i < 4; i++) timers.push(window.setTimeout(fire, 180 + i * 200))
-    const interval = window.setInterval(() => {
-      if (Math.random() > 0.32) fire()
-    }, 680)
-    timers.push(interval)
-    return () => {
-      cancelled = true
-      for (const t of timers) window.clearTimeout(t)
-      window.clearInterval(interval)
-    }
-  }, [isPreview, game.bettingOpen, ready, pageVisible, game.bettableZones, spawnFly, toCanvasPoint, pushStack])
-
-  useEffect(() => {
-    const bet = liveGame.publicBet
-    if (isPreview || !bet || !canvasRef.current || !pageVisible) return
+    const bet = game.publicBet
+    if (!bet || !canvasRef.current || !pageVisible) return
     const cellEl = canvasRef.current.querySelector(`[data-bet="${bet.zone}"]`) as HTMLElement | null
     if (!cellEl) return
     const edge = Math.floor(Math.random() * 4)
@@ -342,7 +252,7 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
       () => pushStack(bet.zone, bet.amount, false),
       { soft: true, size: 20 },
     )
-  }, [isPreview, liveGame.publicBet, pageVisible, spawnFly, toCanvasPoint, pushStack])
+  }, [game.publicBet, pageVisible, spawnFly, toCanvasPoint, pushStack])
 
   const onPlace = useCallback(
     (zone: BetZoneId) => {
@@ -523,7 +433,7 @@ export default function ZooRouletteGame({ onMessage }: GameComponentProps) {
           />
 
           <ControlDeck
-            balance={liveBalance}
+            balance={balance}
             playerName="Player"
             selectedChip={game.selectedChip}
             canRebet={game.hasLastRound}

@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import type { CellAggregate } from '../utils/payoutCalculator'
 import { ASSET } from '../constants/rouletteConfig'
+import { formatChipAmount } from '../../lib/formatChipAmount'
 import styles from './BettingCell.module.css'
 
 type Props = {
@@ -14,11 +15,6 @@ type Props = {
   aggregate?: CellAggregate
   botAggregate?: CellAggregate
   onBet: (cellKey: string) => void
-}
-
-function formatChip(n: number) {
-  if (n >= 1000) return `${Math.round(n / 100) / 10}K`.replace('.0K', 'K')
-  return String(n)
 }
 
 function BettingCell({
@@ -61,7 +57,7 @@ function BettingCell({
         <span className={styles.chipStack}>
           <span className={styles.chipVisual}>
             <img src={ASSET.chip(shown.lastChip, true)} alt="" draggable={false} />
-            <span className={styles.chipValue}>{formatChip(shown.amount)}</span>
+            <span className={styles.chipValue}>{formatChipAmount(shown.amount)}</span>
           </span>
         </span>
       )}

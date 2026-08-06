@@ -17,6 +17,7 @@ import {
 import { preloadFortuneGems2Assets } from './constants/assetManifest'
 import { useFortuneGems2Game } from './hooks/useFortuneGems2Game'
 import { useFortuneGems2Sound } from './hooks/useFortuneGems2Sound'
+import { useLiveSlotWinPresentation } from '../../hooks/useLiveSlotWinPresentation'
 import LoadingScreen from './components/LoadingScreen'
 import InfoPanel from './components/InfoPanel'
 import { LuckyWheel, ReelGrid, SpecialPanel } from './components/MachineParts'
@@ -28,7 +29,7 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, debit, credit, canAfford } = useWallet()
   const { muted, toggleMute, play, unlock } = useFortuneGems2Sound()
 
   const [loadProgress, setLoadProgress] = useState(4)
@@ -43,17 +44,22 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
   const [showLoader, setShowLoader] = useState(true)
   const [infoOpen, setInfoOpen] = useState(false)
   const [betPickerOpen, setBetPickerOpen] = useState(false)
+  const liveWin = useLiveSlotWinPresentation('fortune-gems-2')
   const api = useMemo(
     () => ({
       canAfford,
       debit,
       credit,
       getBalance: () => balance,
-      refresh,
+      refresh: liveWin.refresh,
+      holdWin: liveWin.holdWin,
+      releaseWinHold: liveWin.releaseWinHold,
+      beginLiveWin: liveWin.beginLiveWin,
+      endLiveWin: liveWin.endLiveWin,
       play,
       onMessage,
     }),
-    [balance, canAfford, credit, debit, onMessage, play, refresh],
+    [balance, canAfford, credit, debit, liveWin, onMessage, play],
   )
 
   const game = useFortuneGems2Game(api)
@@ -245,22 +251,13 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
             </div>
           </div>
 
-          {showWinOverlay && game.result && (
+          {showWinOverlay && (
             <div className={styles.overlay}>
               <div className={styles.winBurst}>
                 <img
-                  src={game.result.wheelTriggered || game.result.fullBoard ? ASSET.bonusBanner : ASSET.winBanner}
+                  src={game.result?.wheelTriggered || game.result?.fullBoard ? ASSET.bonusBanner : ASSET.winBanner}
                   alt=""
                 />
-                {game.result.basePayout > 0 &&
-                  game.result.multiplier > 1 &&
-                  !game.result.wheelTriggered && (
-                    <div className={styles.winMath}>
-                      <span>{formatMoney(game.result.basePayout)}</span>
-                      <span className={styles.winMathMult}>× {game.result.multiplier}</span>
-                      <span className={styles.winMathEq}>=</span>
-                    </div>
-                  )}
                 <div className={styles.winAmount}>{formatMoney(game.displayWin)}</div>
               </div>
             </div>
@@ -348,7 +345,7 @@ export default function FortuneGems2Game({ onMessage }: GameComponentProps) {
             <div className={styles.stats}>
               <div className={styles.stat}>
                 <span className={styles.statLabel}>BALANCE</span>
-                <span className={styles.statValue}>{formatMoney(game.balanceHold ?? balance)}</span>
+                <span className={styles.statValue}>{formatMoney(balance)}</span>
               </div>
               <div className={styles.stat}>
                 <span className={styles.statLabel}>BET</span>

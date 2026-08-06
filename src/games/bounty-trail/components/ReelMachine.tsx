@@ -41,7 +41,7 @@ function SymbolView({
   goldActivating: boolean
   stagger: number
 }) {
-  const meta = SYMBOL_MAP[id]
+  const meta = SYMBOL_MAP[id] ?? SYMBOL_MAP.A
   const fill = meta.kind === 'character' || meta.kind === 'special' ? 0.96 : 0.9
   return (
     <div

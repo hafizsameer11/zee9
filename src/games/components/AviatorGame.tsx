@@ -4,9 +4,7 @@ import { useWallet } from '../../context/WalletContext'
 import { usePlayerAuth } from '../../api/auth'
 import { sound } from '../../lib/sound'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
-import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
 import type { GameComponentProps } from '../types'
-import { roundLossMessage } from '../lib/roundResult'
 import AviatorArena from './AviatorArena'
 import { connectAviatorSocket } from '../lib/aviatorSocket'
 import {
@@ -208,15 +206,7 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
         }
         if (nextPhase === 'crashed' && prevPhase.current === 'flying') {
           sound.play('crash')
-          const lostWager = slotsRef.current.reduce((sum, slot) => {
-            if (slot.phase === 'active' || slot.phase === 'lost') {
-              return sum + (slot.wager || slot.bet || 0)
-            }
-            return sum
-          }, 0)
-          onMessage?.(
-            lostWager > 0 ? `💥 Crashed! ${roundLossMessage(lostWager)}` : '💥 Crashed!',
-          )
+          onMessage?.('💥 Crashed!')
           void refresh()
         }
         if (nextPhase === 'waiting') {
@@ -384,31 +374,6 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
   const flying = phase === 'flying'
   const waiting = phase === 'waiting'
 
-  const hasActiveBet = slots.some((s) => s.phase === 'active')
-  const activeStake = slots
-    .filter((s) => s.phase === 'active')
-    .reduce((sum, s) => sum + (s.wager || s.bet), 0)
-  const canCashOutLeave = flying && slots.some((s) => s.phase === 'active')
-  const cashOutAmount = slots
-    .filter((s) => s.phase === 'active')
-    .reduce((sum, s) => sum + Math.floor(s.wager * mult * 100) / 100, 0)
-
-  const cashOutAllActive = useCallback(async () => {
-    for (let i = 0; i < slotsRef.current.length; i++) {
-      if (slotsRef.current[i]?.phase === 'active') {
-        await manualCashOut(i)
-      }
-    }
-  }, [manualCashOut])
-
-  const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
-    hasActiveBet,
-    stakeAmount: activeStake,
-    canCashOut: canCashOutLeave,
-    cashOutAmount,
-    onCashOut: cashOutAllActive,
-  })
-
   const sidebarBets = (() => {
     if (sidebarTab === 'top') return [...liveBets].sort((a, b) => b.bet - a.bet)
     if (sidebarTab === 'my') return liveBets.filter((b) => b.isMe)
@@ -425,7 +390,7 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
               <button
                 type="button"
                 className={styles.backBtn}
-                onClick={requestLeave}
+                onClick={() => navigate('/home')}
                 aria-label="Back"
                 data-sfx="whoosh"
               >
@@ -477,7 +442,7 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
               </button>
               {menuOpen && (
                 <div className={styles.menuPanel} role="menu">
-                  <button type="button" className={styles.menuItem} onClick={requestLeave}>
+                  <button type="button" className={styles.menuItem} onClick={() => navigate('/home')}>
                     Exit to lobby
                   </button>
                   <button
@@ -605,7 +570,6 @@ export default function AviatorGame({ bet: defaultBet, onMessage }: GameComponen
       </div>
     </div>
     {showAddCash && <AddCashModal onClose={() => setShowAddCash(false)} />}
-    {LeaveModal}
     </>
   )
 }

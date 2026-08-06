@@ -11,16 +11,7 @@ import { creditInstantBonus } from '../../core/wager.js'
 import { updateAgentship } from '../commission/commission.service.js'
 import { badRequest, conflict, forbidden, unauthorized } from '../../core/errors.js'
 import type { LoginApp } from './auth.schema.js'
-
-/** Walk up the referrer chain and create up to `maxLevels` referral edges. */
-async function buildReferralEdges(tx: Tx, newUserId: string, referredById: string | null, maxLevels = 3) {
-  let ancestorId = referredById
-  for (let level = 1; level <= maxLevels && ancestorId; level++) {
-    await tx.referralEdge.create({ data: { ancestorId, descendantId: newUserId, level } })
-    const parent = await tx.user.findUnique({ where: { id: ancestorId }, select: { referredById: true } })
-    ancestorId = parent?.referredById ?? null
-  }
-}
+import { buildReferralEdges } from '../referrals/referralTree.service.js'
 
 async function createSession(userId: string, meta: { ip?: string; ua?: string }) {
   const session = await prisma.session.create({

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../../api/client'
 import { useWallet } from '../../../context/WalletContext'
+import { usePlayerAuth } from '../../../api/auth'
 import styles from './VipSalaryModal.module.css'
 
 type VipStatus = {
@@ -17,7 +18,7 @@ type VipStatus = {
     weeklySalary: number
     monthlySalary: number
   }
-  levelUp: { claimLevel: number | null; amount: number; canClaim: boolean; label: string }
+  levelUp: { claimLevel: number | null; pendingCount?: number; amount: number; canClaim: boolean; label: string }
   weekly: { amount: number; canClaim: boolean; remainMs: number; remainLabel: string }
   monthly: { amount: number; canClaim: boolean; remainMs: number; remainLabel: string }
   previews: { level: number; locked: boolean; betRebate: number; perk: string }[]
@@ -34,6 +35,7 @@ function fmt(n: number) {
 
 export default function VipSalaryModal({ onClose, onDeposit }: Props) {
   const { refresh } = useWallet()
+  const { refreshPlayer } = usePlayerAuth()
   const [status, setStatus] = useState<VipStatus | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -59,8 +61,13 @@ export default function VipSalaryModal({ onClose, onDeposit }: Props) {
     setMsg(null)
     try {
       const res = await api.post(`/vip/claim/${kind}`)
-      await Promise.all([load(), refresh()])
-      setMsg(`Claimed Rs ${res?.amount ?? ''}`)
+      await Promise.all([load(), refresh(), refreshPlayer()])
+      const amt = Number(res?.amount ?? 0)
+      const extra =
+        kind === 'level-up' && Number(res?.levelsClaimed ?? 0) > 1
+          ? ` (${res.levelsClaimed} levels)`
+          : ''
+      setMsg(`Claimed Rs ${fmt(amt)}${extra}`)
     } catch (e: any) {
       setMsg(e?.message || 'Claim failed')
     } finally {
@@ -90,7 +97,9 @@ export default function VipSalaryModal({ onClose, onDeposit }: Props) {
               disabled={!s?.levelUp.canClaim || busy === 'level-up'}
               onClick={() => void claim('level-up')}
             >
-              {s?.levelUp.canClaim ? `${s.levelUp.label} Get` : `${s?.levelUp.label ?? 'V0'} Get`}
+              {s?.levelUp.canClaim
+                ? `${s.levelUp.label} Get${(s.levelUp.pendingCount ?? 0) > 1 ? ` (${s.levelUp.pendingCount})` : ''}`
+                : `${s?.levelUp.label ?? 'V0'} Get`}
             </button>
           </div>
 
@@ -110,6 +119,9 @@ export default function VipSalaryModal({ onClose, onDeposit }: Props) {
             {s && !s.weekly.canClaim && s.weekly.remainLabel && (
               <p className={styles.timer}>{s.weekly.remainLabel}</p>
             )}
+            {s && s.level < 1 && (
+              <p className={styles.timer}>Deposit Rs 1,000 for V1</p>
+            )}
           </div>
 
           <div className={`${styles.card} ${styles.cardPink}`}>
@@ -126,6 +138,9 @@ export default function VipSalaryModal({ onClose, onDeposit }: Props) {
             </button>
             {s && !s.monthly.canClaim && s.monthly.remainLabel && (
               <p className={styles.timer}>{s.monthly.remainLabel}</p>
+            )}
+            {s && s.level < 1 && (
+              <p className={styles.timer}>Deposit Rs 1,000 for V1</p>
             )}
           </div>
         </div>

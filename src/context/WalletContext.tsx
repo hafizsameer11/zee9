@@ -4,6 +4,7 @@ import { usePlayerAuth } from '../api/auth'
 import { usePlayerWalletRealtime } from '../api/walletRealtime'
 
 type WalletContextValue = {
+  /** Balance shown in the UI (settled minus active win holds). */
   balance: number
   bonus: number
   refresh: () => Promise<void>
@@ -11,20 +12,38 @@ type WalletContextValue = {
   credit: (amount: number) => void
   canAfford: (amount: number) => boolean
   setBalance: (amount: number) => void
+  /** Hide a credited win from the displayed balance until presentation ends. */
+  holdWin: (scopeId: string, amount: number) => void
+  releaseWinHold: (scopeId: string) => void
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null)
 
+function roundMoney(n: number) {
+  return Math.round(n * 100) / 100
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const { player } = usePlayerAuth()
-  const [balance, setBalanceState] = useState(0)
+  const [settledBalance, setSettledBalance] = useState(0)
   const [bonus, setBonus] = useState(0)
+  const [winHolds, setWinHolds] = useState<Record<string, number>>({})
+
+  const totalHold = useMemo(
+    () => Object.values(winHolds).reduce((sum, amount) => sum + amount, 0),
+    [winHolds],
+  )
+
+  const balance = useMemo(
+    () => Math.max(0, roundMoney(settledBalance - totalHold)),
+    [settledBalance, totalHold],
+  )
 
   const refresh = useCallback(async () => {
     if (!getAccess()) return
     try {
       const w = await api.get('/me/wallet')
-      setBalanceState(Number(w.MAIN ?? 0) / 100)
+      setSettledBalance(Number(w.MAIN ?? 0) / 100)
       setBonus(Number(w.BONUS ?? 0) / 100)
     } catch {
       /* ignore */
@@ -35,14 +54,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (player) refresh()
     else {
-      setBalanceState(0)
+      setSettledBalance(0)
       setBonus(0)
+      setWinHolds({})
     }
   }, [player, refresh])
 
   // Live balance when deposit is approved / bets settle (no page refresh needed)
   usePlayerWalletRealtime(!!player, (ev) => {
-    setBalanceState(Number(ev.MAIN ?? 0) / 100)
+    setSettledBalance(Number(ev.MAIN ?? 0) / 100)
     setBonus(Number(ev.BONUS ?? 0) / 100)
   })
 
@@ -65,26 +85,61 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   }, [player, refresh])
 
-  const canAfford = useCallback((amount: number) => amount > 0 && balance >= amount, [balance])
+  const canAfford = useCallback(
+    (amount: number) => amount > 0 && settledBalance >= amount,
+    [settledBalance],
+  )
 
   // Local optimistic helpers (real settlement happens server-side; call refresh() after).
-  const debit = useCallback(
-    (amount: number) => {
-      if (!canAfford(amount)) return false
-      setBalanceState((b) => Math.round((b - amount) * 100) / 100)
-      return true
-    },
-    [canAfford],
-  )
+  const debit = useCallback((amount: number) => {
+    if (amount <= 0) return false
+    let ok = false
+    setSettledBalance((b) => {
+      if (b < amount) return b
+      ok = true
+      return roundMoney(b - amount)
+    })
+    return ok
+  }, [])
+
   const credit = useCallback((amount: number) => {
     if (amount <= 0) return
-    setBalanceState((b) => Math.round((b + amount) * 100) / 100)
+    setSettledBalance((b) => roundMoney(b + amount))
   }, [])
-  const setBalance = useCallback((amount: number) => setBalanceState(Math.max(0, Math.round(amount * 100) / 100)), [])
+
+  const setBalance = useCallback(
+    (amount: number) => setSettledBalance(Math.max(0, roundMoney(amount))),
+    [],
+  )
+
+  const holdWin = useCallback((scopeId: string, amount: number) => {
+    if (!scopeId || amount <= 0) return
+    setWinHolds((holds) => ({ ...holds, [scopeId]: amount }))
+  }, [])
+
+  const releaseWinHold = useCallback((scopeId: string) => {
+    if (!scopeId) return
+    setWinHolds((holds) => {
+      if (!(scopeId in holds)) return holds
+      const next = { ...holds }
+      delete next[scopeId]
+      return next
+    })
+  }, [])
 
   const value = useMemo(
-    () => ({ balance, bonus, refresh, debit, credit, canAfford, setBalance }),
-    [balance, bonus, refresh, debit, credit, canAfford, setBalance],
+    () => ({
+      balance,
+      bonus,
+      refresh,
+      debit,
+      credit,
+      canAfford,
+      setBalance,
+      holdWin,
+      releaseWinHold,
+    }),
+    [balance, bonus, refresh, debit, credit, canAfford, setBalance, holdWin, releaseWinHold],
   )
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>

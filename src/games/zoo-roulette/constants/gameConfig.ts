@@ -83,6 +83,9 @@ export const PAYOUT_MS = 2600
 export const RESET_MS = 900
 export const HISTORY_LIMIT = 12
 
+/** Max distinct zones a player may bet on in one round. */
+export const MAX_BET_POSITIONS = 3
+
 export const DESIGN_W = 896
 export const DESIGN_H = 414
 

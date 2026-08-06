@@ -153,16 +153,17 @@ async function main() {
     { slug: 'wingo', title: 'WinGo', emoji: '🎱', color: '#0d8a5f', category: 'Lottery', winPct: 90, tag: 'hot', plays: 0, ggr: 0n, order: 6 },
     { slug: 'wingo-lottery', title: 'WinGo Lottery', emoji: '🎯', color: '#0a5a62', category: 'Lottery', winPct: 90, tag: 'hot', plays: 0, ggr: 0n, order: 7 },
     { slug: 'roulette', title: 'Roulette', emoji: '🎡', color: '#0a3d2e', category: 'Table', winPct: 90, tag: 'hot', plays: 0, ggr: 0n, order: 8 },
-    { slug: 'car-roulette', title: 'Car Roulette', emoji: '🏎️', color: '#071b44', category: 'Table', winPct: 94, tag: 'new', plays: 0, ggr: 0n, order: 9 },
-    { slug: 'zoo-roulette', title: 'Zoo Roulette', emoji: '🦁', color: '#0a2818', category: 'Table', winPct: 94, tag: 'new', plays: 0, ggr: 0n, order: 10 },
-    { slug: 'dragon-tiger', title: 'Dragon Tiger', emoji: '🐉', color: '#8a2410', category: 'Table', winPct: 93, tag: 'new', plays: 0, ggr: 0n, order: 10 },
+    { slug: 'dragon-tiger', title: 'Dragon Tiger', emoji: '🐉', color: '#8a2410', category: 'Table', winPct: 93, tag: 'new', plays: 0, ggr: 0n, order: 9 },
     { slug: '7up-down', title: '7 Up Down', emoji: '🎲', color: '#1d5c2e', category: 'Table', winPct: 89, plays: 0, ggr: 0n, order: 10 },
     { slug: 'chicken-road', title: 'Chicken Road', emoji: '🐔', color: '#1b4332', category: 'Mini', winPct: 92, tag: 'hot', plays: 0, ggr: 0n, order: 11 },
     { slug: 'money-coming', title: 'Money Coming', emoji: '💵', color: '#2e7d32', category: 'Slots', winPct: 94, tag: 'hot', plays: 0, ggr: 0n, order: 12 },
     { slug: 'fortune-gems-2', title: 'Fortune Gems 2', emoji: '💎', color: '#7b1f2b', category: 'Slots', winPct: 92, tag: 'hot', plays: 0, ggr: 0n, order: 13 },
-    { slug: 'wild-bounty', title: 'Wild Bounty', emoji: '🤠', color: '#bf360c', category: 'Slots', winPct: 93, tag: 'hot', plays: 0, ggr: 0n, order: 14 },
+    { slug: 'bounty-trail', title: 'Bounty Trail', emoji: '🤠', color: '#d84315', category: 'Slots', winPct: 93, tag: 'new', plays: 0, ggr: 0n, order: 14 },
+    { slug: 'wild-bounty', title: 'Wild Bounty', emoji: '🤠', color: '#bf360c', category: 'Slots', winPct: 93, plays: 0, ggr: 0n, order: 15 },
     { slug: 'super-ace', title: 'Super Ace', emoji: '🂡', color: '#6a1b9a', category: 'Slots', winPct: 94, tag: 'hot', plays: 0, ggr: 0n, order: 16 },
     { slug: 'double-fortune', title: 'Double Fortune', emoji: '囍', color: '#8b0000', category: 'Slots', winPct: 94, tag: 'new', plays: 0, ggr: 0n, order: 17 },
+    { slug: 'car-roulette', title: 'Car Roulette', emoji: '🏎️', color: '#1a237e', category: 'Table', winPct: 93, tag: 'new', plays: 0, ggr: 0n, order: 18 },
+    { slug: 'zoo-roulette', title: 'Zoo Roulette', emoji: '🦁', color: '#0a2818', category: 'Table', winPct: 93, tag: 'new', plays: 0, ggr: 0n, order: 19 },
   ]
   for (const g of games) {
     await prisma.game.upsert({
@@ -172,12 +173,6 @@ async function main() {
       create: g as any,
     })
   }
-
-  // Merged into wild-bounty — hide legacy slug from admin / API lobby lists.
-  await prisma.game.updateMany({
-    where: { slug: 'bounty-trail' },
-    data: { enabled: false, title: 'Bounty Trail (merged)' },
-  })
 
   await seedWheel('SPIN')
   await seedWheel('DEPOSIT')

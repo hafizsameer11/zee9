@@ -1,7 +1,7 @@
 import type { Bucket, LedgerTxType, SystemAccount } from '@prisma/client'
 import type { Tx } from '../lib/prisma.js'
 import { AppError } from './errors.js'
-import { trackWalletUser } from './walletPush.js'
+import { trackCommissionUser, trackWalletUser } from './walletPush.js'
 
 export type AccountRef =
   | { userId: string; bucket: Bucket }
@@ -121,14 +121,28 @@ export async function post(tx: Tx, input: PostInput): Promise<{ id: string; crea
     }
   }
 
-  // Track last game activity for welcome-back / return bonus eligibility.
-  if (input.type === 'GAME_BET') {
+  // Realtime referral commission on bets (loss credit) and paid withdrawals (win clawback).
+  if (input.type === 'GAME_BET' || input.type === 'WITHDRAWAL_PAID') {
     const playerIds = new Set<string>()
     for (const leg of input.legs) {
-      if ('userId' in leg.account) playerIds.add(leg.account.userId)
+      if ('userId' in leg.account && leg.account.bucket === 'MAIN') {
+        playerIds.add(leg.account.userId)
+        trackCommissionUser(leg.account.userId)
+      }
+      if (
+        input.type === 'WITHDRAWAL_PAID' &&
+        'userId' in leg.account &&
+        leg.account.bucket === 'FROZEN' &&
+        leg.direction === 'DEBIT'
+      ) {
+        playerIds.add(leg.account.userId)
+        trackCommissionUser(leg.account.userId)
+      }
     }
-    for (const userId of playerIds) {
-      await tx.user.update({ where: { id: userId }, data: { lastPlayedAt: new Date() } })
+    if (input.type === 'GAME_BET') {
+      for (const userId of playerIds) {
+        await tx.user.update({ where: { id: userId }, data: { lastPlayedAt: new Date() } })
+      }
     }
   }
 

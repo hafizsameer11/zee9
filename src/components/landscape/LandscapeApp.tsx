@@ -26,7 +26,7 @@ function isTouchDevice() {
 }
 
 function playGameIdFromPath(pathname: string): string | null {
-  const m = pathname.match(/^\/(?:play|preview)\/([^/]+)/)
+  const m = pathname.match(/^\/play\/([^/]+)/)
   return m?.[1] ?? null
 }
 

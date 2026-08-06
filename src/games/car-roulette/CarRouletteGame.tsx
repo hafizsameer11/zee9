@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useWallet } from '../../context/WalletContext'
 import { sound } from '../../lib/sound'
-import { DEMO_BALANCE } from '../../data/s9Games'
 import type { GameComponentProps } from '../types'
 import {
   getDesignCanvasStyle,
@@ -10,6 +9,8 @@ import {
   useDesignScale,
 } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useSyncWinHold } from '../../hooks/useWinPresentationHold'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
 import {
   ASSET,
   BOARD,
@@ -21,7 +22,6 @@ import {
   type BrandId,
   type ChipValue,
 } from './constants/gameConfig'
-import { useCarRoulette } from './hooks/useCarRoulette'
 import { useLiveCarRoulette } from './hooks/useLiveCarRoulette'
 import { useGameToast } from './hooks/useGameToast'
 import {
@@ -60,7 +60,7 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const flyLayerRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, canAfford, refresh } = useWallet()
   const reducedMotion = usePrefersReducedMotion()
   const pageVisible = usePageVisible()
   const { muted, toggle, play } = useCarRouletteSound()
@@ -68,55 +68,14 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
   const [helpOpen, setHelpOpen] = useState(false)
   const [chipStacks, setChipStacks] = useState<ChipStack[]>([])
   const [pools, setPools] = useState<Map<BrandId, number>>(() => new Map())
-  const [demoBal, setDemoBal] = useState<number | null>(null)
   const [dismissInsufficient, setDismissInsufficient] = useState(false)
   const stackSeq = useRef(0)
   const lastBotSfx = useRef(0)
   const mountedOk = useRef(true)
   const toast = useGameToast(onMessage)
 
-  const isPreview =
-    typeof window !== 'undefined' && window.location.pathname.includes('/preview/')
-  const liveBalance = isPreview || demoBal != null ? (demoBal ?? DEMO_BALANCE) : balance
-
-  const walletApi = useMemo(
-    () => ({
-      canAfford: (n: number) =>
-        isPreview || demoBal != null ? (demoBal ?? DEMO_BALANCE) >= n : canAfford(n),
-      debit: (n: number) => {
-        if (isPreview || demoBal != null) {
-          setDemoBal((b) => Math.max(0, (b ?? DEMO_BALANCE) - n))
-          return true
-        }
-        return debit(n)
-      },
-      credit: (n: number) => {
-        if (isPreview || demoBal != null) {
-          setDemoBal((b) => (b ?? DEMO_BALANCE) + n)
-          return
-        }
-        void credit(n)
-      },
-    }),
-    [isPreview, demoBal, canAfford, debit, credit],
-  )
-
-  const demoGame = useCarRoulette({
-    assetsReady: ready && isPreview,
-    assetProgress: progress,
-    reducedMotion,
-    canAfford: walletApi.canAfford,
-    debit: walletApi.debit,
-    credit: walletApi.credit,
-    playSfx: play,
-    onToast: toast,
-    onWalletChange: () => {
-      if (!isPreview) void refresh()
-    },
-  })
-
-  const liveGame = useLiveCarRoulette({
-    enabled: !isPreview,
+  const game = useLiveCarRoulette({
+    enabled: true,
     assetsReady: ready,
     assetProgress: progress,
     reducedMotion,
@@ -125,18 +84,19 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
     onToast: toast,
     onWalletChange: () => void refresh(),
   })
-  const game = isPreview ? demoGame : liveGame
 
   const { requestLeave, LeaveModal } = useGameLeaveGuard(navigate, {
     hasActiveBet: game.stake > 0,
     stakeAmount: game.stake,
   })
 
-  const deckBalance = useMemo(() => {
-    if (isPreview || demoBal != null) return liveBalance
-    const hold = liveGame.balanceWinHold ?? 0
-    return hold > 0 ? Math.max(0, balance - hold) : balance
-  }, [isPreview, demoBal, liveBalance, balance, liveGame.balanceWinHold])
+  useSyncWinHold(
+    'car-roulette',
+    game.settledPayout ?? 0,
+    ['CLOSING', 'SPINNING', 'RESULT'].includes(game.state),
+  )
+
+  useAutoAffordableChip(balance, CHIP_VALUES, game.setSelectedChip)
 
   useEffect(() => {
     if (game.insufficient) setDismissInsufficient(false)
@@ -160,14 +120,13 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
 
   // The live table pool is authoritative and survives reconnects/page refreshes.
   useEffect(() => {
-    if (isPreview) return
     const next = new Map<BrandId, number>()
     for (const brand of BRANDS) {
-      const total = liveGame.cellTotals[brand.id] ?? 0
+      const total = game.cellTotals[brand.id] ?? 0
       if (total > 0) next.set(brand.id, total)
     }
     setPools(next)
-  }, [isPreview, liveGame.cellTotals, liveGame.roundId])
+  }, [game.cellTotals, game.roundId])
 
   const toCanvasPoint = useCallback(
     (rect: DOMRect) => {
@@ -269,65 +228,10 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
     [reducedMotion, pageVisible, play],
   )
 
-  // Simulated other-player activity during open betting.
-  useEffect(() => {
-    if (!isPreview || !game.bettingOpen || !ready || !pageVisible) return
-    let cancelled = false
-    const timers: number[] = []
-    const brands = BRANDS.map((b) => b.id)
-
-    const fire = () => {
-      if (cancelled || !canvasRef.current) return
-      const brand = brands[Math.floor(Math.random() * brands.length)]!
-      const denom = CHIP_VALUES[Math.floor(Math.random() * CHIP_VALUES.length)]!
-      const cellEl = canvasRef.current.querySelector(`[data-bet="${brand}"]`) as HTMLElement | null
-      if (!cellEl) return
-      const edge = Math.floor(Math.random() * 4)
-      const from =
-        edge === 0
-          ? { x: Math.random() * DESIGN_W, y: -20 }
-          : edge === 1
-            ? { x: DESIGN_W + 20, y: Math.random() * DESIGN_H * 0.7 }
-            : edge === 2
-              ? { x: Math.random() * DESIGN_W, y: DESIGN_H + 20 }
-              : { x: -20, y: Math.random() * DESIGN_H * 0.7 }
-      const cell = cellEl.getBoundingClientRect()
-      const to = toCanvasPoint(cell)
-      to.x += (Math.random() - 0.5) * Math.min(40, cell.width * 0.4)
-      to.y += (Math.random() - 0.5) * Math.min(28, cell.height * 0.35)
-      spawnFly(
-        ASSET.chip(denom, true),
-        from,
-        to,
-        () => {
-          if (cancelled) return
-          setPools((prev) => {
-            const next = new Map(prev)
-            next.set(brand, (next.get(brand) ?? 0) + denom)
-            return next
-          })
-          pushStack(brand, denom, false)
-        },
-        { soft: true, size: 22 },
-      )
-    }
-
-    for (let i = 0; i < 3; i++) timers.push(window.setTimeout(fire, 200 + i * 220))
-    const interval = window.setInterval(() => {
-      if (Math.random() > 0.35) fire()
-    }, 700)
-    timers.push(interval)
-    return () => {
-      cancelled = true
-      for (const t of timers) window.clearTimeout(t)
-      window.clearInterval(interval)
-    }
-  }, [isPreview, game.bettingOpen, ready, pageVisible, spawnFly, toCanvasPoint, pushStack])
-
   // Animate actual bets broadcast by other connected players.
   useEffect(() => {
-    const bet = liveGame.publicBet
-    if (isPreview || !bet || !canvasRef.current || !pageVisible) return
+    const bet = game.publicBet
+    if (!bet || !canvasRef.current || !pageVisible) return
     const cellEl = canvasRef.current.querySelector(`[data-bet="${bet.brand}"]`) as HTMLElement | null
     if (!cellEl) return
     const edge = Math.floor(Math.random() * 4)
@@ -350,7 +254,7 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
       () => pushStack(bet.brand, bet.amount, false),
       { soft: true, size: 22 },
     )
-  }, [isPreview, liveGame.publicBet, pageVisible, spawnFly, toCanvasPoint, pushStack])
+  }, [game.publicBet, pageVisible, spawnFly, toCanvasPoint, pushStack])
 
   const onPlace = useCallback(
     (brand: BrandId) => {
@@ -522,7 +426,7 @@ export default function CarRouletteGame({ onMessage }: GameComponentProps) {
           />
 
           <ControlDeck
-            balance={deckBalance}
+            balance={balance}
             playerName="Player"
             selectedChip={game.selectedChip}
             canRebet={game.hasLastRound}

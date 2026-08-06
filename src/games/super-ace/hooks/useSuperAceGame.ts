@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { roundLossMessage } from '../../lib/roundResult'
 import { DEMO_BALANCE } from '../../../data/s9Games'
 import { isLivePlayer, preconnectSlot, serverSlotSpin } from '../../lib/serverSpin'
 import {
@@ -55,6 +54,10 @@ export type SuperAceGameOpts = Partial<WalletFns> & {
   demo?: boolean
   demoBalance?: number
   reducedMotion?: boolean
+  holdWin?: (amount: number) => void
+  releaseWinHold?: () => void
+  beginLiveWin?: (serverWin: number) => Promise<void>
+  endLiveWin?: () => Promise<void>
 }
 
 function sleep(ms: number) {
@@ -226,7 +229,6 @@ export function useSuperAceGame(opts: SuperAceGameOpts) {
 
       if (result.totalWin > 0) {
         if (!liveSettled) credit(result.totalWin)
-        else void opts.refresh?.()
         onMessage?.(
           result.triggerFreeSpins
             ? `Win ${formatMoney(result.totalWin)} · Free spins!`
@@ -252,9 +254,10 @@ export function useSuperAceGame(opts: SuperAceGameOpts) {
           await countUp(result.totalWin, 400)
           await sleep(turboRef.current ? 120 : 280)
         }
+        if (liveSettled) await opts.endLiveWin?.()
       } else {
         setDisplayWin(0)
-        onMessage?.(roundLossMessage(betRef.current))
+        onMessage?.(null)
         if (liveSettled) void opts.refresh?.()
       }
 
@@ -337,7 +340,7 @@ export function useSuperAceGame(opts: SuperAceGameOpts) {
           try {
             const settled = await serverSlotSpin('super-ace', cost)
             serverWin = settled?.win ?? 0
-            void opts.refresh?.()
+            await opts.beginLiveWin?.(serverWin)
           } catch (e: any) {
             play('error')
             onMessage?.(e?.message || 'Spin failed')

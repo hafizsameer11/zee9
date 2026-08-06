@@ -40,7 +40,6 @@ export const PLAYABLE_GAME_IDS = new Set<string>([
   'double-fortune',
   'car-roulette',
   'zoo-roulette',
-  'jhandi-munda',
 ])
 
 /** Games that stay in true phone portrait (no 90° landscape rotate). */

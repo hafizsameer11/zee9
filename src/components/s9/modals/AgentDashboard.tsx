@@ -77,7 +77,8 @@ function fmtSigned(n: number) {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  const PKT_OFFSET_MS = 5 * 60 * 60 * 1000
+  return new Date(Date.now() + PKT_OFFSET_MS).toISOString().slice(0, 10)
 }
 
 function gameLabel(slug?: string | null) {
@@ -137,7 +138,8 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
     try {
       const t = await api.get(`/referrals/team?date=${encodeURIComponent(d)}`)
       setTeam(t)
-      if (d === todayIso()) setTodayComm(t.commission ?? 0)
+      if (t.date) setDate(t.date)
+      if (d === todayIso() || t.date === todayIso()) setTodayComm(t.commission ?? 0)
     } catch {
       /* ignore */
     }
@@ -208,10 +210,16 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
       .get(`/referrals/members?date=${encodeURIComponent(date)}`)
       .then((res) => {
         const rows = Array.isArray(res) ? res : res?.items || []
-        if (rows.length > 0 || members.length === 0) setMembers(rows)
+        setMembers(rows)
+        if (memberDetail) {
+          const fresh = rows.find((m: Member) => m.id === memberDetail.id && m.level === memberDetail.level)
+          if (fresh) setMemberDetail(fresh)
+        }
       })
-      .catch(() => {})
-  }, [pollTick, showMembers, date, members.length])
+      .catch(() => {
+        /* keep list */
+      })
+  }, [pollTick, showMembers, date, memberDetail?.id, memberDetail?.level])
 
   const copyLink = () => {
     navigator.clipboard?.writeText(data.shareUrl).catch(() => {})
@@ -465,7 +473,17 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
                           <div className={styles.mcRight}>
                             <div>Last login: {fmtDay(m.lastLogin)}</div>
                             <div>Rollover: {fmt(m.rollover ?? m.bet ?? 0)}</div>
-                            <div>Commission: {fmt(m.commission ?? 0)}</div>
+                            <div
+                              className={
+                                (m.commission ?? 0) < 0
+                                  ? styles.negText
+                                  : (m.commission ?? 0) > 0
+                                    ? styles.posText
+                                    : undefined
+                              }
+                            >
+                              Commission: {fmtSigned(m.commission ?? 0)}
+                            </div>
                             <div>Members: {fmt(m.members ?? 0)}</div>
                             <div>Deposit: {fmt(m.deposit ?? 0)}</div>
                             <div className={(m.winLoss ?? 0) < 0 ? styles.negText : (m.winLoss ?? 0) > 0 ? styles.posText : undefined}>
@@ -534,7 +552,17 @@ export default function AgentDashboard({ onClose, data, onToast }: Props) {
                 <p className={(memberDetail.winLoss ?? 0) > 0 ? styles.posText : (memberDetail.winLoss ?? 0) < 0 ? styles.negText : undefined}>
                   Win-loss: {fmtSigned(memberDetail.winLoss ?? 0)}
                 </p>
-                <p>Commission: {fmt(memberDetail.commission ?? 0)}</p>
+                <p
+                  className={
+                    (memberDetail.commission ?? 0) > 0
+                      ? styles.posText
+                      : (memberDetail.commission ?? 0) < 0
+                        ? styles.negText
+                        : undefined
+                  }
+                >
+                  Commission: {fmtSigned(memberDetail.commission ?? 0)}
+                </p>
                 <p>Members: {fmt(memberDetail.members ?? 0)}</p>
                 <p>Rollover: {fmt(memberDetail.rollover ?? memberDetail.bet ?? 0)}</p>
                 <p>Last login: {fmtDay(memberDetail.lastLogin)}</p>

@@ -5,6 +5,8 @@ import type { WingoBetType } from '../engines/wingo'
 import { connectWingoSocket } from '../lib/wingoSocket'
 import type { GameComponentProps } from '../types'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
 import { roundLossMessage, roundWinMessage } from '../lib/roundResult'
 import WingoDesignUI, {
   type BetCounters,
@@ -44,6 +46,7 @@ function betKey(type: WingoBetType, value?: number | null) {
 export default function WingoGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const { balance, refresh, canAfford } = useWallet()
+  const { holdWin, releaseWinHold } = useWinPresentationHold('wingo')
   const revokeBusy = useRef(false)
   const socketRef = useRef<ReturnType<typeof connectWingoSocket> | null>(null)
   const applyStateRef = useRef<(s: any) => void>(() => {})
@@ -52,6 +55,9 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
 
   const [mode, setMode] = useState<WingoMode>('30s')
   const [betAmount, setBetAmount] = useState(10)
+
+  useAutoAffordableChip(balance, CHIPS, setBetAmount)
+
   const [period, setPeriod] = useState('—')
   const [phase, setPhase] = useState<'betting' | 'locked' | 'reveal'>('betting')
   const [deadline, setDeadline] = useState(() => Date.now() + 30_000)
@@ -185,6 +191,7 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
           const wins = serverBets.filter((b) => b.state === 'CASHED_OUT')
           const totalWin = wins.reduce((s, b) => s + (b.payout || 0), 0)
           if (totalWin > 0) {
+            holdWin(totalWin)
             toast(roundWinMessage(totalWin), 2200)
           } else if (serverBets.some((b) => b.state === 'BUST' || b.state === 'CASHED_OUT')) {
             const staked = serverBets
@@ -195,10 +202,11 @@ export default function WingoGame({ onMessage }: GameComponentProps) {
           void refresh()
         }
       } else if (state.phase !== 'reveal') {
+        releaseWinHold()
         setResult(null)
       }
     },
-    [refresh, toast],
+    [holdWin, refresh, releaseWinHold, toast],
   )
   applyStateRef.current = applyState
 

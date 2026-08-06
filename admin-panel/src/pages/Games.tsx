@@ -13,6 +13,22 @@ function profitTone(n: number) {
   return { color: 'inherit' }
 }
 
+function winPctHint(category: string): string {
+  switch (category) {
+    case 'Slots':
+      return 'RTP target — higher = more player returns · 100% = every spin pays at least 1× bet'
+    case 'Mini':
+      return '0% = harsh (forced mine/hazard) · 100% = no forced losses'
+    case 'Crash':
+      return 'Higher = fewer instant crashes · 100% = very player-friendly rounds'
+    case 'Table':
+    case 'Lottery':
+      return 'Higher = outcomes favour players more · 100% = fairest odds'
+    default:
+      return 'Higher = more player wins over time · 100% = fairest odds'
+  }
+}
+
 type LotteryLive = {
   enabled: boolean
   winPct: number
@@ -435,6 +451,360 @@ function CrashOpsPanel({
   )
 }
 
+function SevenUpOps({ showToast }: { showToast: (m: string) => void }) {
+  const [live, setLive] = useState<{
+    period: string | null
+    phase: string | null
+    msLeft: number
+    sum: number | null
+    forcedSum: number | null
+    pendingForce: boolean
+    betCount: number
+    wagered: number
+  } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get('/admin/games/7up-down/live'))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const force = async (sum: number) => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/7up-down/force', { sum })
+      showToast(`7 Up Down forced sum ${sum} (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/7up-down/force/clear')
+      showToast('7 Up Down force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>7 Up Down ops</div>
+          <div className="cell-sub">
+            {live?.period ? `Period ${live.period}` : 'No live round'} · phase <b>{live?.phase ?? '—'}</b> ·{' '}
+            {Math.ceil((live?.msLeft ?? 0) / 1000)}s · bets {live?.betCount ?? 0}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next sum: <b>{live.forcedSum}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12 }}>
+        {Array.from({ length: 11 }, (_, i) => i + 2).map((sum) => (
+          <button
+            key={sum}
+            className={'chip' + (live?.forcedSum === sum ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(sum)}
+          >
+            {sum}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DragonTigerOps({ showToast }: { showToast: (m: string) => void }) {
+  const [live, setLive] = useState<{
+    period: string | null
+    phase: string | null
+    msLeft: number
+    winner: string | null
+    forcedWinner: string | null
+    pendingForce: boolean
+    betCount: number
+    wagered: number
+  } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get('/admin/games/dragon-tiger/live'))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const force = async (winner: 'dragon' | 'tiger' | 'tie') => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/dragon-tiger/force', { winner })
+      showToast(`Dragon Tiger forced ${winner} (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/dragon-tiger/force/clear')
+      showToast('Dragon Tiger force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>Dragon Tiger ops</div>
+          <div className="cell-sub">
+            {live?.period ? `Period ${live.period}` : 'No live round'} · phase <b>{live?.phase ?? '—'}</b> ·{' '}
+            {Math.ceil((live?.msLeft ?? 0) / 1000)}s
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced winner: <b>{live.forcedWinner}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12 }}>
+        {(['dragon', 'tiger', 'tie'] as const).map((w) => (
+          <button
+            key={w}
+            className={'chip' + (live?.forcedWinner === w ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(w)}
+          >
+            {w}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CarRouletteOps({ showToast }: { showToast: (m: string) => void }) {
+  const brands = ['zephyra', 'kavaro', 'nordheim', 'ashlyne', 'taurion', 'regalis', 'scudera', 'vornik']
+  const [live, setLive] = useState<{
+    period: string | null
+    phase: string | null
+    msLeft: number
+    resultBrand: string | null
+    forcedBrand: string | null
+    pendingForce: boolean
+    betCount: number
+    wagered: number
+  } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get('/admin/games/car-roulette/live'))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const force = async (brand: string) => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/car-roulette/force', { brand })
+      showToast(`Car Roulette forced ${brand} (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/car-roulette/force/clear')
+      showToast('Car Roulette force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>Car Roulette ops</div>
+          <div className="cell-sub">
+            {live?.period ? `Period ${live.period}` : 'No live round'} · phase <b>{live?.phase ?? '—'}</b> ·{' '}
+            {Math.ceil((live?.msLeft ?? 0) / 1000)}s · wagered {money(live?.wagered ?? 0)}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next: <b>{live.forcedBrand}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+        {brands.map((b) => (
+          <button
+            key={b}
+            className={'chip' + (live?.forcedBrand === b ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(b)}
+          >
+            {b}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ZooRouletteOps({ showToast }: { showToast: (m: string) => void }) {
+  const animals = ['monkey', 'rabbit', 'lion', 'panda', 'swallow', 'pigeon', 'peacock', 'eagle', 'shark', 'golden_frog']
+  const [live, setLive] = useState<{
+    period: string | null
+    phase: string | null
+    msLeft: number
+    resultAnimal: string | null
+    forcedAnimal: string | null
+    pendingForce: boolean
+    betCount: number
+    wagered: number
+  } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const refresh = async () => {
+    try {
+      setLive(await api.get('/admin/games/zoo-roulette/live'))
+    } catch {
+      /* not seeded */
+    }
+  }
+
+  useEffect(() => {
+    void refresh()
+    const id = window.setInterval(() => void refresh(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  const force = async (animal: string) => {
+    setBusy(true)
+    try {
+      const data = await api.post('/admin/games/zoo-roulette/force', { animal })
+      showToast(`Zoo Roulette forced ${animal} (${data.applied})`)
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Force failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const clear = async () => {
+    setBusy(true)
+    try {
+      await api.post('/admin/games/zoo-roulette/force/clear')
+      showToast('Zoo Roulette force cleared')
+      await refresh()
+    } catch (e: any) {
+      showToast(e?.message || 'Clear failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card card-pad" style={{ marginBottom: 16 }}>
+      <div className="flex gap16" style={{ alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div>
+          <div className="cell-main" style={{ fontSize: 16 }}>Zoo Roulette ops</div>
+          <div className="cell-sub">
+            {live?.period ? `Period ${live.period}` : 'No live round'} · phase <b>{live?.phase ?? '—'}</b> ·{' '}
+            {Math.ceil((live?.msLeft ?? 0) / 1000)}s · wagered {money(live?.wagered ?? 0)}
+          </div>
+          {live?.pendingForce && (
+            <div className="cell-sub" style={{ color: '#c62828', marginTop: 4 }}>
+              Forced next: <b>{live.forcedAnimal}</b>
+            </div>
+          )}
+        </div>
+        <button className="btn btn-outline" disabled={busy} onClick={() => void clear()}>
+          Clear force
+        </button>
+      </div>
+      <div className="chip-row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+        {animals.map((a) => (
+          <button
+            key={a}
+            className={'chip' + (live?.forcedAnimal === a ? ' on' : '')}
+            disabled={busy}
+            onClick={() => void force(a)}
+          >
+            {a.replace('_', ' ')}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Games() {
   const { games, updateGame, addGame, showToast } = useAdmin()
   const [edit, setEdit] = useState<GameRow | null>(null)
@@ -469,6 +839,10 @@ export default function Games() {
       {has('crash') && <CrashOpsPanel slug="crash" title="Crash" showToast={showToast} />}
       {has('aero-x') && <CrashOpsPanel slug="aero-x" title="AeroX" showToast={showToast} />}
       {has('double-crash') && <CrashOpsPanel slug="double-crash" title="Double Crash" showToast={showToast} />}
+      {has('car-roulette') && <CarRouletteOps showToast={showToast} />}
+      {has('zoo-roulette') && <ZooRouletteOps showToast={showToast} />}
+      {has('dragon-tiger') && <DragonTigerOps showToast={showToast} />}
+      {has('7up-down') && <SevenUpOps showToast={showToast} />}
 
       <div className="stat-grid" style={{ marginBottom: 16 }}>
         <div className="card card-pad">
@@ -500,7 +874,7 @@ export default function Games() {
               <tr>
                 <th>Game</th>
                 <th>Category</th>
-                <th style={{ width: 220 }}>Win / Payout %</th>
+                <th style={{ width: 220 }} title="Target RTP (return-to-player). 100% = players break even on average; slots may still have losing spins unless set to 100%.">Win / RTP %</th>
                 <th className="t-right">Plays</th>
                 <th className="t-right">Wagered</th>
                 <th className="t-right">User wins</th>
@@ -633,7 +1007,7 @@ export default function Games() {
           </div>
 
           <div className="fld">
-            <label>Win / Payout percentage <span className="hint">— house edge: 0% = players almost always hit mines · 100% = fair odds · multipliers stay normal</span></label>
+            <label>Win / RTP % <span className="hint">— {winPctHint(edit.category)}</span></label>
             <Range value={edit.winPct} min={0} max={100} onChange={(v) => { updateGame(edit.id, { winPct: v }); setEdit({ ...edit, winPct: v }) }} />
           </div>
 

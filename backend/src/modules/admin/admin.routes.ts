@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { authenticate } from '../../middleware/authenticate.js'
 import { authorize } from '../../middleware/authorize.js'
 import { validate } from '../../middleware/validate.js'
@@ -24,6 +25,7 @@ import { commissionRoutes } from './commissions.routes.js'
 import { bonusAdminRoutes } from './bonuses.admin.routes.js'
 import { ledgerRoutes } from './ledger.routes.js'
 import { createAgent, makeAgent, setReferralAgentActive, createMentor, makeMentor, demoteMentor, resetMentorPassword, resetAgentPassword } from './agents.admin.service.js'
+import { unlinkFromReferralTree } from '../referrals/referralTree.service.js'
 
 export const adminRoutes = Router()
 adminRoutes.use(authenticate, authorize('ADMIN'))
@@ -662,59 +664,77 @@ adminRoutes.post(
   }),
 )
 
+/** Remove user from referral tree (unlink from upline; rebuilds their downline edges). */
+adminRoutes.post(
+  '/users/:id/unlink-referral',
+  requireScope('users'),
+  asyncHandler(async (req, res) => {
+    const result = await unlinkFromReferralTree(req.params.id)
+    await audit(req, 'referral.unlink', 'user', result.id)
+    ok(res, result)
+  }),
+)
+
 /* ---------------- Referral Agents (salary program — not C2C) ---------------- */
+async function listReferralAgentRows(where: Prisma.UserWhereInput) {
+  const agents = await prisma.user.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+    select: {
+      id: true,
+      displayName: true,
+      phone: true,
+      playerNo: true,
+      role: true,
+      referralAgentActive: true,
+      salaryTransferOpen: true,
+      salaryApprovedPaisa: true,
+      walletsFilled: true,
+      createdAt: true,
+      _count: { select: { referrals: true } },
+    },
+  })
+  return Promise.all(
+    agents.map(async (a) => {
+      const c = await prisma.commission.aggregate({ where: { agentId: a.id }, _sum: { amount: true } })
+      const bal = await balances(a.id)
+      const commissionBal = bal.COMMISSION
+      let approved = a.salaryApprovedPaisa
+      if (approved < 0n) approved = 0n
+      if (approved > commissionBal) approved = commissionBal
+      const byLevel = await prisma.referralEdge.groupBy({
+        by: ['level'],
+        where: { ancestorId: a.id },
+        _count: { _all: true },
+      })
+      const levels: Record<number, number> = { 1: 0, 2: 0, 3: 0 }
+      for (const e of byLevel) levels[e.level] = e._count._all
+      return {
+        ...a,
+        salaryApprovedPaisa: approved,
+        referrals: a._count.referrals,
+        commission: c._sum.amount ?? 0n,
+        commissionBalance: commissionBal,
+        salaryApproved: approved,
+        salaryHold: commissionBal - approved,
+        downline: { level3: levels[3], level2: levels[2], level1: levels[1] },
+      }
+    }),
+  )
+}
+
+/** view=agents (default): active referral agents only. view=promoters: referred users not yet agents. */
 adminRoutes.get(
   '/referral-agents',
   requireScope('users'),
-  asyncHandler(async (_req, res) => {
-    const agents = await prisma.user.findMany({
-      where: {
-        role: { notIn: ['MENTOR', 'ADMIN'] },
-        OR: [{ referralAgentActive: true }, { walletsFilled: { gt: 0 } }],
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-      select: {
-        id: true,
-        displayName: true,
-        phone: true,
-        playerNo: true,
-        role: true,
-        referralAgentActive: true,
-        salaryTransferOpen: true,
-        salaryApprovedPaisa: true,
-        walletsFilled: true,
-        createdAt: true,
-        _count: { select: { referrals: true } },
-      },
-    })
-    const withCommission = await Promise.all(
-      agents.map(async (a) => {
-        const c = await prisma.commission.aggregate({ where: { agentId: a.id }, _sum: { amount: true } })
-        const bal = await balances(a.id)
-        const commissionBal = bal.COMMISSION
-        let approved = a.salaryApprovedPaisa
-        if (approved < 0n) approved = 0n
-        if (approved > commissionBal) approved = commissionBal
-        const byLevel = await prisma.referralEdge.groupBy({
-          by: ['level'],
-          where: { ancestorId: a.id },
-          _count: { _all: true },
-        })
-        const levels: Record<number, number> = { 1: 0, 2: 0, 3: 0 }
-        for (const e of byLevel) levels[e.level] = e._count._all
-        return {
-          ...a,
-          referrals: a._count.referrals,
-          commission: toRupees(c._sum.amount ?? 0n),
-          commissionBalance: toRupees(commissionBal),
-          salaryApproved: toRupees(approved),
-          salaryHold: toRupees(commissionBal - approved),
-          downline: { level3: levels[3], level2: levels[2], level1: levels[1] },
-        }
-      }),
-    )
-    ok(res, withCommission)
+  asyncHandler(async (req, res) => {
+    const view = req.query.view === 'promoters' ? 'promoters' : 'agents'
+    const where =
+      view === 'promoters'
+        ? { referralAgentActive: false, walletsFilled: { gt: 0 }, role: 'PLAYER' as const }
+        : { referralAgentActive: true }
+    ok(res, await listReferralAgentRows(where))
   }),
 )
 
@@ -762,23 +782,15 @@ adminRoutes.post(
 )
 
 /**
- * Set how much salary this agent may withdraw (absolute rupees).
- * Cap = current COMMISSION balance. Does NOT open withdraw — use salary-transfer for that.
- * mode=add (default legacy): add amount from hold onto current approved.
- * mode=set: replace approved with exact amount.
+ * Approve additional salary for transfer (from hold → transferable).
+ * amount = rupees to add to approved pool (capped by current COMMISSION − already approved).
  */
 adminRoutes.post(
   '/referral-agents/:id/salary-approve',
   requireScope('users'),
-  validate({
-    body: z.object({
-      amount: z.number().min(0),
-      mode: z.enum(['add', 'set']).optional(),
-    }),
-  }),
+  validate({ body: z.object({ amount: z.number().positive() }) }),
   asyncHandler(async (req, res) => {
     const id = req.params.id
-    const mode = req.body.mode === 'set' ? 'set' : 'add'
     const user = await prisma.user.findUnique({
       where: { id },
       select: { id: true, salaryApprovedPaisa: true, salaryTransferOpen: true, displayName: true, playerNo: true },
@@ -786,44 +798,33 @@ adminRoutes.post(
     if (!user) throw notFound('Agent not found')
     const bal = await balances(id)
     const commissionBal = bal.COMMISSION
-    let currentApproved = user.salaryApprovedPaisa
-    if (currentApproved < 0n) currentApproved = 0n
-    if (currentApproved > commissionBal) currentApproved = commissionBal
-
+    let approved = user.salaryApprovedPaisa
+    if (approved < 0n) approved = 0n
+    if (approved > commissionBal) approved = commissionBal
+    const hold = commissionBal - approved
     const want = toPaisa(req.body.amount)
-    if (want < 0n) throw badRequest('Invalid amount')
-
-    let next: bigint
-    if (mode === 'set') {
-      next = want > commissionBal ? commissionBal : want
-    } else {
-      if (want <= 0n) throw badRequest('Enter amount to approve')
-      const hold = commissionBal - currentApproved
-      if (hold <= 0n) throw badRequest('Nothing on hold to approve')
-      const add = want > hold ? hold : want
-      next = currentApproved + add
-    }
-
+    if (want <= 0n) throw badRequest('Invalid amount')
+    if (hold <= 0n) throw badRequest('Nothing on hold to approve')
+    const add = want > hold ? hold : want
+    const next = approved + add
     await prisma.user.update({
       where: { id },
-      data: { salaryApprovedPaisa: next },
+      data: { salaryApprovedPaisa: next, salaryTransferOpen: true },
     })
     await audit(req, 'referralAgent.salaryApprove', 'user', id, null, {
-      mode,
-      amount: toRupees(want),
+      amount: toRupees(add),
       approved: toRupees(next),
       hold: toRupees(commissionBal - next),
-      withdrawOpen: user.salaryTransferOpen,
     })
     ok(res, {
       id,
       name: user.displayName,
       playerNo: user.playerNo,
       commissionBalance: toRupees(commissionBal),
-      salaryTransferOpen: user.salaryTransferOpen,
+      salaryTransferOpen: true,
       salaryApproved: toRupees(next),
       salaryHold: toRupees(commissionBal - next),
-      approvedNow: toRupees(next > currentApproved ? next - currentApproved : 0n),
+      approvedNow: toRupees(add),
     })
   }),
 )
@@ -1619,6 +1620,153 @@ adminRoutes.post(
     const data = await wingo.clearForce(mode)
     await audit(req, 'wingo.force.clear', 'game', 'wingo', null, { mode })
     kickWingoRealtime(mode)
+    ok(res, data)
+  }),
+)
+
+/* ---------------- Car / Zoo Roulette ops ---------------- */
+adminRoutes.get(
+  '/games/car-roulette/live',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const car = await import('../games/carRoulette.service.js')
+    const { kickCarRouletteRealtime } = await import('../games/carRoulette.realtime.js')
+    const data = await car.getLiveAdmin()
+    kickCarRouletteRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/car-roulette/force',
+  requireScope('config'),
+  validate({ body: z.object({ brand: z.string().min(1) }) }),
+  asyncHandler(async (req, res) => {
+    const car = await import('../games/carRoulette.service.js')
+    const { kickCarRouletteRealtime } = await import('../games/carRoulette.realtime.js')
+    const data = await car.forceNextBrand(req.body.brand as (typeof car.CAR_BRANDS)[number])
+    await audit(req, 'car-roulette.force', 'game', 'car-roulette', null, data)
+    kickCarRouletteRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/car-roulette/force/clear',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const car = await import('../games/carRoulette.service.js')
+    const { kickCarRouletteRealtime } = await import('../games/carRoulette.realtime.js')
+    const data = await car.clearForce()
+    kickCarRouletteRealtime()
+    ok(res, data)
+  }),
+)
+
+adminRoutes.get(
+  '/games/zoo-roulette/live',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const zoo = await import('../games/zooRoulette.service.js')
+    const { kickZooRouletteRealtime } = await import('../games/zooRoulette.realtime.js')
+    const data = await zoo.getLiveAdmin()
+    kickZooRouletteRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/zoo-roulette/force',
+  requireScope('config'),
+  validate({ body: z.object({ animal: z.string().min(1) }) }),
+  asyncHandler(async (req, res) => {
+    const zoo = await import('../games/zooRoulette.service.js')
+    const { kickZooRouletteRealtime } = await import('../games/zooRoulette.realtime.js')
+    const data = await zoo.forceNextAnimal(req.body.animal as import('@prisma/client').ZooRouletteAnimal)
+    await audit(req, 'zoo-roulette.force', 'game', 'zoo-roulette', null, data)
+    kickZooRouletteRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/zoo-roulette/force/clear',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const zoo = await import('../games/zooRoulette.service.js')
+    const { kickZooRouletteRealtime } = await import('../games/zooRoulette.realtime.js')
+    const data = await zoo.clearForce()
+    kickZooRouletteRealtime()
+    ok(res, data)
+  }),
+)
+
+/* ---------------- Dragon Tiger ops ---------------- */
+adminRoutes.get(
+  '/games/dragon-tiger/live',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const dt = await import('../games/dragonTiger.service.js')
+    const { kickDragonTigerRealtime } = await import('../games/dragonTiger.realtime.js')
+    const data = await dt.getLiveAdmin()
+    kickDragonTigerRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/dragon-tiger/force',
+  requireScope('config'),
+  validate({ body: z.object({ winner: z.enum(['dragon', 'tiger', 'tie']) }) }),
+  asyncHandler(async (req, res) => {
+    const dt = await import('../games/dragonTiger.service.js')
+    const { kickDragonTigerRealtime } = await import('../games/dragonTiger.realtime.js')
+    const data = await dt.forceNextWinner(req.body.winner)
+    await audit(req, 'dragon-tiger.force', 'game', 'dragon-tiger', null, data)
+    kickDragonTigerRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/dragon-tiger/force/clear',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const dt = await import('../games/dragonTiger.service.js')
+    const { kickDragonTigerRealtime } = await import('../games/dragonTiger.realtime.js')
+    const data = await dt.clearForce()
+    kickDragonTigerRealtime()
+    ok(res, data)
+  }),
+)
+
+/* ---------------- 7 Up Down ops ---------------- */
+adminRoutes.get(
+  '/games/7up-down/live',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const seven = await import('../games/sevenUp.service.js')
+    const { kickSevenUpRealtime } = await import('../games/sevenUp.realtime.js')
+    const data = await seven.getLiveAdmin()
+    kickSevenUpRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/7up-down/force',
+  requireScope('config'),
+  validate({ body: z.object({ sum: z.number().int().min(2).max(12) }) }),
+  asyncHandler(async (req, res) => {
+    const seven = await import('../games/sevenUp.service.js')
+    const { kickSevenUpRealtime } = await import('../games/sevenUp.realtime.js')
+    const data = await seven.forceNextSum(req.body.sum)
+    await audit(req, '7up-down.force', 'game', '7up-down', null, data)
+    kickSevenUpRealtime()
+    ok(res, data)
+  }),
+)
+adminRoutes.post(
+  '/games/7up-down/force/clear',
+  requireScope('config'),
+  asyncHandler(async (_req, res) => {
+    const seven = await import('../games/sevenUp.service.js')
+    const { kickSevenUpRealtime } = await import('../games/sevenUp.realtime.js')
+    const data = await seven.clearForce()
+    kickSevenUpRealtime()
     ok(res, data)
   }),
 )

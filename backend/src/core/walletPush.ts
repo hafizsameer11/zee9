@@ -11,6 +11,7 @@ export type PendingNotification = {
 
 type WalletPushStore = {
   userIds: Set<string>
+  commissionUserIds: Set<string>
   reason: string
   notifications: PendingNotification[]
   withdrawUpdates: Array<{ userId: string; data: Record<string, unknown> }>
@@ -22,6 +23,7 @@ export const walletPushAls = new AsyncLocalStorage<WalletPushStore>()
 export function createWalletPushStore(reason = 'ledger'): WalletPushStore {
   return {
     userIds: new Set(),
+    commissionUserIds: new Set(),
     reason,
     notifications: [],
     withdrawUpdates: [],
@@ -35,6 +37,13 @@ export function trackWalletUser(userId: string, reason?: string) {
   if (!store) return
   store.userIds.add(userId)
   if (reason) store.reason = reason
+}
+
+/** Track a player whose referral commission should settle after the money tx commits. */
+export function trackCommissionUser(userId: string) {
+  const store = walletPushAls.getStore()
+  if (!store) return
+  store.commissionUserIds.add(userId)
 }
 
 export function queueNotificationPush(n: PendingNotification) {

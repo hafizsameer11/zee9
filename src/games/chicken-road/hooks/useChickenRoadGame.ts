@@ -38,6 +38,8 @@ type Opts = WalletFns & {
   onCollisionAnimate?: (result: StepResult) => Promise<void>
   onCelebrate?: () => Promise<void>
   onResetScene?: () => void
+  holdWin?: (amount: number) => void
+  releaseWinHold?: () => void
 }
 
 function preloadList(urls: readonly string[], onProgress?: (pct: number) => void) {
@@ -86,6 +88,8 @@ export function useChickenRoadGame({
   onCollisionAnimate,
   onCelebrate,
   onResetScene,
+  holdWin,
+  releaseWinHold,
 }: Opts) {
   const [state, setState] = useState<ChickenRoadGameState>('LOADING')
   const [loadProgress, setLoadProgress] = useState(0)
@@ -123,6 +127,10 @@ export function useChickenRoadGame({
   onMessageRef.current = onMessage
   const creditRef = useRef(credit)
   creditRef.current = credit
+  const holdWinRef = useRef(holdWin)
+  holdWinRef.current = holdWin
+  const releaseWinHoldRef = useRef(releaseWinHold)
+  releaseWinHoldRef.current = releaseWinHold
   const animStepRef = useRef(onStepAnimate)
   animStepRef.current = onStepAnimate
   const animColRef = useRef(onCollisionAnimate)
@@ -380,13 +388,14 @@ export function useChickenRoadGame({
             const out = await serviceCashOut({ roundId })
             if (!mountedRef.current) return
             if (out.success && out.payout > 0) {
-              creditRef.current(out.payout)
+              holdWinRef.current?.(out.payout)
               setLastPayout(out.payout)
               setCurrentMult(out.multiplier)
             }
             await celebrateRef.current?.()
             playSfxRef.current?.('win')
             playSfxRef.current?.('coin')
+            releaseWinHoldRef.current?.()
             setState('WIN')
             setStatusText('You win')
             busyRef.current = false
@@ -436,13 +445,14 @@ export function useChickenRoadGame({
         setState('WAITING_FOR_MOVE')
         return
       }
-      if (out.payout > 0) creditRef.current(out.payout)
+      if (out.payout > 0) holdWinRef.current?.(out.payout)
       setLastPayout(out.payout)
       setCurrentMult(out.multiplier)
       setPotentialPayout(out.payout)
       await celebrateRef.current?.()
       playSfxRef.current?.('win')
       playSfxRef.current?.('coin')
+      releaseWinHoldRef.current?.()
       setState('WIN')
       setStatusText('Cashed out')
       busyRef.current = false

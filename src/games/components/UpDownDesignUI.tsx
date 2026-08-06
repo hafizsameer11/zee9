@@ -168,7 +168,7 @@ function TimerRing({ countdown, max }: { countdown: number; max: number }) {
   )
 }
 
-function FlyingChipView({ color, fromX, fromY, toX, toY, delay }: FlyingChip) {
+function FlyingChipView({ value, color, fromX, fromY, toX, toY, delay }: FlyingChip) {
   return (
     <div
       className={styles.flyingChip}
@@ -182,7 +182,7 @@ function FlyingChipView({ color, fromX, fromY, toX, toY, delay }: FlyingChip) {
         } as CSSProperties
       }
     >
-      <TableChipImg color={color} size={26} />
+      <TableChipImg color={color} value={value} size={26} />
     </div>
   )
 }
@@ -335,6 +335,7 @@ export default function UpDownDesignUI({
                           <TableChipImg
                             key={c.id}
                             color={c.color}
+                            value={c.value}
                             size={22 + (c.value >= 500 ? 4 : c.value >= 100 ? 2 : 0)}
                             className={styles.tableChip}
                             style={{

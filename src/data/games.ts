@@ -25,7 +25,6 @@ export const GAMES: Game[] = [
   { id: 'ludo', name: 'Ludo', category: 'casual', emoji: '🎲', players: '4.5k', minBet: 20 },
   { id: 'fruit-party', name: 'Fruit Party', category: 'casual', emoji: '🍒', players: '890', new: true, minBet: 10 },
   { id: 'rummy', name: 'Rummy', category: 'cards', emoji: '♠️', players: '1.5k', minBet: 50 },
-  { id: 'jhandi-munda', name: 'Jhandi Munda', category: 'cards', emoji: '🎰', players: '620', minBet: 20 },
   { id: 'cricket', name: 'Cricket Battle', category: 'sports', emoji: '🏏', players: '2.1k', minBet: 50 },
   { id: 'black-red', name: 'Black Red', category: 'lottery', emoji: '🔴', players: '1.1k', minBet: 10 },
   { id: 'texas', name: 'Texas Cowboys', category: 'cards', emoji: '🤠', players: '430', minBet: 100 },

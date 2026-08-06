@@ -70,9 +70,16 @@ export async function getVipStatus(userId: string) {
   const target = Math.max(1, nextThreshold - prevThreshold)
   const needMore = level >= levels.length - 1 ? 0 : Math.max(0, nextThreshold - deposited)
 
-  const claimLevel = user.vipRewardClaimedLevel + 1
-  const levelUpReady = claimLevel <= level && (levels[claimLevel]?.levelUpReward ?? 0) > 0
-  const levelUpAmount = levelUpReady ? (levels[claimLevel]?.levelUpReward ?? 0) : 0
+  let pendingLevelUps = 0
+  let levelUpAmount = 0
+  for (let l = user.vipRewardClaimedLevel + 1; l <= level; l++) {
+    const reward = levels[l]?.levelUpReward ?? 0
+    if (reward <= 0) continue
+    pendingLevelUps++
+    levelUpAmount += reward
+  }
+  const levelUpReady = pendingLevelUps > 0
+  const claimLevel = levelUpReady ? user.vipRewardClaimedLevel + 1 : null
 
   const now = Date.now()
   const weeklyAmt = cur.weeklySalary
@@ -110,10 +117,15 @@ export async function getVipStatus(userId: string) {
       monthlySalary: monthlyAmt,
     },
     levelUp: {
-      claimLevel: levelUpReady ? claimLevel : null,
+      claimLevel,
+      pendingCount: pendingLevelUps,
       amount: levelUpAmount,
       canClaim: levelUpReady,
-      label: levelUpReady ? `V${claimLevel}` : `V${level}`,
+      label: levelUpReady
+        ? pendingLevelUps > 1
+          ? `V${claimLevel}–V${level}`
+          : `V${claimLevel}`
+        : `V${level}`,
     },
     weekly: {
       amount: weeklyAmt,
@@ -151,18 +163,21 @@ async function creditVipBonus(
   userId: string,
   amountRupees: number,
   note: string,
+  claimKey: string,
 ) {
   const amount = toPaisa(amountRupees)
   if (amount <= 0n) throw unprocessable('Nothing to claim')
-  await post(tx, {
+  const posted = await post(tx, {
     type: 'DAILY_BONUS',
     referenceType: 'vip',
-    referenceId: userId,
+    referenceId: `${claimKey}:${userId}`,
+    idempotencyKey: `vip:${claimKey}:${userId}`,
     legs: [
       { account: { system: 'BONUS_POOL' }, direction: 'DEBIT', amount },
       { account: { userId, bucket: 'BONUS' }, direction: 'CREDIT', amount },
     ],
   })
+  if (!posted.created) throw conflict('Already claimed')
   const { bonusWager } = await getEffectiveWager(userId, tx)
   const bonus = await tx.bonus.create({
     data: {
@@ -190,21 +205,39 @@ export async function claimVipLevelUp(userId: string) {
     if (level !== user.vipLevel) {
       await tx.user.update({ where: { id: userId }, data: { vipLevel: level } })
     }
-    const claimLevel = user.vipRewardClaimedLevel + 1
-    if (claimLevel > level) throw conflict('No level-up reward available')
-    const cfg = levels[claimLevel]
-    if (!cfg || cfg.levelUpReward <= 0) throw conflict('No level-up reward for this level')
-    const credited = await creditVipBonus(
-      tx,
-      userId,
-      cfg.levelUpReward,
-      `VIP V${claimLevel} level-up: Rs ${cfg.levelUpReward}`,
-    )
+
+    let claimLevel = user.vipRewardClaimedLevel + 1
+    let totalAmount = 0
+    let lastClaimed = user.vipRewardClaimedLevel
+    while (claimLevel <= level) {
+      const cfg = levels[claimLevel]
+      if (!cfg || cfg.levelUpReward <= 0) {
+        claimLevel++
+        continue
+      }
+      const credited = await creditVipBonus(
+        tx,
+        userId,
+        cfg.levelUpReward,
+        `VIP V${claimLevel} level-up: Rs ${cfg.levelUpReward}`,
+        `level-up:${claimLevel}`,
+      )
+      totalAmount += credited.amount
+      lastClaimed = claimLevel
+      claimLevel++
+    }
+    if (lastClaimed === user.vipRewardClaimedLevel) throw conflict('No level-up reward available')
+
     await tx.user.update({
       where: { id: userId },
-      data: { vipRewardClaimedLevel: claimLevel, vipLevel: level },
+      data: { vipRewardClaimedLevel: lastClaimed, vipLevel: level },
     })
-    return { kind: 'levelUp' as const, level: claimLevel, ...credited }
+    return {
+      kind: 'levelUp' as const,
+      level: lastClaimed,
+      levelsClaimed: lastClaimed - user.vipRewardClaimedLevel,
+      amount: totalAmount,
+    }
   })
 }
 
@@ -222,11 +255,15 @@ export async function claimVipWeekly(userId: string) {
     if (user.lastVipWeeklyAt && Date.now() < user.lastVipWeeklyAt.getTime() + WEEK_MS) {
       throw conflict('Weekly salary already claimed — wait for the timer')
     }
+    const weekKey = user.lastVipWeeklyAt
+      ? `weekly:${user.lastVipWeeklyAt.toISOString().slice(0, 10)}`
+      : `weekly:first`
     const credited = await creditVipBonus(
       tx,
       userId,
       cfg.weeklySalary,
       `VIP V${level} weekly salary: Rs ${cfg.weeklySalary}`,
+      weekKey,
     )
     await tx.user.update({
       where: { id: userId },
@@ -250,11 +287,15 @@ export async function claimVipMonthly(userId: string) {
     if (user.lastVipMonthlyAt && Date.now() < user.lastVipMonthlyAt.getTime() + MONTH_MS) {
       throw conflict('Monthly salary already claimed — wait for the timer')
     }
+    const monthKey = user.lastVipMonthlyAt
+      ? `monthly:${user.lastVipMonthlyAt.toISOString().slice(0, 7)}`
+      : `monthly:first`
     const credited = await creditVipBonus(
       tx,
       userId,
       cfg.monthlySalary,
       `VIP V${level} monthly salary: Rs ${cfg.monthlySalary}`,
+      monthKey,
     )
     await tx.user.update({
       where: { id: userId },

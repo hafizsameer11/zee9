@@ -10,8 +10,9 @@ import { badRequest, conflict, notFound, unprocessable } from '../../core/errors
 import { notify } from '../../core/notify.js'
 import { depositWagerMet, getEffectiveWager } from '../../core/wager.js'
 import { queueWithdrawUpdate } from '../../core/walletPush.js'
-import { settleCommissionsForUser } from '../commission/commission.daily.js'
+import { queueCommissionSettlement } from '../commission/commission.queue.js'
 import { broadcastWithdrawAvailable } from '../agents/agent.realtime.js'
+import { verifyPassword } from '../../lib/hash.js'
 
 function methodEnabled(s: Awaited<ReturnType<typeof getSettings>>, method: PaymentMethod) {
   if (method === 'JAZZCASH') return s.methodJazzcash
@@ -93,16 +94,31 @@ export async function eligibility(userId: string) {
     wagerRemaining: remaining,
     wagerOk,
     reason,
+    hasWithdrawPin: !!(await prisma.user.findUnique({ where: { id: userId }, select: { withdrawPinHash: true } }))?.withdrawPinHash,
   }
+}
+
+export async function verifyWithdrawPin(userId: string, pin: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { withdrawPinHash: true },
+  })
+  if (!user?.withdrawPinHash) {
+    throw unprocessable('Set a 6-digit withdraw PIN before withdrawing')
+  }
+  const ok = await verifyPassword(pin, user.withdrawPinHash)
+  if (!ok) throw unprocessable('Incorrect withdraw PIN')
 }
 
 export async function create(userId: string, input: {
   amount: number
   method: PaymentMethod
   accountDetails: { number: string; title: string; bank?: string }
+  pin: string
 }) {
   const s = await getSettings()
   if (!methodEnabled(s, input.method)) throw unprocessable('Payment method is disabled')
+  await verifyWithdrawPin(userId, input.pin)
   const amount = toPaisa(input.amount)
   if (amount < toPaisa(s.minWithdraw) || amount > toPaisa(s.maxWithdraw)) {
     throw unprocessable(`Withdrawal must be between ${s.minWithdraw} and ${s.maxWithdraw}`)
@@ -147,6 +163,7 @@ export async function create(userId: string, input: {
       )
     }
 
+    const autoC2c = s.withdrawAutoC2cRelease === true
     const created = await tx.withdrawal.create({
       data: {
         userId,
@@ -154,8 +171,7 @@ export async function create(userId: string, input: {
         method: input.method,
         accountDetails: input.accountDetails,
         status: 'PENDING',
-        /** Go straight to C2C merchant pool — no admin hold gate. */
-        c2cReleased: true,
+        c2cReleased: autoC2c,
         wagerOk,
       },
     })
@@ -180,24 +196,12 @@ export async function create(userId: string, input: {
     return created
   })
 
-  try {
-    const player = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { displayName: true },
-    })
-    const amountRs = toRupees(wd.amount)
-    const methodLabel =
-      wd.method === 'JAZZCASH' ? 'JazzCash' : wd.method === 'EASYPAISA' ? 'Easypaisa' : wd.method
-    broadcastWithdrawAvailable({
-      withdrawalId: wd.id,
-      amount: amountRs,
-      method: methodLabel,
-      playerName: player?.displayName ?? null,
-      title: 'New withdraw request',
-      body: `${player?.displayName || 'Player'} — Rs ${amountRs.toLocaleString('en-PK')} ${methodLabel}. Claim in Pay On Behalf.`,
-    })
-  } catch {
-    /* non-fatal */
+  if (wd.c2cReleased) {
+    try {
+      await notifyMerchantsWithdrawReleased([wd.id])
+    } catch {
+      /* non-fatal */
+    }
   }
 
   return wd
@@ -290,12 +294,18 @@ async function notifyMerchantsWithdrawReleased(ids: string[]) {
 export async function releaseToC2c(input: { count?: number; ids?: string[] }) {
   if (input.ids?.length) {
     const ids = input.ids
-    const result = await prisma.withdrawal.updateMany({
+    const rows = await prisma.withdrawal.findMany({
       where: { id: { in: ids }, status: 'PENDING', c2cReleased: false },
+      select: { id: true },
+    })
+    if (rows.length === 0) return { released: 0, requested: ids.length }
+    const releaseIds = rows.map((r) => r.id)
+    const result = await prisma.withdrawal.updateMany({
+      where: { id: { in: releaseIds }, status: 'PENDING', c2cReleased: false },
       data: { c2cReleased: true },
     })
-    if (result.count > 0) await notifyMerchantsWithdrawReleased(ids)
-    return { released: result.count }
+    if (result.count > 0) await notifyMerchantsWithdrawReleased(releaseIds)
+    return { released: result.count, requested: ids.length }
   }
 
   const count = Math.max(0, Math.floor(Number(input.count) || 0))
@@ -307,18 +317,44 @@ export async function releaseToC2c(input: { count?: number; ids?: string[] }) {
     take: count,
     select: { id: true },
   })
-  if (rows.length === 0) return { released: 0 }
+  if (rows.length === 0) return { released: 0, requested: count }
 
+  const releaseIds = rows.map((r) => r.id)
   const result = await prisma.withdrawal.updateMany({
-    where: { id: { in: rows.map((r) => r.id) }, status: 'PENDING', c2cReleased: false },
+    where: { id: { in: releaseIds }, status: 'PENDING', c2cReleased: false },
     data: { c2cReleased: true },
   })
 
   if (result.count > 0) {
-    await notifyMerchantsWithdrawReleased(rows.map((r) => r.id))
+    await notifyMerchantsWithdrawReleased(releaseIds)
   }
 
   return { released: result.count, requested: count }
+}
+
+/** Re-alert C2C merchants for unclaimed pool withdrawals (no status change). */
+export async function notifyC2cPool(input: { count?: number; ids?: string[] }) {
+  let ids: string[] = []
+  if (input.ids?.length) {
+    const rows = await prisma.withdrawal.findMany({
+      where: { id: { in: input.ids }, status: 'PENDING', c2cReleased: true, agentId: null },
+      select: { id: true },
+    })
+    ids = rows.map((r) => r.id)
+  } else {
+    const count = Math.max(0, Math.floor(Number(input.count) || 0))
+    if (count <= 0) throw badRequest('Enter how many pool withdrawals to notify')
+    const rows = await prisma.withdrawal.findMany({
+      where: { status: 'PENDING', c2cReleased: true, agentId: null },
+      orderBy: { createdAt: 'asc' },
+      take: count,
+      select: { id: true },
+    })
+    ids = rows.map((r) => r.id)
+  }
+  if (ids.length === 0) return { notified: 0 }
+  await notifyMerchantsWithdrawReleased(ids)
+  return { notified: ids.length }
 }
 
 /** Pull unclaimed C2C-pool withdrawals back to admin hold. */
@@ -388,9 +424,9 @@ export async function markPaid(id: string, adminId: string, trxId: string, payou
       status: 'PAID',
       amount: Number(row.amount),
     })
+    queueCommissionSettlement(row.userId)
     return tx.withdrawal.findUniqueOrThrow({ where: { id } })
   })
-  void settleCommissionsForUser(wd.userId).catch(() => {})
   return wd
 }
 

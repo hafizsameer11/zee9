@@ -133,7 +133,7 @@ export default function AccountRecordsModal({ onClose, onHistory, onVip, onToast
   }
 
   const saveWithdrawPin = async () => {
-    if (!/^\d{4,6}$/.test(newPin)) return toast('PIN must be 4–6 digits')
+    if (!/^\d{6}$/.test(newPin)) return toast('PIN must be exactly 6 digits')
     setBusy(true)
     try {
       await api.post('/me/withdraw-pin', {
@@ -355,7 +355,7 @@ export default function AccountRecordsModal({ onClose, onHistory, onVip, onToast
                   type="password"
                   inputMode="numeric"
                   className={styles.pwInput}
-                  placeholder="New PIN (4–6 digits)"
+                  placeholder="New PIN (6 digits)"
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value)}
                 />

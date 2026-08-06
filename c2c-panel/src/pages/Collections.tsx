@@ -6,7 +6,7 @@ import { confirmRemainSec, mmss, payRemainSec, shouldShowConfirmCountdown, shoul
 
 export default function Collections() {
   const nav = useNavigate()
-  const { balance, freeze, collectionsOn, setCollectionsOn, orders: allOrders, accounts, walletAccount } = useStore()
+  const { balance, freeze, collectionsOn, setCollectionsOn, orders: allOrders, accounts } = useStore()
   const [numberFilter, setNumberFilter] = useState('')
   const [methodFilter, setMethodFilter] = useState<'' | 'Jazzcash' | 'Easypaisa'>('')
   const [now, setNow] = useState(Date.now())
@@ -56,10 +56,10 @@ export default function Collections() {
         <div className="card wallet-row" onClick={() => nav('/accounts')} style={{ cursor: 'pointer' }}>
           <span className="wr-k">Wallet Account</span>
           <span className="wr-v">
-            {activeAccount
-              ? `${activeAccount.number}`
-              : walletAccount && walletAccount !== '—'
-                ? walletAccount
+            {!collectionsOn
+              ? 'Collections off'
+              : activeAccount
+                ? activeAccount.number
                 : 'None — tap to set'}{' '}
             &#8250;
           </span>

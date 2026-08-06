@@ -28,7 +28,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/home" element={<RequireAuth><S9Lobby /></RequireAuth>} />
               <Route path="/play/:id" element={<RequireAuth><GamePlay /></RequireAuth>} />
-              <Route path="/preview/:id" element={<GamePlay />} />
+              <Route path="/preview/:id" element={<Navigate to="/login" replace />} />
               <Route path="/pay/:orderNo" element={<RequireAuth><C2cPaymentPage /></RequireAuth>} />
               <Route path="/payment" element={<RequireAuth><C2cPaymentPage /></RequireAuth>} />
               <Route path="*" element={<Navigate to="/" replace />} />

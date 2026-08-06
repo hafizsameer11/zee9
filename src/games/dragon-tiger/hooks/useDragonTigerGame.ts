@@ -36,6 +36,8 @@ type Opts = WalletFns & {
   onMessage?: (msg: string | null) => void
   playSfx?: (id: string) => void
   onWalletChange?: () => void
+  holdWin?: (amount: number) => void
+  releaseWinHold?: () => void
 }
 
 const INITIAL_HISTORY: Winner[] = [
@@ -73,6 +75,8 @@ export function useDragonTigerGame({
   onMessage,
   playSfx,
   onWalletChange,
+  holdWin,
+  releaseWinHold,
 }: Opts) {
   const live = !!getAccess()
   const [state, setState] = useState<DragonTigerGameState>('LOADING')
@@ -110,6 +114,10 @@ export function useDragonTigerGame({
   creditRef.current = credit
   const onWalletChangeRef = useRef(onWalletChange)
   onWalletChangeRef.current = onWalletChange
+  const holdWinRef = useRef(holdWin)
+  holdWinRef.current = holdWin
+  const releaseWinHoldRef = useRef(releaseWinHold)
+  releaseWinHoldRef.current = releaseWinHold
   const reducedRef = useRef(reducedMotion)
   reducedRef.current = reducedMotion
   const socketRef = useRef<ReturnType<typeof connectDragonTigerSocket> | null>(null)
@@ -198,6 +206,8 @@ export function useDragonTigerGame({
       const dCard = toCard(st.dragonCard)
       const tCard = toCard(st.tigerCard)
       const win = st.winner
+      const pendingPayout = st.myPayout ?? 0
+      if (pendingPayout > 0) holdWinRef.current?.(pendingPayout)
 
       setShowStopBanner(true)
       setState('BETTING_CLOSED')
@@ -259,6 +269,7 @@ export function useDragonTigerGame({
                   if (paidAnnounceRef.current !== st.roundId) {
                     paidAnnounceRef.current = st.roundId
                     if (payout > 0) {
+                      releaseWinHoldRef.current?.()
                       setShowVictory(true)
                       setStatusText(`You win ${payout}`)
                       playSfxRef.current?.('win')

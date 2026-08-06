@@ -1,4 +1,10 @@
-import { chance, lossBias, unitRand } from './rtp.js'
+import {
+  chance,
+  forcedLossRate,
+  guaranteedSmallWinPayout,
+  highWinPctInjectRate,
+  unitRand,
+} from './rtp.js'
 
 export const COLS = 6
 export const ROWS = 4
@@ -435,7 +441,7 @@ export function featureNaturalEv(): number {
 }
 
 export function spinBountyTrail(betRupees: number, winPct: number): BountyOutcome {
-  const q = lossBias(naturalEv(), winPct)
+  const q = forcedLossRate(naturalEv(), winPct)
   if (chance(q)) {
     const grid = fillGrid({ forceLoss: true })
     const frame = evaluateFrame(grid, betRupees, 0)
@@ -458,6 +464,21 @@ export function spinBountyTrail(betRupees: number, winPct: number): BountyOutcom
 
   const grid = fillGrid({})
   const frame = evaluateFrame(grid, betRupees, 0)
+
+  if (frame.totalWin <= 0) {
+    const injectP = highWinPctInjectRate(winPct)
+    if (injectP > 0 && chance(injectP)) {
+      const payout = guaranteedSmallWinPayout(betRupees, winPct)
+      return {
+        winRupees: payout,
+        payload: { ...frame, wayWins: [], lineWin: payout, scatterWin: 0, totalWin: payout },
+      }
+    }
+    return {
+      winRupees: 0,
+      payload: frame,
+    }
+  }
 
   if (!frame.triggerFreeSpins) {
     return {
@@ -493,7 +514,7 @@ export function buyBountyFeature(betRupees: number, winPct: number): BountyOutco
   const cost = betRupees * FEATURE_BUY_MULT
   // Natural feature return as fraction of cost
   const naturalFeatureRtp = featureNaturalEv() / FEATURE_BUY_MULT
-  const q = lossBias(Math.max(0.01, naturalFeatureRtp), winPct)
+  const q = forcedLossRate(Math.max(0.01, naturalFeatureRtp), winPct)
 
   if (chance(q)) {
     // Low-value bonus: run free spins but force mostly losses via non-boosted fills

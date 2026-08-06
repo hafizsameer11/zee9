@@ -6,8 +6,7 @@ import { applyPct, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound } from '../../core/errors.js'
 import { notify } from '../../core/notify.js'
 import { queueWithdrawUpdate } from '../../core/walletPush.js'
-import { settleCommissionsForUser } from '../commission/commission.daily.js'
-
+import { queueCommissionSettlement } from '../commission/commission.queue.js'
 function orderNo() {
   return 'PB' + Date.now() + Math.floor(Math.random() * 1000)
 }
@@ -38,13 +37,14 @@ export function listAvailable() {
 export async function claim(withdrawalId: string, agentId: string) {
   const [wd, agent, settings] = await Promise.all([
     prisma.withdrawal.findUnique({ where: { id: withdrawalId } }),
-    prisma.user.findUnique({ where: { id: agentId }, select: { id: true, role: true, agentActive: true } }),
+    prisma.user.findUnique({ where: { id: agentId }, select: { id: true, role: true } }),
     getSettings(),
   ])
   if (!wd) throw notFound('Withdrawal not found')
   if (wd.status !== 'PENDING') throw conflict('Withdrawal is not pending')
   if (!wd.c2cReleased) throw conflict('Withdrawal is not available in the C2C pool')
-  if (!agent || agent.role !== 'AGENT' || !agent.agentActive) throw badRequest('Not an active agent')
+  // Collections toggle (agentActive) only gates deposit routing — merchants can claim payouts anytime.
+  if (!agent || agent.role !== 'AGENT') throw badRequest('Not a merchant account')
 
   const existing = await prisma.collectionOrder.findFirst({
     where: { withdrawalId, status: { in: ['PENDING', 'CHECKING', 'PROCESSING', 'SUCCESS'] } },
@@ -192,11 +192,9 @@ export async function submitPay(orderId: string, agentId: string, trxId: string,
       amount: Number(order.amount),
       trxId: tid,
     })
+    queueCommissionSettlement(wd.userId)
 
-    return { order: await tx.collectionOrder.findUniqueOrThrow({ where: { id: orderId } }), userId: wd.userId }
-  }).then(({ order, userId }) => {
-    void settleCommissionsForUser(userId).catch(() => {})
-    return order
+    return { order: await tx.collectionOrder.findUniqueOrThrow({ where: { id: orderId } }) }
   })
 }
 

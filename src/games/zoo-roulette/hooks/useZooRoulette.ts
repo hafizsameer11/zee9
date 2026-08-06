@@ -4,6 +4,7 @@ import {
   BETTING_SECONDS,
   BETTABLE_ZONES,
   HISTORY_LIMIT,
+  MAX_BET_POSITIONS,
   PAYOUT_MS,
   RESET_MS,
   RESULT_MS,
@@ -236,6 +237,12 @@ export function useZooRoulette(opts: Options) {
   const placeBet = useCallback(
     (zone: BetZoneId, value: ChipValue) => {
       if (state !== 'BETTING') return false
+      const current = betsRef.current
+      if (!current.has(zone) && current.size >= MAX_BET_POSITIONS) {
+        playSfx('error')
+        api.current.onToast?.(`Max ${MAX_BET_POSITIONS} zones per round`, 2000)
+        return false
+      }
       if (!api.current.canAfford(value)) {
         flashInsufficient()
         return false
@@ -259,6 +266,13 @@ export function useZooRoulette(opts: Options) {
 
   const rebet = useCallback(() => {
     if (state !== 'BETTING' || lastBets.size === 0) return false
+    const merged = new Map(betsRef.current)
+    for (const [k, v] of lastBets) merged.set(k, (merged.get(k) ?? 0) + v)
+    if (merged.size > MAX_BET_POSITIONS) {
+      playSfx('error')
+      api.current.onToast?.(`Max ${MAX_BET_POSITIONS} zones per round`, 2000)
+      return false
+    }
     const total = [...lastBets.values()].reduce((a, b) => a + b, 0)
     if (!api.current.canAfford(total)) {
       flashInsufficient()

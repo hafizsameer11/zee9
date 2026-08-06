@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { formatChipAmount } from '../lib/formatChipAmount'
 import styles from './upDownClassic.module.css'
 
 const B = '/games/7up-down/chips'
@@ -38,30 +39,37 @@ export function chipColorForValue(value: number): ChipColor {
 }
 
 export function chipLabel(value: number): string {
-  if (value >= 1000) return `${value / 1000}K`
-  return String(value)
+  return formatChipAmount(value)
 }
 
 /** Round poker chip image for table / flying animation */
 export function TableChipImg({
   color,
+  value,
   size = 28,
   style,
   className = '',
 }: {
   color: ChipColor
+  value: number
   size?: number
   style?: CSSProperties
   className?: string
 }) {
   return (
-    <img
-      src={CHIP_IMG[color]}
-      alt=""
-      draggable={false}
-      className={`${styles.realChipImg} ${className}`}
+    <span
+      className={`${styles.realChipWrap} ${className}`}
       style={{ width: size, height: size, ...style }}
-    />
+      aria-label={chipLabel(value)}
+    >
+      <img
+        src={CHIP_IMG[color]}
+        alt=""
+        draggable={false}
+        className={styles.realChipImg}
+      />
+      <span className={styles.realChipValue}>{chipLabel(value)}</span>
+    </span>
   )
 }
 

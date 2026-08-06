@@ -21,6 +21,7 @@ export async function runMoneyTx<T>(fn: (tx: Tx) => Promise<T>, retries = 3): Pr
     for (let attempt = 0; attempt < retries; attempt++) {
       // Clear queued side-effects between retries so we don't push stale data.
       store.userIds.clear()
+      store.commissionUserIds.clear()
       store.notifications.length = 0
       store.withdrawUpdates.length = 0
       store.depositUpdates.length = 0

@@ -11,7 +11,6 @@ import {
   type RouletteSocketSeat,
   type RouletteSocketState,
 } from '../../lib/rouletteSocket'
-import { roundLossMessage, roundWinMessage, sumBetAmounts } from '../../lib/roundResult'
 import { useRouletteAnimation } from './useRouletteAnimation'
 import { useRouletteBets } from './useRouletteBets'
 
@@ -206,23 +205,23 @@ export function useRouletteGame({
           setWinningNumber(st.result)
         }
 
-        if (spinDone && paidAnnounceRef.current !== st.roundId) {
+        if (st.phase === 'reveal' || spinDone) {
           const payout = st.myPayout ?? 0
-          const staked = sumBetAmounts(st.myBets)
           setLastPayout(payout)
-          paidAnnounceRef.current = st.roundId
-          if (payout > 0) {
-            setStatusText(`You win ${payout}`)
-            playSfxRef.current?.('win')
-            onMessageRef.current?.(roundWinMessage(payout))
-            onWalletChangeRef.current?.()
-          } else if (staked > 0) {
-            setStatusText(roundLossMessage(staked))
-            playSfxRef.current?.('lose')
-            onMessageRef.current?.(roundLossMessage(staked))
-            onWalletChangeRef.current?.()
-          } else {
-            setStatusText('Next round')
+          if (paidAnnounceRef.current !== st.roundId && (st.phase === 'reveal' || spinDone)) {
+            paidAnnounceRef.current = st.roundId
+            if (payout > 0) {
+              setStatusText(`You win ${payout}`)
+              playSfxRef.current?.('win')
+              onMessageRef.current?.(`Won ${payout}`)
+              onWalletChangeRef.current?.()
+            } else if ((st.myBets || []).length > 0) {
+              setStatusText('No win')
+              playSfxRef.current?.('lose')
+              onWalletChangeRef.current?.()
+            } else {
+              setStatusText('Next round')
+            }
           }
         }
       }

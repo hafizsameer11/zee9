@@ -11,6 +11,7 @@ import {
   CAR_LEAD_MS,
   CHIP_VALUES,
   HISTORY_LIMIT,
+  MAX_BET_POSITIONS,
   PAYOUT_MS,
   RESULT_MS,
   SPIN_MS,
@@ -219,6 +220,12 @@ export function useLiveCarRoulette(options: Options) {
         flashInsufficient()
         return false
       }
+      const distinct = new Set((stateRef.current?.myBets ?? []).map((bet) => bet.brand))
+      if (!distinct.has(brand) && distinct.size >= MAX_BET_POSITIONS) {
+        playSfx('error', 0.45)
+        toast(`Max ${MAX_BET_POSITIONS} cars per round`, 2000)
+        return false
+      }
       try {
         await socketRef.current.request('bet', { brand, amount: value })
         api.current.onWalletChange?.()
@@ -278,12 +285,6 @@ export function useLiveCarRoulette(options: Options) {
 
   const settledPayout = server?.myPayout ?? 0
   const displayPayout = gameState === 'PAYOUT' ? settledPayout : 0
-  /** Hide server-credited wins from the balance bar until the payout phase. */
-  const balanceWinHold =
-    settledPayout > 0 &&
-    (gameState === 'CLOSING' || gameState === 'SPINNING' || gameState === 'RESULT')
-      ? settledPayout
-      : 0
 
   return {
     state: gameState,
@@ -307,7 +308,6 @@ export function useLiveCarRoulette(options: Options) {
     history,
     payout: displayPayout,
     settledPayout,
-    balanceWinHold,
     roundId: server?.period ?? 'SYNC',
     carPass,
     insufficient,

@@ -96,6 +96,7 @@ export default function Withdrawals() {
     releaseWithdrawalsToC2c,
     recallWithdrawalsFromC2c,
     releaseWithdrawalIdsToC2c,
+    notifyC2cPool,
     settings,
     patchSettings,
   } = useAdmin()
@@ -253,7 +254,24 @@ export default function Withdrawals() {
 
       <div className="card card-pad" style={{ marginBottom: 24 }}>
         <h3 className="section-title">Withdraw status</h3>
-        <p className="section-sub">New player withdraws enter the C2C pool automatically. Use Send/Recall only if you need to move items between admin and C2C.</p>
+        <p className="section-sub">
+          {s.withdrawAutoC2cRelease
+            ? 'Auto-C2C is ON — new withdraws go straight to merchants. Use Transfer only after Recall from pool.'
+            : 'Auto-C2C is OFF — new withdraws wait on admin hold until you transfer them to C2C.'}
+        </p>
+        <div className="field-row" style={{ marginTop: 12 }}>
+          <div className="fr-info">
+            <b>Auto-send new withdraws to C2C</b>
+            <span>OFF = admin hold first (use Transfer to C2C). ON = merchants see new withdraws immediately.</span>
+          </div>
+          <div className="fr-control">
+            <button
+              className={'sw' + (s.withdrawAutoC2cRelease ? ' on' : '')}
+              onClick={() => patchSettings({ withdrawAutoC2cRelease: !s.withdrawAutoC2cRelease })}
+              type="button"
+            />
+          </div>
+        </div>
         <div className="flex gap8" style={{ flexWrap: 'wrap', marginTop: 12 }}>
           <Pill tone="amber">Pending hold {pendingHoldAll.length}</Pill>
           <Pill tone="violet">In C2C pool {pendingC2cAll.length}</Pill>
@@ -307,9 +325,19 @@ export default function Withdrawals() {
           <button className="btn btn-ghost" disabled={busy || pendingC2cAll.length === 0} onClick={() => void recallFromC2c()}>
             Recall {recallCount}
           </button>
+          <button
+            className="btn btn-outline"
+            disabled={busy || pendingC2cAll.length === 0}
+            onClick={() => void notifyC2cPool(Math.min(pendingC2cAll.length, recallCount) || pendingC2cAll.length)}
+            title="Re-alert C2C merchants for pool withdrawals"
+          >
+            Notify merchants
+          </button>
         </div>
         <p className="section-sub" style={{ marginTop: 10 }}>
-          Example: 500 pending on hold → send 300 to C2C → pay the other 200 yourself (Pay / Reject).
+          {s.withdrawAutoC2cRelease
+            ? 'With auto-C2C on, Transfer only moves items you recalled from the pool back to merchants.'
+            : 'Example: 500 on admin hold → transfer 300 to C2C → pay the other 200 yourself (Pay / Reject).'}
         </p>
       </div>
 
@@ -396,7 +424,9 @@ export default function Withdrawals() {
               {pendingC2c.length === 0 && (
                 <tr>
                   <td colSpan={8} className="muted" style={{ textAlign: 'center', padding: 24 }}>
-                    Nothing in C2C pool — transfer from admin hold above
+                    {s.withdrawAutoC2cRelease
+                      ? 'Nothing in C2C pool right now — new withdraws appear here automatically'
+                      : 'Nothing in C2C pool — transfer from admin hold above'}
                   </td>
                 </tr>
               )}

@@ -66,6 +66,9 @@ type Opts = WalletFns & {
   playSfx: (id: BountySfx, volume?: number) => void
   onMessage?: (msg: string | null) => void
   reducedMotion?: boolean
+  beginLiveWin?: (serverWin: number) => Promise<void>
+  endLiveWin?: () => Promise<void>
+  gameId?: string
 }
 
 type ServerFrame = {
@@ -88,9 +91,23 @@ function sleep(ms: number) {
   return new Promise<void>((r) => setTimeout(r, ms))
 }
 
+function normalizeCellId(id: string): Cell['id'] {
+  if (id === '10') return 'T'
+  return id as Cell['id']
+}
+
+function normalizeGrid(grid: Cell[][]): Cell[][] {
+  return grid.map((col) =>
+    col.map((cell) => ({
+      ...cell,
+      id: normalizeCellId(String(cell.id)),
+    })),
+  )
+}
+
 function frameToResult(frame: ServerFrame): SpinResult {
   return {
-    grid: frame.grid,
+    grid: normalizeGrid(frame.grid),
     wayWins: frame.wayWins || [],
     lineWin: frame.lineWin || 0,
     scatterCount: frame.scatterCount || 0,
@@ -104,12 +121,24 @@ function frameToResult(frame: ServerFrame): SpinResult {
   }
 }
 
-function gameSlug(): 'wild-bounty' | 'bounty-trail' {
-  return 'wild-bounty'
+function resolveSlotSlug(gameId?: string): 'wild-bounty' | 'bounty-trail' {
+  return gameId === 'bounty-trail' ? 'bounty-trail' : 'wild-bounty'
 }
 
 export function useBountyTrailGame(opts: Opts) {
-  const { canAfford, debit, credit, refresh, playSfx, onMessage, reducedMotion } = opts
+  const {
+    canAfford,
+    debit,
+    credit,
+    refresh,
+    playSfx,
+    onMessage,
+    reducedMotion,
+    beginLiveWin,
+    endLiveWin,
+    gameId,
+  } = opts
+  const slotSlug = resolveSlotSlug(gameId)
   const busy = useRef(false)
   const autoStop = useRef(false)
 
@@ -154,8 +183,8 @@ export function useBountyTrailGame(opts: Opts) {
   const pendingFreeSpins = useRef<ServerFrame[]>([])
 
   useEffect(() => {
-    preconnectSlot(gameSlug())
-  }, [])
+    preconnectSlot(slotSlug)
+  }, [slotSlug])
 
   useEffect(() => {
     if (phase !== 'ready' || spinning || modal) return
@@ -218,8 +247,9 @@ export function useBountyTrailGame(opts: Opts) {
   )
 
   const presentWin = useCallback(
-    async (result: SpinResult, opts?: { creditLocal?: boolean }) => {
+    async (result: SpinResult, presentOpts?: { creditLocal?: boolean }) => {
       const win = result.totalWin
+      const liveSettled = !presentOpts?.creditLocal
       setLastWin(win)
       const cells = new Set<string>()
       result.wayWins.forEach((w) => w.positions.forEach((p) => cells.add(`${p.col}:${p.row}`)))
@@ -247,8 +277,9 @@ export function useBountyTrailGame(opts: Opts) {
           playSfx('win', 0.4)
         }
         await countUpWin(win)
-        if (opts?.creditLocal) credit(win)
+        if (presentOpts?.creditLocal) credit(win)
         await sleep(tier === 'big' ? 1400 : tier === 'medium' ? 700 : 380)
+        if (liveSettled) await endLiveWin?.()
         setWinningCells(new Set())
       } else {
         setDisplayWin(0)
@@ -257,7 +288,7 @@ export function useBountyTrailGame(opts: Opts) {
         onMessage?.(roundLossStatus(staked))
       }
     },
-    [countUpWin, credit, onMessage, playSfx, reducedMotion],
+    [countUpWin, credit, endLiveWin, onMessage, playSfx, reducedMotion],
   )
 
   const animateReelsTo = useCallback(
@@ -273,7 +304,8 @@ export function useBountyTrailGame(opts: Opts) {
         stops[i] = true
         setStoppingReels([...stops])
         playSfx('stop', 0.25)
-        const col = result.grid[i]!
+        const col = result.grid[i]
+        if (!col?.length) continue
         if (col.some((c) => c.id === 'scatter' || c.id === 'wild')) {
           playSfx(col.some((c) => c.id === 'scatter') ? 'scatter' : 'wild', 0.4)
         }
@@ -379,7 +411,7 @@ export function useBountyTrailGame(opts: Opts) {
 
       try {
         if (live && !free) {
-          const settled = await serverSlotSpin(gameSlug(), currentBet)
+          const settled = await serverSlotSpin(slotSlug, currentBet)
           if (!settled) throw new Error('Not authenticated')
           const payload = settled.payload as unknown as ServerFrame
           if (!payload?.grid) throw new Error('Invalid spin payload')
@@ -388,7 +420,7 @@ export function useBountyTrailGame(opts: Opts) {
           result.totalWin = Number(settled.win ?? payload.featureTotal ?? payload.totalWin ?? 0)
           freeSpinFrames = payload.freeSpins
           featureTotal = payload.featureTotal
-          await refresh?.()
+          await beginLiveWin?.(Number(settled.win ?? result.totalWin ?? 0))
         } else {
           // Preview / demo path — local math
           if (!free) {
@@ -598,7 +630,7 @@ export function useBountyTrailGame(opts: Opts) {
     if (live) {
       busy.current = true
       try {
-        const settled = await serverSlotBuyFeature(gameSlug(), currentBet)
+        const settled = await serverSlotBuyFeature(slotSlug, currentBet)
         if (!settled) throw new Error('Not authenticated')
         const payload = settled.payload as unknown as ServerFrame
         const frames = payload.freeSpins || []
@@ -620,7 +652,7 @@ export function useBountyTrailGame(opts: Opts) {
           if (featureWin > 0) onMessage?.(`Feature win ${formatMoney(featureWin)}`)
         } finally {
           if (settlementId) {
-            await serverSlotCompleteFeatureBuy(gameSlug(), settlementId)
+            await serverSlotCompleteFeatureBuy(slotSlug, settlementId)
           }
           await refresh?.()
           busy.current = false

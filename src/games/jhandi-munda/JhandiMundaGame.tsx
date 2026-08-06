@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useWallet } from '../../context/WalletContext'
 import Zee9LoadingScreen from '../../components/Zee9LoadingScreen'
 import { type JhandiSymbol } from '../engines/dice'
 import { getDesignCanvasStyle, getDesignScaleShellStyle, useDesignScale } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useAutoAffordableChip } from '../lib/maxAffordableChip'
 import type { GameComponentProps } from '../types'
 import { BOOT_PRELOAD, avatarImg, CHIP_IMG_SM, IMG } from './assets'
 import { formatAmount } from './chips'
@@ -41,12 +41,32 @@ function preloadUrls(urls: string[]): Promise<void> {
   ).then(() => undefined)
 }
 
+const PRACTICE_BALANCE = 10_000
+
 export default function JhandiMundaGame({ bet: defaultBet, onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const wallet = useWallet()
+  const [practiceBal, setPracticeBal] = useState(PRACTICE_BALANCE)
+  const wallet = useMemo(
+    () => ({
+      balance: practiceBal,
+      canAfford: (n: number) => n > 0 && practiceBal >= n,
+      debit: (n: number) => {
+        if (n <= 0 || practiceBal < n) return false
+        setPracticeBal(Math.round((practiceBal - n) * 100) / 100)
+        return true
+      },
+      credit: (n: number) => {
+        if (n <= 0) return
+        setPracticeBal((b) => Math.round((b + n) * 100) / 100)
+      },
+      holdWin: () => {},
+      releaseWinHold: () => {},
+    }),
+    [practiceBal],
+  )
   const zoneRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const trayRef = useRef<HTMLDivElement>(null)
   const scaleRef = useRef(1)
@@ -86,6 +106,8 @@ export default function JhandiMundaGame({ bet: defaultBet, onMessage }: GameComp
     hasActiveBet: game.myStake > 0,
     stakeAmount: game.myStake,
   })
+
+  useAutoAffordableChip(wallet.balance, CHIP_VALUES, game.setBetAmount)
 
   const centerOf = useCallback((el: HTMLElement | null) => {
     const scene = sceneRef.current
@@ -277,7 +299,10 @@ export default function JhandiMundaGame({ bet: defaultBet, onMessage }: GameComp
               <button type="button" className={styles.backBtn} onClick={requestLeave} aria-label="Back">
                 <img src={IMG.btnBack} alt="" draggable={false} />
               </button>
-              <div className={styles.balance}>PKR {formatAmount(wallet.balance)}</div>
+              <div className={styles.balance}>
+                <span className={styles.practiceTag}>Practice</span>
+                PKR {formatAmount(wallet.balance)}
+              </div>
             </header>
 
             <div className={styles.fxLayer}>

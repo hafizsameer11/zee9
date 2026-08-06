@@ -9,18 +9,12 @@ import { attachDoubleCrashRealtime, stopDoubleCrashRealtime } from './modules/ga
 import { attachWingoRealtime, stopWingoRealtime } from './modules/games/wingo.realtime.js'
 import { attachLotteryRealtime, stopLotteryRealtime } from './modules/games/wingoLottery.realtime.js'
 import { attachRouletteRealtime, stopRouletteRealtime } from './modules/games/roulette.realtime.js'
-import {
-  attachCarRouletteRealtime,
-  stopCarRouletteRealtime,
-} from './modules/games/carRoulette.realtime.js'
-import {
-  attachZooRouletteRealtime,
-  stopZooRouletteRealtime,
-} from './modules/games/zooRoulette.realtime.js'
 import { attachDragonTigerRealtime, stopDragonTigerRealtime } from './modules/games/dragonTiger.realtime.js'
 import { attachSevenUpRealtime, stopSevenUpRealtime } from './modules/games/sevenUp.realtime.js'
 import { attachMinesRealtime, stopMinesRealtime } from './modules/games/mines.realtime.js'
 import { attachChickenRoadRealtime, stopChickenRoadRealtime } from './modules/games/chickenRoad.realtime.js'
+import { attachCarRouletteRealtime, stopCarRouletteRealtime } from './modules/games/carRoulette.realtime.js'
+import { attachZooRouletteRealtime, stopZooRouletteRealtime } from './modules/games/zooRoulette.realtime.js'
 import { attachSlotRealtime, stopSlotRealtime } from './modules/games/slot.realtime.js'
 import { attachGameWsUpgrade } from './modules/games/gameWsRouter.js'
 import { attachAgentRealtime, stopAgentRealtime } from './modules/agents/agent.realtime.js'
@@ -31,7 +25,6 @@ import {
   startDailyCommissionSweeper,
   stopDailyCommissionSweeper,
 } from './modules/commission/commission.daily.js'
-import { releaseStuckDepositBonuses } from './core/wager.js'
 
 async function main() {
   await prisma.$connect()
@@ -47,12 +40,12 @@ async function main() {
   attachWingoRealtime(server)
   attachLotteryRealtime(server)
   attachRouletteRealtime(server)
-  attachCarRouletteRealtime(server)
-  attachZooRouletteRealtime(server)
   attachDragonTigerRealtime(server)
   attachSevenUpRealtime(server)
   attachMinesRealtime(server)
   attachChickenRoadRealtime(server)
+  attachCarRouletteRealtime(server)
+  attachZooRouletteRealtime(server)
   attachSlotRealtime(server)
   attachAgentRealtime(server)
   attachPlayerRealtime(server)
@@ -60,7 +53,6 @@ async function main() {
   startDepositExpirySweeper()
   startPayoutHoldSweeper()
   startDailyCommissionSweeper()
-  void releaseStuckDepositBonuses()
 
   const shutdown = async (sig: string) => {
     logger.info(`${sig} received, shutting down`)
@@ -74,12 +66,12 @@ async function main() {
     stopWingoRealtime()
     stopLotteryRealtime()
     stopRouletteRealtime()
-    stopCarRouletteRealtime()
-    stopZooRouletteRealtime()
     stopDragonTigerRealtime()
     stopSevenUpRealtime()
     stopMinesRealtime()
     stopChickenRoadRealtime()
+    stopCarRouletteRealtime()
+    stopZooRouletteRealtime()
     stopSlotRealtime()
     stopAgentRealtime()
     stopPlayerRealtime()

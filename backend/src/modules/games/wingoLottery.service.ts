@@ -6,7 +6,7 @@ import { post, getBalances } from '../../core/ledger.js'
 import { toPaisa, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { recordWagerAndRelease } from '../../core/wager.js'
-import { accrueForLoss } from '../commission/commission.service.js'
+import { accrueForLoss, clawbackForWin } from '../commission/commission.service.js'
 
 const GAME_SLUG = 'wingo-lottery'
 
@@ -173,6 +173,12 @@ async function settleRound(roundId: string, winPct: number) {
             { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: payout },
             { account: { userId: bet.userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: payout },
           ],
+        })
+        await clawbackForWin(tx, {
+          userId: bet.userId,
+          winAmount: payout,
+          referenceType: 'lottery-win',
+          referenceId: bet.id,
         })
         await tx.lotteryBet.update({
           where: { id: bet.id },

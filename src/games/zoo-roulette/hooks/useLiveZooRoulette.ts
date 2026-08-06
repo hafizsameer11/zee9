@@ -9,6 +9,7 @@ import {
   ANIMAL_BY_ID,
   BETTING_SECONDS,
   HISTORY_LIMIT,
+  MAX_BET_POSITIONS,
   PAYOUT_MS,
   RESULT_MS,
   REVEAL_LEAD_MS,
@@ -211,6 +212,12 @@ export function useLiveZooRoulette(options: Options) {
         flashInsufficient()
         return false
       }
+      const distinct = new Set((stateRef.current?.myBets ?? []).map((bet) => bet.zone))
+      if (!distinct.has(zone) && distinct.size >= MAX_BET_POSITIONS) {
+        playSfx('error', 0.45)
+        toast(`Max ${MAX_BET_POSITIONS} zones per round`, 2000)
+        return false
+      }
       try {
         await socketRef.current.request('bet', { zone, amount: value })
         api.current.onWalletChange?.()
@@ -269,6 +276,9 @@ export function useLiveZooRoulette(options: Options) {
   const winningSlot =
     server?.phase === 'reveal' && server.resultSlot != null ? server.resultSlot : null
 
+  const settledPayout = server?.myPayout ?? 0
+  const displayPayout = gameState === 'PAYOUT' ? settledPayout : 0
+
   return {
     state: gameState,
     statusText: status === 'open' ? (server?.canBet ? 'PLACE YOUR BETS' : 'RESULT') : 'CONNECTING',
@@ -289,7 +299,8 @@ export function useLiveZooRoulette(options: Options) {
     winningSlot,
     winner,
     history,
-    payout: server?.myPayout ?? 0,
+    payout: displayPayout,
+    settledPayout,
     roundId: server?.period ?? 'SYNC',
     revealAnimal: winner,
     insufficient,

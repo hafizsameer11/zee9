@@ -14,7 +14,7 @@ cd /var/www/zee9 && npm run build && systemctl reload nginx
 Verify with:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://zee9.roadmaster.pro/preview/<game-id>
+curl -s -o /dev/null -w "%{http_code}\n" https://zee9.roadmaster.pro/
 ```
 
 Do this every time — do not leave changes only in the source tree or Vite dev server.

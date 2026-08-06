@@ -8,6 +8,7 @@ import {
   useDesignScale,
 } from '../hooks/useDesignScale'
 import { useGameLeaveGuard } from '../hooks/useGameLeaveGuard'
+import { useWinPresentationHold } from '../../hooks/useWinPresentationHold'
 import { DESIGN_H, DESIGN_W, SCENE_H } from './constants/gameConfig'
 import { useChickenRoadGame } from './hooks/useChickenRoadGame'
 import { useChickenRoadSound } from './hooks/useChickenRoadSound'
@@ -77,6 +78,8 @@ export default function ChickenRoadGame({ onMessage }: GameComponentProps) {
     })
   }, [])
 
+  const { holdWin, releaseWinHold } = useWinPresentationHold('chicken-road')
+
   const game = useChickenRoadGame({
     canAfford,
     debit,
@@ -87,6 +90,8 @@ export default function ChickenRoadGame({ onMessage }: GameComponentProps) {
     onCollisionAnimate,
     onCelebrate,
     onResetScene,
+    holdWin,
+    releaseWinHold,
     // Stay in LOADING until Pixi road is painted (not just image cache warm).
     assetsReady: sceneReady,
   })

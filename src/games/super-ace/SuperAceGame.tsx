@@ -30,7 +30,9 @@ import {
 } from './constants/layoutConfig'
 import { preloadSuperAceAssets } from './constants/assetManifest'
 import { useSuperAceGame } from './hooks/useSuperAceGame'
+import { useLiveSlotWinPresentation } from '../../hooks/useLiveSlotWinPresentation'
 import { useSuperAceSound } from './hooks/useSuperAceSound'
+import { isLivePlayer } from '../lib/serverSpin'
 import LoadingFlow from './components/LoadingFlow'
 import CardBoard from './components/CardBoard'
 import { BuyBonusPanel, PaytablePanel, SuperWinOverlay } from './components/Overlays'
@@ -42,7 +44,7 @@ export default function SuperAceGame({ onMessage }: GameComponentProps) {
   const navigate = useNavigate()
   const viewportRef = useRef<HTMLDivElement>(null)
   const layout = useDesignScale(viewportRef, DESIGN_W, DESIGN_H)
-  const { balance, debit, credit, canAfford, refresh } = useWallet()
+  const { balance, debit, credit, canAfford } = useWallet()
   const { muted, toggleMute, play, playCombo, unlock, startAmbience } = useSuperAceSound()
 
   const [loadProgress, setLoadProgress] = useState(4)
@@ -58,17 +60,24 @@ export default function SuperAceGame({ onMessage }: GameComponentProps) {
     }
   }, [])
 
+  const liveWin = useLiveSlotWinPresentation('super-ace')
+  const livePlay = isLivePlayer()
+
   const api = useMemo(
     () => ({
       canAfford,
       debit,
       credit,
-      refresh,
+      refresh: liveWin.refresh,
       play,
       playCombo,
       onMessage,
+      holdWin: liveWin.holdWin,
+      releaseWinHold: liveWin.releaseWinHold,
+      beginLiveWin: liveWin.beginLiveWin,
+      endLiveWin: liveWin.endLiveWin,
     }),
-    [canAfford, credit, debit, onMessage, play, playCombo, refresh],
+    [canAfford, credit, debit, liveWin, onMessage, play, playCombo],
   )
 
   const game = useSuperAceGame(api)
@@ -175,24 +184,26 @@ export default function SuperAceGame({ onMessage }: GameComponentProps) {
               style={{ left: LOGO_X, top: BAND.logoY, width: LOGO_W, height: LOGO_H }}
             />
 
-            <button
-              type="button"
-              className={styles.buyBonus}
-              style={{
-                left: BUY_BONUS_X,
-                top: BAND.buyBonusY,
-                width: BUY_BONUS_SIZE,
-                height: BUY_BONUS_SIZE,
-              }}
-              disabled={busy || game.inFreeSpins}
-              onClick={() => {
-                unlock()
-                game.openBonusBuy()
-              }}
-              aria-label="Buy Bonus"
-            >
-              <img src={ASSET.buyBonus} alt="Buy Bonus" />
-            </button>
+            {!livePlay && (
+              <button
+                type="button"
+                className={styles.buyBonus}
+                style={{
+                  left: BUY_BONUS_X,
+                  top: BAND.buyBonusY,
+                  width: BUY_BONUS_SIZE,
+                  height: BUY_BONUS_SIZE,
+                }}
+                disabled={busy || game.inFreeSpins}
+                onClick={() => {
+                  unlock()
+                  game.openBonusBuy()
+                }}
+                aria-label="Buy Bonus"
+              >
+                <img src={ASSET.buyBonus} alt="Buy Bonus" />
+              </button>
+            )}
 
             <CardBoard
               board={game.board}
@@ -380,7 +391,7 @@ export default function SuperAceGame({ onMessage }: GameComponentProps) {
               amount={game.displayWin || game.spinWin}
             />
 
-            {game.bonusBuyOpen && (
+            {game.bonusBuyOpen && !livePlay && (
               <BuyBonusPanel
                 bet={game.betAmount}
                 onClose={game.closeBonusBuy}

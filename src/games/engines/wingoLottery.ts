@@ -1,3 +1,5 @@
+import { formatChipAmount } from '../lib/formatChipAmount'
+
 /** Client-side WinGo Lottery helpers (landscape multiplayer table UI). */
 
 export type WlColor = 'green' | 'violet' | 'red'
@@ -200,7 +202,7 @@ export function preloadCasinoAssets(
 }
 
 export function chipLabel(d: ChipDenom): string {
-  return d >= 1000 ? '1K' : String(d)
+  return formatChipAmount(d)
 }
 
 /** Display payout for UI (matches table labels). */

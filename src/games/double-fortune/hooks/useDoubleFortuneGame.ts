@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { roundLossStatus } from '../../lib/roundResult'
 import {
   AUTO_SPIN_OPTIONS,
   BET_AMOUNTS,
@@ -51,6 +50,10 @@ type Opts = WalletFns & {
   onMessage?: (msg: string | null) => void
   reducedMotion?: boolean
   demo?: boolean
+  holdWin?: (amount: number) => void
+  releaseWinHold?: () => void
+  beginLiveWin?: (serverWin: number) => Promise<void>
+  endLiveWin?: () => Promise<void>
 }
 
 function sleep(ms: number) {
@@ -58,7 +61,7 @@ function sleep(ms: number) {
 }
 
 export function useDoubleFortuneGame(opts: Opts) {
-  const { canAfford, debit, credit, refresh, playSfx, onMessage, reducedMotion, demo } = opts
+  const { canAfford, debit, credit, refresh, playSfx, onMessage, reducedMotion, demo, beginLiveWin, endLiveWin } = opts
   const busy = useRef(false)
   const autoStop = useRef(false)
 
@@ -196,22 +199,23 @@ export function useDoubleFortuneGame(opts: Opts) {
       setWinReaction(tier === 'big' ? 'large' : tier === 'medium' ? 'medium' : tier === 'small' ? 'small' : 'none')
 
       if (win > 0) {
+        const liveSettled = isLivePlayer() && !demo
         setPhase('winPresentation')
         setStatusMsg(`WIN ${formatMoney(win)}`)
         playSfx(tier === 'big' ? 'bigwin' : 'win', tier === 'big' ? 0.7 : 0.45)
         if (tier === 'big') playSfx('coin', 0.4)
         await countUpWin(win)
-        if (!isLivePlayer()) credit(win)
+        if (!liveSettled) credit(win)
         await sleep(tier === 'big' ? 1500 : tier === 'medium' ? 750 : 400)
+        if (liveSettled) await endLiveWin?.()
         setWinningCells(new Set())
         setWinReaction('none')
       } else {
         setDisplayWin(0)
-        setStatusMsg(roundLossStatus(betRef.current))
-        onMessage?.(roundLossStatus(betRef.current))
+        setStatusMsg('GOOD LUCK!')
       }
     },
-    [countUpWin, credit, onMessage, playSfx],
+    [countUpWin, credit, demo, endLiveWin, playSfx],
   )
 
   const runSpin = useCallback(
@@ -236,7 +240,7 @@ export function useDoubleFortuneGame(opts: Opts) {
             const settled = await serverSlotSpin('double-fortune', currentBet)
             serverWin = settled?.win ?? 0
             serverGrid = settled?.payload?.grid ?? null
-            void refresh?.()
+            await beginLiveWin?.(serverWin)
           } catch (e: any) {
             onMessage?.(e?.message || 'Spin failed')
             return

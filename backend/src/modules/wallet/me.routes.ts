@@ -8,9 +8,11 @@ import { prisma } from '../../lib/prisma.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { hashPassword, verifyPassword } from '../../lib/hash.js'
 import { runMoneyTx } from '../../core/tx.js'
-import { post } from '../../core/ledger.js'
+import { creditInstantBonus } from '../../core/wager.js'
 import { toRupees } from '../../lib/money.js'
 import * as wallet from './wallet.service.js'
+import { recentPlayerBets } from './playerBets.service.js'
+import { syncUserVipLevel } from '../vip/vip.service.js'
 
 export const meRoutes = Router()
 
@@ -44,6 +46,8 @@ meRoutes.get(
     })
     if (!user) throw notFound('User not found')
 
+    const vipLevel = await syncUserVipLevel(req.user!.id)
+
     const deposits = await prisma.deposit.aggregate({
       where: { userId: req.user!.id, status: 'APPROVED' },
       _sum: { amount: true },
@@ -53,6 +57,7 @@ meRoutes.get(
     const { withdrawPinHash, ...safe } = user
     ok(res, {
       ...safe,
+      vipLevel,
       totalDeposited,
       hasWithdrawPin: !!withdrawPinHash,
       birthday: user.birthday ? user.birthday.toISOString().slice(0, 10) : null,
@@ -117,8 +122,8 @@ meRoutes.post(
   '/withdraw-pin',
   validate({
     body: z.object({
-      pin: z.string().regex(/^\d{4,6}$/, 'PIN must be 4–6 digits'),
-      oldPin: z.string().regex(/^\d{4,6}$/).optional(),
+      pin: z.string().regex(/^\d{6}$/, 'PIN must be exactly 6 digits'),
+      oldPin: z.string().regex(/^\d{6}$/).optional(),
     }),
   }),
   asyncHandler(async (req, res) => {
@@ -169,28 +174,18 @@ meRoutes.post(
       })
       if (updated.count === 0) throw conflict('Gift code fully used')
 
-      await post(tx, {
-        type: 'DAILY_BONUS',
+      await creditInstantBonus(tx, {
+        userId,
+        amount: gift.amount,
+        type: 'GIFT_CODE',
+        ledgerType: 'DAILY_BONUS',
         referenceType: 'gift-code',
         referenceId: `${gift.id}:${userId}`,
         idempotencyKey: `gift-code:${gift.id}:${userId}`,
-        legs: [
-          { account: { system: 'BONUS_POOL' }, direction: 'DEBIT', amount: gift.amount },
-          { account: { userId, bucket: 'BONUS' }, direction: 'CREDIT', amount: gift.amount },
-        ],
       })
 
       await tx.giftCodeRedemption.create({
         data: { codeId: gift.id, userId, amount: gift.amount },
-      })
-
-      await tx.bonus.create({
-        data: {
-          userId,
-          type: 'GIFT_CODE',
-          amount: gift.amount,
-          status: 'RELEASED',
-        },
       })
 
       return { amount: toRupees(gift.amount) }
@@ -238,22 +233,17 @@ meRoutes.post(
 meRoutes.get(
   '/bets',
   asyncHandler(async (req, res) => {
-    const rounds = await prisma.gameRound.findMany({
-      where: { userId: req.user!.id },
-      orderBy: { createdAt: 'desc' },
-      take: 30,
-      select: { id: true, gameSlug: true, bet: true, payout: true, state: true, multiplier: true, createdAt: true },
-    })
+    const rounds = await recentPlayerBets(req.user!.id, 30)
     ok(
       res,
       rounds.map((r) => ({
         id: r.id,
-        game: r.gameSlug,
-        bet: Number(r.bet) / 100,
-        payout: Number(r.payout) / 100,
+        game: r.game,
+        bet: r.bet,
+        payout: r.payout,
         state: r.state,
         multiplier: r.multiplier,
-        time: r.createdAt,
+        time: r.time,
       })),
     )
   }),

@@ -12,6 +12,7 @@ const createSchema = z.object({
   amount: z.number().positive(),
   method: z.enum(['JAZZCASH', 'EASYPAISA', 'BANK', 'WEGARS']),
   accountDetails: z.object({ number: z.string().min(3), title: z.string().min(2), bank: z.string().optional() }),
+  pin: z.string().regex(/^\d{6}$/, 'Withdraw PIN must be 6 digits'),
 })
 
 withdrawalRoutes.use(authenticate)

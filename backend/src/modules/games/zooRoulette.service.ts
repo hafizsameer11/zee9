@@ -6,7 +6,8 @@ import { getBalances, post } from '../../core/ledger.js'
 import { toPaisa, toRupees } from '../../lib/money.js'
 import { badRequest, conflict, notFound, unprocessable } from '../../core/errors.js'
 import { recordWagerAndRelease } from '../../core/wager.js'
-import { accrueForLoss } from '../commission/commission.service.js'
+import { accrueForLoss, clawbackForWin } from '../commission/commission.service.js'
+import { pickExposureSlot } from './exposurePick.js'
 
 const GAME_SLUG = 'zoo-roulette'
 const BETTING_MS = 16_500
@@ -16,6 +17,7 @@ const HISTORY_LIMIT = 12
 const PUBLIC_BETS_LIMIT = 160
 const MIN_BET = 1
 const MAX_BET = 1_000_000
+const MAX_BET_POSITIONS = 3
 
 export const ZOO_TRACK: readonly ZooRouletteAnimal[] = [
   'monkey', 'rabbit', 'rabbit', 'rabbit', 'golden_frog', 'swallow', 'swallow', 'swallow', 'pigeon', 'pigeon',
@@ -48,6 +50,7 @@ const ZONE_MULT: Record<ZooRouletteZone, number> = {
 }
 
 let tickPromise: Promise<Awaited<ReturnType<typeof tickInternal>>> | null = null
+let pendingForceSlot: number | null = null
 
 function formatPeriod(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -92,7 +95,8 @@ async function tickInternal() {
   if (!round) return createRound(now)
 
   if (round.phase === 'BETTING' && now >= round.bettingEndsAt.getTime()) {
-    await settleRound(round.id)
+    const gameRow = await prisma.game.findUnique({ where: { slug: GAME_SLUG } })
+    await settleRound(round.id, gameRow?.winPct ?? 93)
     round = await prisma.zooRouletteRound.findUniqueOrThrow({ where: { id: round.id } })
   }
 
@@ -121,8 +125,29 @@ export function tickZooRoulette() {
   return tickPromise
 }
 
-async function settleRound(roundId: string) {
-  const resultSlot = crypto.randomInt(0, ZOO_TRACK.length)
+async function settleRound(roundId: string, winPct: number) {
+  const openBets = await prisma.zooRouletteBet.findMany({
+    where: { roundId, state: 'ACTIVE' },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const exposure = Array.from({ length: ZOO_TRACK.length }, () => 0)
+  for (let slot = 0; slot < ZOO_TRACK.length; slot++) {
+    const animal = ZOO_TRACK[slot]!
+    let total = 0
+    for (const bet of openBets) {
+      const mult = payoutMultiplier(bet.zone, animal)
+      if (mult > 0) total += Number(bet.amount) * mult
+    }
+    exposure[slot] = total
+  }
+
+  const forced =
+    pendingForceSlot != null && pendingForceSlot >= 0 && pendingForceSlot < ZOO_TRACK.length
+      ? pendingForceSlot
+      : null
+  if (forced != null) pendingForceSlot = null
+  const resultSlot = forced ?? pickExposureSlot(winPct, exposure)
   const resultAnimal = ZOO_TRACK[resultSlot]!
 
   return runMoneyTx(async (tx) => {
@@ -148,6 +173,12 @@ async function settleRound(roundId: string) {
             { account: { system: 'HOUSE' }, direction: 'DEBIT', amount: payout },
             { account: { userId: bet.userId, bucket: 'MAIN' }, direction: 'CREDIT', amount: payout },
           ],
+        })
+        await clawbackForWin(tx, {
+          userId: bet.userId,
+          winAmount: payout,
+          referenceType: 'zoo-roulette-win',
+          referenceId: bet.id,
         })
         await tx.zooRouletteBet.update({
           where: { id: bet.id },
@@ -309,6 +340,15 @@ export async function placeBet(userId: string, zoneRaw: unknown, amountRupees: n
     const balances = await getBalances(tx, userId)
     if ((balances.MAIN ?? 0n) < amount) throw unprocessable('Insufficient balance')
 
+    const activeBets = await tx.zooRouletteBet.findMany({
+      where: { roundId: round.id, userId, state: 'ACTIVE' },
+      select: { zone: true },
+    })
+    const distinctZones = new Set(activeBets.map((bet) => bet.zone))
+    if (!distinctZones.has(zone) && distinctZones.size >= MAX_BET_POSITIONS) {
+      throw badRequest(`You can bet on at most ${MAX_BET_POSITIONS} zones per round`)
+    }
+
     const bet = await tx.zooRouletteBet.create({
       data: { roundId: round.id, userId, zone, amount, state: 'ACTIVE' },
     })
@@ -360,6 +400,16 @@ export async function rebet(userId: string) {
     const balances = await getBalances(tx, userId)
     if ((balances.MAIN ?? 0n) < total) throw unprocessable('Insufficient balance')
 
+    const activeBets = await tx.zooRouletteBet.findMany({
+      where: { roundId: current.id, userId, state: 'ACTIVE' },
+      select: { zone: true },
+    })
+    const mergedZones = new Set(activeBets.map((bet) => bet.zone))
+    for (const old of previous.bets) mergedZones.add(old.zone)
+    if (mergedZones.size > MAX_BET_POSITIONS) {
+      throw badRequest(`You can bet on at most ${MAX_BET_POSITIONS} zones per round`)
+    }
+
     const created = []
     for (const old of previous.bets) {
       const bet = await tx.zooRouletteBet.create({
@@ -396,4 +446,57 @@ export async function rebet(userId: string) {
       })),
     }
   })
+}
+
+const ZOO_ANIMALS = [...new Set(ZOO_TRACK)] as ZooRouletteAnimal[]
+
+export async function forceNextAnimal(animal: ZooRouletteAnimal) {
+  if (!ZOO_ANIMALS.includes(animal)) throw badRequest('Invalid animal')
+  const slots = ZOO_TRACK.map((a, i) => (a === animal ? i : -1)).filter((i) => i >= 0)
+  const slot = slots[crypto.randomInt(0, slots.length)]!
+  await getGame()
+  const round = await tickZooRoulette()
+  if (round?.phase === 'BETTING' && round.resultAnimal == null) {
+    pendingForceSlot = slot
+    return { applied: 'current' as const, slot, animal, period: round.period }
+  }
+  pendingForceSlot = slot
+  return { applied: 'next' as const, slot, animal, period: round?.period ?? null }
+}
+
+export async function clearForce() {
+  pendingForceSlot = null
+  return { cleared: true }
+}
+
+export async function getLiveAdmin() {
+  const round = await tickZooRoulette()
+  const game = await prisma.game.findUnique({ where: { slug: GAME_SLUG } })
+  const agg = round
+    ? await prisma.zooRouletteBet.aggregate({
+        where: { roundId: round.id },
+        _count: true,
+        _sum: { amount: true },
+      })
+    : { _count: 0, _sum: { amount: null } }
+
+  const forcedAnimal =
+    pendingForceSlot != null && pendingForceSlot >= 0 && pendingForceSlot < ZOO_TRACK.length
+      ? ZOO_TRACK[pendingForceSlot]
+      : null
+
+  return {
+    enabled: !!game?.enabled,
+    winPct: game?.winPct ?? 93,
+    period: round?.period ?? null,
+    phase: round?.phase.toLowerCase() ?? null,
+    msLeft: round ? msLeftForPhase(round) : 0,
+    resultAnimal: round?.resultAnimal ?? null,
+    resultSlot: round?.resultSlot ?? null,
+    forcedAnimal,
+    forcedSlot: pendingForceSlot,
+    pendingForce: pendingForceSlot != null,
+    betCount: agg._count,
+    wagered: toRupees(agg._sum.amount ?? 0n),
+  }
 }

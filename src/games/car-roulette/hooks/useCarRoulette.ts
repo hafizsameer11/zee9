@@ -6,6 +6,7 @@ import {
   CAR_LEAD_MS,
   CHIP_VALUES,
   HISTORY_LIMIT,
+  MAX_BET_POSITIONS,
   PAYOUT_MS,
   RESET_MS,
   RESULT_MS,
@@ -251,6 +252,12 @@ export function useCarRoulette(opts: Options) {
   const placeBet = useCallback(
     (brand: BrandId, value: ChipValue) => {
       if (state !== 'BETTING') return false
+      const current = betsRef.current
+      if (!current.has(brand) && current.size >= MAX_BET_POSITIONS) {
+        playSfx('error')
+        api.current.onToast?.(`Max ${MAX_BET_POSITIONS} cars per round`, 2000)
+        return false
+      }
       if (!api.current.canAfford(value)) {
         flashInsufficient()
         return false
@@ -273,6 +280,13 @@ export function useCarRoulette(opts: Options) {
 
   const rebet = useCallback(() => {
     if (state !== 'BETTING' || lastBets.size === 0) return false
+    const merged = new Map(betsRef.current)
+    for (const [k, v] of lastBets) merged.set(k, (merged.get(k) ?? 0) + v)
+    if (merged.size > MAX_BET_POSITIONS) {
+      playSfx('error')
+      api.current.onToast?.(`Max ${MAX_BET_POSITIONS} cars per round`, 2000)
+      return false
+    }
     const total = [...lastBets.values()].reduce((a, b) => a + b, 0)
     if (!api.current.canAfford(total)) {
       flashInsufficient()
